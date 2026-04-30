@@ -7,6 +7,6 @@ module com.example.zyzzs {
     requires org.kordamp.bootstrapfx.core;
     requires com.almasb.fxgl.all;
 
-    opens com.example.zyzzs to javafx.fxml;
-    exports com.example.zyzzs;
+    opens ui to javafx.fxml;
+    exports ui;
 }

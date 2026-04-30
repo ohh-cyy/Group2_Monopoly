@@ -1,4 +1,4 @@
-package com.example.zyzzs;
+package ui;
 
 import javafx.application.Application;
 

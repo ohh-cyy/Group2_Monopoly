@@ -1,4 +1,4 @@
-package com.example.zyzzs;
+package ui;
 
 public class wds {
     public static void main(String[] args) {

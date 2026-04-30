@@ -1,4 +1,4 @@
-package com.example.zyzzs;
+package ui;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
