@@ -1,7 +1,9 @@
 package engine;
 
-import model.player.Player;
 import model.card.Card;
+import model.card.PropertyCard;
+import model.enums.Color;
+import model.player.Player;
 
 import java.util.*;
 
@@ -43,13 +45,13 @@ public class GameEngine {
             player.draw(deck.draw());
         }
 
-        // 2. 简化：自动出1张牌（后面UI再改）
+        // 2. 出牌逻辑（尚未完成）
         if (!player.getHand().isEmpty()) {
             Card card = player.getHand().get(0);
 
             System.out.println(player.getName() + " uses " + card.getName());
 
-            card.use(player, this); // ⭐调用Controller
+            card.use(player, this); // 调用Controller
 
             player.removeFromHand(card);
         }
@@ -71,7 +73,28 @@ public class GameEngine {
 
     // 胜利条件（先简单）
     public boolean checkWin(Player player) {
-        return player.getProperties().size() >= 3;
+        // key: 颜色, value: 该颜色的卡数量
+        Map<Color, Integer> colorCount = new HashMap<>();
+
+        for (PropertyCard card : player.getProperties()) {
+            Color color = card.getColor();
+            colorCount.put(color, colorCount.getOrDefault(color, 0) + 1);
+        }
+
+        int completeSets = 0;
+
+        for (Color color : colorCount.keySet()) {
+            int count = colorCount.get(color);
+
+            // 👉 每种颜色需要的数量（示例）
+            int required = getRequiredCount(color);
+
+            if (count >= required) {
+                completeSets++;
+            }
+        }
+
+        return completeSets >= 3;
     }
 
     public boolean isGameOver() {
