@@ -1,10 +1,24 @@
 package model.card;
-import engine.GameEngine;
+
+import model.enums.CardType;
 import model.player.Player;
 
 public abstract class Card {
-    // engine所需method
-    //TODO: String getName(); （显示卡牌的名字）
+    protected final String name;
+    protected final String description;
+    protected final CardType type;
 
-    //TODO: void use(Player player, GameEngine game);（只定义一个抽象的使用方法，具体的不同使用方法由不同的卡牌类型决定）
+    public Card(String name, String description, CardType type) {
+        this.name = name;
+        this.description = description;
+        this.type = type;
+    }
+
+    // 通用Getter
+    public String getName() { return name; }
+    public String getDescription() { return description; }
+    public CardType getType() { return type; }
+
+    // 抽象方法：子类实现，空框架不写逻辑
+    public abstract void execute(Player player);
 }
