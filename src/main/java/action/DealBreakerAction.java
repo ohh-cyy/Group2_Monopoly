@@ -1,0 +1,12 @@
+package action;
+
+import engine.GameEngine;
+import model.player.Player;
+
+public class DealBreakerAction implements ActionHandler {
+    @Override
+    public void execute(Player attacker, Player defender, GameEngine game) {
+        System.out.println(attacker.getName() + " uses Deal Breaker card to take opponent properties");
+        defender.getProperties().clear();
+    }
+}
