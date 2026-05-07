@@ -1,6 +1,8 @@
 package model.card;
 
+import engine.GameEngine;
 import model.enums.CardType;
+import model.enums.Color;
 import model.player.Player;
 
 public abstract class Card {
@@ -14,11 +16,16 @@ public abstract class Card {
         this.type = type;
     }
 
-    // 通用Getter
+    // 引擎&玩家卡牌信息获取
     public String getName() { return name; }
     public String getDescription() { return description; }
     public CardType getType() { return type; }
 
-    // 抽象方法：子类实现，空框架不写逻辑
-    public abstract void execute(Player player);
+
+    public Color getColor(){
+        return null;
+    }
+
+
+    public abstract void use(Player player, GameEngine game);
 }
