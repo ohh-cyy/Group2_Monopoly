@@ -1,5 +1,6 @@
 package engine;
 
+import model.card.Card;
 import java.util.*;
 
 public class Deck {

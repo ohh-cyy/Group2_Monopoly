@@ -8,5 +8,17 @@ module com.example.zyzzs {
     requires com.almasb.fxgl.all;
 
     opens ui to javafx.fxml;
+    opens com.example.zyzzs to javafx.fxml;
+    opens engine to javafx.base;
+    opens model.player to javafx.base;
+    opens model.card to javafx.base;
+    opens model.enums to javafx.base;
+    
     exports ui;
+    exports com.example.zyzzs;
+    exports engine;
+    exports model.player;
+    exports model.card;
+    exports model.enums;
+    exports action;
 }

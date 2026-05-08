@@ -78,7 +78,9 @@ public class GameEngine {
 
         for (PropertyCard card : player.getProperties()) {
             Color color = card.getColor();
-            colorCount.put(color, colorCount.getOrDefault(color, 0) + 1);
+            if (color != null) {
+                colorCount.put(color, colorCount.getOrDefault(color, 0) + 1);
+            }
         }
 
         int completeSets = 0;
@@ -95,6 +97,17 @@ public class GameEngine {
         }
 
         return completeSets >= 3;
+    }
+
+    private int getRequiredCount(Color color) {
+        // 根据不同颜色返回需要的地产数量
+        switch (color) {
+            case BROWN:
+            case DARK_BLUE:
+                return 2;
+            default:
+                return 3;
+        }
     }
 
     public boolean isGameOver() {
