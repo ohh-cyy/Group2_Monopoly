@@ -1,4 +1,4 @@
-package com.example.zyzzs;
+package controller;
 
 import engine.Deck;
 import engine.GameEngine;
@@ -10,7 +10,6 @@ import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.*;
 import model.card.*;
-import model.enums.CardType;
 import model.player.Player;
 
 import java.util.*;

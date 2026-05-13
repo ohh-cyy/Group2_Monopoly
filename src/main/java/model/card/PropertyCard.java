@@ -15,7 +15,6 @@ public class PropertyCard extends Card {
         this.price = price;
     }
 
-    // Required for the checkWin method in GameEngine
     @Override
     public Color getColor() {
         return color;
@@ -27,10 +26,7 @@ public class PropertyCard extends Card {
 
     @Override
     public void use(Player player, GameEngine game) {
-        System.out.println(player.getName() + " obtained property card: " + getName());
-        System.out.println("Tile color: " + color + " | Price: " + price);
-
-        // Use the existing addProperty method of the player
         player.addProperty(this);
+        game.getDiscardPile().addCard(this);
     }
 }

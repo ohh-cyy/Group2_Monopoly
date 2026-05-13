@@ -18,10 +18,7 @@ public class MoneyCard extends Card {
 
     @Override
     public void use(Player player, GameEngine game) {
-        System.out.println(player.getName() + " used money card: " + getName());
-        System.out.println("Card effect: " + getDescription());
-        System.out.println("Amount affected: " + money + " (Note: No money system implemented in Player class yet, printing effect only)");
-
-        // Removed all calls to getMoney()/changeMoney()/playerBankrupt(), no dependency on extra Player methods
+        player.addMoney(money);
+        game.getDiscardPile().addCard(this);
     }
 }

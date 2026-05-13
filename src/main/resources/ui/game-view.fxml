@@ -6,7 +6,7 @@
 <?import javafx.scene.text.Font?>
 
 <BorderPane xmlns:fx="http://javafx.com/fxml"
-            fx:controller="com.example.zyzzs.GameController"
+            fx:controller="controller.GameController"
             prefWidth="1200"
             prefHeight="800">
     
