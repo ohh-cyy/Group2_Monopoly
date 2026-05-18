@@ -1,40 +1,55 @@
 package engine;
-
 import model.card.Card;
+
 import java.util.ArrayList;
 import java.util.List;
 
+
 public class DiscardPile {
-    private List<Card> discardedCards;
+    private List<Card> cards;
 
     public DiscardPile() {
-        this.discardedCards = new ArrayList<>();
+        cards = new ArrayList<>();
     }
 
+    // 添加到弃牌堆
     public void addCard(Card card) {
-        discardedCards.add(card);
+        cards.add(card);
     }
 
-    public Card getTopCard() {
-        if (discardedCards.isEmpty()) {
+    // 查看最上面的牌
+    public Card peekTop() {
+
+        if (cards.isEmpty()) {
             return null;
         }
-        return discardedCards.get(discardedCards.size() - 1);
+
+        return cards.get(cards.size() - 1);
     }
 
-    public int size() {
-        return discardedCards.size();
-    }
-
+    // 判断是否为空
     public boolean isEmpty() {
-        return discardedCards.isEmpty();
+        return cards.isEmpty();
     }
 
-    public List<Card> getAllCards() {
-        return new ArrayList<>(discardedCards);
+    // 获取数量
+    public int size() {
+        return cards.size();
     }
 
-    public void clear() {
-        discardedCards.clear();
+    // 显示弃牌堆
+    public void showDiscardPile() {
+
+        System.out.println("===== 弃牌堆 =====");
+
+        for (Card card : cards) {
+            System.out.println(card.getName());
+        }
     }
+
+    // 获取所有牌（后面可能洗回牌库）
+    public List<Card> getCards() {
+        return cards;
+    }
+
 }

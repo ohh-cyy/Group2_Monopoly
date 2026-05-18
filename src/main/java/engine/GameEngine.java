@@ -13,83 +13,40 @@ public class GameEngine {
     private DiscardPile discardPile;
     private int currentPlayerIndex;
     private boolean gameOver = false;
-    private Player winner;
 
     public GameEngine(List<Player> players, Deck deck) {
         this.players = players;
         this.deck = deck;
-        this.discardPile = new DiscardPile();
         this.currentPlayerIndex = 0;
+        discardPile = new DiscardPile();
     }
 
+    // 开始游戏
     public void startGame() {
-        int initialHandSize = RuleBook.getInitialHandSize();
+        // 每人发5张牌
         for (Player p : players) {
-            for (int i = 0; i < initialHandSize; i++) {
-                if (!deck.isEmpty()) {
-                    p.draw(deck.draw());
-                }
+            for (int i = 0; i < 5; i++) {
+                p.draw(deck.draw());
             }
         }
     }
 
+    // 当前玩家
     public Player getCurrentPlayer() {
         return players.get(currentPlayerIndex);
     }
 
-    public List<Player> getPlayers() {
-        return Collections.unmodifiableList(players);
-    }
+    public void drawCard(Card card) {
 
-    public void playTurn() {
-        if (gameOver) {
-            return;
-        }
-
-        Player player = getCurrentPlayer();
-        System.out.println("=== " + player.getName() + "'s Turn ===");
-
-        // 1. 抽牌阶段
-        int cardsToDraw = RuleBook.getCardsPerTurn();
-        for (int i = 0; i < cardsToDraw; i++) {
-            if (!deck.isEmpty()) {
-                Card drawnCard = deck.draw();
-                player.draw(drawnCard);
-                System.out.println(player.getName() + " drew: " + drawnCard.getName());
-            } else {
-                reshuffleFromDiscard();
-                if (!deck.isEmpty()) {
-                    player.draw(deck.draw());
-                }
-            }
-        }
-
-        // 2. 出牌阶段（简化版 - 自动出第一张牌）
-        if (!player.getHand().isEmpty()) {
-            Card card = player.getHand().get(0);
-            System.out.println(player.getName() + " plays: " + card.getName());
-            
-            card.use(player, this);
-            player.removeFromHand(card);
-        }
-
-        // 3. 检查胜利条件
-        if (checkWin(player)) {
-            winner = player;
-            gameOver = true;
-            System.out.println("=== GAME OVER === " + player.getName() + " wins!");
-            return;
-        }
-
-        // 4. 下一回合
-        nextTurn();
     }
 
     public void nextTurn() {
         currentPlayerIndex = (currentPlayerIndex + 1) % players.size();
     }
 
+    // 胜利条件（先简单）
     public boolean checkWin(Player player) {
+        // key: 颜色, value: 该颜色的卡数量
         Map<Color, Integer> colorCount = new HashMap<>();
 
         for (PropertyCard card : player.getProperties()) {
@@ -100,48 +57,43 @@ public class GameEngine {
         }
 
         int completeSets = 0;
+
         for (Color color : colorCount.keySet()) {
             int count = colorCount.get(color);
-            int required = RuleBook.getRequiredCountForColor(color);
+
+            // 👉 每种颜色需要的数量（示例）
+            int required = getRequiredCount(color);
 
             if (count >= required) {
                 completeSets++;
             }
         }
 
-        return completeSets >= RuleBook.getWinningSetCount();
+        return completeSets >= 3;
     }
 
-    private void reshuffleFromDiscard() {
-        if (discardPile.isEmpty()) {
-            System.out.println("Both deck and discard pile are empty!");
-            return;
+    private int getRequiredCount(Color color) {
+        // 根据不同颜色返回需要的地产数量
+        switch (color) {
+            case BROWN:
+            case DARK_BLUE:
+                return 2;
+            default:
+                return 3;
         }
-
-        List<Card> discardedCards = discardPile.getAllCards();
-        discardPile.clear();
-        
-        deck.reshuffle(discardedCards);
-        System.out.println("Reshuffled " + discardedCards.size() + " cards from discard pile");
     }
 
     public boolean isGameOver() {
         return gameOver;
     }
 
-    public Player getWinner() {
-        return winner;
-    }
+    public Player getDefaultDefender(Player attacker) {
+        int index = players.indexOf(attacker);
+        int defenderIndex = (index + 1) % players.size();
+        return players.get(defenderIndex);
 
+    }
     public DiscardPile getDiscardPile() {
         return discardPile;
-    }
-
-    public Deck getDeck() {
-        return deck;
-    }
-
-    public int getCurrentPlayerIndex() {
-        return currentPlayerIndex;
     }
 }

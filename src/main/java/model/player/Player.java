@@ -10,12 +10,14 @@ public class Player {
     private String name;
     private List<Card> hand;
     private List<PropertyCard> properties;
+    private List<Card> bank;
     private int money;
 
     public Player(String name) {
         this.name = name;
         this.hand = new ArrayList<>();
         this.properties = new ArrayList<>();
+        this.bank = new ArrayList<>();
         this.money = 0;
     }
 
@@ -45,6 +47,15 @@ public class Player {
         if (card != null) {
             properties.add(card);
         }
+    }
+
+    public void addBank(Card card) {
+        if (card != null) {
+            bank.add(card);
+        }
+    }
+    public void removeFromBank(Card card) {
+        bank.remove(card);
     }
 
     public void removeProperty(PropertyCard card) {
