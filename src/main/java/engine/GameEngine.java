@@ -96,4 +96,7 @@ public class GameEngine {
     public DiscardPile getDiscardPile() {
         return discardPile;
     }
+    public Deck getDeck() {
+        return deck;
+    }
 }

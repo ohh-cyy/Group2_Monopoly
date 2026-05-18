@@ -2,21 +2,25 @@ package model.player;
 
 import model.card.Card;
 import model.card.PropertyCard;
+import model.card.RentCard;
+import model.enums.Color;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Player {
     private String name;
     private List<Card> hand;
-    private List<PropertyCard> properties;
+    private Map<Object, List<PropertyCard>> properties;
     private List<Card> bank;
     private int money;
 
     public Player(String name) {
         this.name = name;
         this.hand = new ArrayList<>();
-        this.properties = new ArrayList<>();
+        this.properties = new HashMap<Object, List<PropertyCard>>();
         this.bank = new ArrayList<>();
         this.money = 0;
     }
@@ -39,14 +43,18 @@ public class Player {
         hand.remove(card);
     }
 
-    public List<PropertyCard> getProperties() {
-        return new ArrayList<>(properties);
+    public List<PropertyCard> getPropertiesByColor(Color color) {
+        return properties.getOrDefault(color, new ArrayList<>());
     }
 
     public void addProperty(PropertyCard card) {
-        if (card != null) {
-            properties.add(card);
-        }
+        if(card == null) return;
+
+        Color color = card.getColor();
+
+        properties.putIfAbsent(color, new ArrayList<>());
+
+        properties.get(color).add(card);
     }
 
     public void addBank(Card card) {
@@ -59,8 +67,41 @@ public class Player {
     }
 
     public void removeProperty(PropertyCard card) {
-        properties.remove(card);
+        if(card == null) return;
+
+        Color color = card.getColor();
+
+        if(properties.containsKey(color)) {
+
+            properties.get(color).remove(card);
+        }
     }
+
+    // use for dealbreaker to judge whether this player has complete set
+    public boolean hasCompleteSet(Color color) {
+        int size =
+                getPropertiesByColor(color).size();
+
+        switch(color) {
+            case BROWN:
+            case DARK_BLUE:
+            case WHITE:
+                return size>=2;
+            case BLACK:
+                return size>=4;
+            default:
+                return size>=3;
+        }
+    }
+
+    //use for dealbreaker to remove one player's set
+    public List<PropertyCard> removePropertySet(Color color) {
+        List<PropertyCard> set =
+                new ArrayList<>(getPropertiesByColor(color));
+        properties.remove(color);
+        return set;
+    }
+
 
     public int getMoney() {
         return money;

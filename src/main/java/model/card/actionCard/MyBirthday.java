@@ -1,4 +1,4 @@
 package model.card.actionCard;
 
-public class RentCard {
+public class MyBirthday {
 }
