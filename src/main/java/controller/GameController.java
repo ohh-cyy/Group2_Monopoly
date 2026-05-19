@@ -9,7 +9,9 @@ import javafx.scene.Cursor;
 import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.*;
+import ui.CardView;
 import model.card.*;
+import model.card.actionCard.SimpleActionCard;
 import model.player.Player;
 
 import java.util.*;
@@ -164,26 +166,26 @@ public class GameController {
         
         // 行动卡
         for (int i = 0; i < 3; i++) {
-            cards.add(new ActionCard("Pass Go", "Draw 2 extra cards"));
+            cards.add(new SimpleActionCard("Pass Go", "Draw 2 extra cards"));
         }
         for (int i = 0; i < 2; i++) {
-            cards.add(new ActionCard("It's My Birthday", "Collect 2M from each player"));
+            cards.add(new SimpleActionCard("It's My Birthday", "Collect 2M from each player"));
         }
         for (int i = 0; i < 2; i++) {
-            cards.add(new ActionCard("Double The Rent", "Double rent amount"));
+            cards.add(new SimpleActionCard("Double The Rent", "Double rent amount"));
         }
-        cards.add(new ActionCard("Deal Breaker", "Steal a complete property set"));
+        cards.add(new SimpleActionCard("Deal Breaker", "Steal a complete property set"));
         for (int i = 0; i < 3; i++) {
-            cards.add(new ActionCard("Just Say No", "Cancel any action card"));
+            cards.add(new SimpleActionCard("Just Say No", "Cancel any action card"));
         }
         for (int i = 0; i < 3; i++) {
-            cards.add(new ActionCard("Sly Deal", "Steal a single property"));
+            cards.add(new SimpleActionCard("Sly Deal", "Steal a single property"));
         }
         for (int i = 0; i < 2; i++) {
-            cards.add(new ActionCard("Forced Deal", "Swap properties with a player"));
+            cards.add(new SimpleActionCard("Forced Deal", "Swap properties with a player"));
         }
         for (int i = 0; i < 2; i++) {
-            cards.add(new ActionCard("Debt Collector", "Collect 5M from a player"));
+            cards.add(new SimpleActionCard("Debt Collector", "Collect 5M from a player"));
         }
         
         return cards;
@@ -363,22 +365,22 @@ public class GameController {
         if (currentPlayer == null) return;
         
         for (Card card : currentPlayer.getHand()) {
-            StackPane cardPane = createCardPane(card, true);
-            cardPane.setOnMouseClicked(event -> selectCard(card, cardPane));
-            playerHand.getChildren().add(cardPane);
+            CardView cardView = new CardView(card, true);
+            cardView.setOnMouseClicked(event -> selectCard(card, cardView));
+            playerHand.getChildren().add(cardView);
         }
     }
     
-    private void selectCard(Card card, StackPane cardPane) {
+    private void selectCard(Card card, CardView cardView) {
         // 清除之前的选择
         for (javafx.scene.Node node : playerHand.getChildren()) {
-            if (node instanceof StackPane) {
-                node.setStyle(node.getStyle().replace("-fx-border-color: #f39c12; -fx-border-width: 3;", ""));
+            if (node instanceof CardView) {
+                ((CardView) node).setSelected(false);
             }
         }
         
         selectedCard = card;
-        cardPane.setStyle(cardPane.getStyle() + "-fx-border-color: #f39c12; -fx-border-width: 3;");
+        cardView.setSelected(true);
         
         showStatus("Selected: " + card.getName(), false);
     }
@@ -389,8 +391,8 @@ public class GameController {
         if (currentPlayer == null) return;
         
         for (PropertyCard property : currentPlayer.getProperties()) {
-            StackPane cardPane = createPropertyCardPane(property);
-            playerProperties.getChildren().add(cardPane);
+            CardView cardView = new CardView(property, false);
+            playerProperties.getChildren().add(cardView);
         }
     }
     
@@ -418,127 +420,7 @@ public class GameController {
         endTurnBtn.setDisable(!canPlay);
     }
     
-    private StackPane createCardPane(Card card, boolean clickable) {
-        StackPane pane = new StackPane();
-        pane.setPrefSize(100, 140);
-        pane.setCursor(clickable ? Cursor.HAND : Cursor.DEFAULT);
-        
-        // 根据卡牌类型设置背景色
-        String backgroundColor = getCardBackgroundColor(card);
-        String textColor = getCardTextColor(card);
-        
-        pane.setStyle(
-            "-fx-background-color: " + backgroundColor + ";" +
-            "-fx-border-color: #2c3e50;" +
-            "-fx-border-width: 2;" +
-            "-fx-background-radius: 8;" +
-            "-fx-border-radius: 8;" +
-            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 5, 0, 0, 2);"
-        );
-        
-        VBox content = new VBox(5);
-        content.setAlignment(Pos.CENTER);
-        content.setStyle("-fx-padding: 5;");
-        
-        Label nameLabel = new Label(card.getName());
-        nameLabel.setStyle("-fx-text-fill: " + textColor + "; -fx-font-weight: bold; -fx-font-size: 11px; -fx-wrap-text: true;");
-        nameLabel.setMaxWidth(90);
-        
-        Label typeLabel = new Label(card.getType().toString());
-        typeLabel.setStyle("-fx-text-fill: " + textColor + "; -fx-font-size: 9px; -fx-opacity: 0.8;");
-        
-        content.getChildren().addAll(nameLabel, typeLabel);
-        
-        pane.getChildren().add(content);
-        
-        // 添加悬停效果
-        if (clickable) {
-            pane.setOnMouseEntered(e -> pane.setStyle(pane.getStyle() + "-fx-scale-x: 1.05; -fx-scale-y: 1.05;"));
-            pane.setOnMouseExited(e -> pane.setStyle(pane.getStyle().replace("-fx-scale-x: 1.05; -fx-scale-y: 1.05;", "")));
-        }
-        
-        return pane;
-    }
-    
-    private StackPane createPropertyCardPane(PropertyCard property) {
-        StackPane pane = new StackPane();
-        pane.setPrefSize(100, 140);
-        
-        String backgroundColor = getPropertyColorHex(property.getColor());
-        
-        pane.setStyle(
-            "-fx-background-color: " + backgroundColor + ";" +
-            "-fx-border-color: #2c3e50;" +
-            "-fx-border-width: 2;" +
-            "-fx-background-radius: 8;" +
-            "-fx-border-radius: 8;" +
-            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 5, 0, 0, 2);"
-        );
-        
-        VBox content = new VBox(5);
-        content.setAlignment(Pos.CENTER);
-        content.setStyle("-fx-padding: 5;");
-        
-        Label nameLabel = new Label(property.getName());
-        nameLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-wrap-text: true;");
-        nameLabel.setMaxWidth(90);
-        
-        Label valueLabel = new Label(property.getPrice() + "M");
-        valueLabel.setStyle("-fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: bold;");
-        
-        content.getChildren().addAll(nameLabel, valueLabel);
-        
-        pane.getChildren().add(content);
-        
-        return pane;
-    }
-    
-    private String getCardBackgroundColor(Card card) {
-        switch (card.getType()) {
-            case PROPERTY:
-                if (card instanceof PropertyCard) {
-                    return getPropertyColorHex(((PropertyCard) card).getColor());
-                }
-                return "#95a5a6";
-            case MONEY:
-                return "#27ae60";
-            case ACTION:
-                return "#e74c3c";
-            default:
-                return "#95a5a6";
-        }
-    }
-    
-    private String getCardTextColor(Card card) {
-        return "white";
-    }
-    
-    private String getPropertyColorHex(model.enums.Color color) {
-        if (color == null) return "#95a5a6";
-        
-        switch (color) {
-            case BROWN:
-                return "#8B4513";
-            case LIGHT_BLUE:
-                return "#87CEEB";
-            case PINK:
-                return "#FF69B4";
-            case ORANGE:
-                return "#FFA500";
-            case RED:
-                return "#DC143C";
-            case YELLOW:
-                return "#FFD700";
-            case GREEN:
-                return "#228B22";
-            case DARK_BLUE:
-                return "#00008B";
-            case BLACK:
-                return "#2c3e50";
-            default:
-                return "#95a5a6";
-        }
-    }
+
     
     private void logMessage(String message) {
         Platform.runLater(() -> {
