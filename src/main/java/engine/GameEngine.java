@@ -93,6 +93,11 @@ public class GameEngine {
         return players.get(defenderIndex);
 
     }
+    
+    public List<Player> getPlayers() {
+        return players;
+    }
+    
     public DiscardPile getDiscardPile() {
         return discardPile;
     }

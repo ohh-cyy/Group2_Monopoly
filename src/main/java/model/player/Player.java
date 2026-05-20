@@ -126,4 +126,12 @@ public class Player {
     public int getPropertyCount() {
         return properties.size();
     }
+
+    public List<PropertyCard> getAllProperties() {
+        List<PropertyCard> allProperties = new ArrayList<>();
+        for (List<PropertyCard> propertyList : properties.values()) {
+            allProperties.addAll(propertyList);
+        }
+        return allProperties;
+    }
 }
