@@ -177,8 +177,6 @@ public class CardView extends StackPane {
                 return "#00008B"; // Dark Blue
             case BLACK:
                 return "#2c3e50"; // Black
-            case BLUE:
-                return "#4169E1"; // Blue
             default:
                 return "#95a5a6";
         }

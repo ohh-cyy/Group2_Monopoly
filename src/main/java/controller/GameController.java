@@ -346,7 +346,7 @@ public class GameController {
         nameLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
         
         Label handCountLabel = new Label("Hand: " + player.getHand().size() + " cards");
-        Label propertyCountLabel = new Label("Properties: " + player.getProperties().size());
+        Label propertyCountLabel = new Label("Properties: " + player.getAllProperties().size());
         
         box.getChildren().addAll(nameLabel, handCountLabel, propertyCountLabel);
         
@@ -390,7 +390,7 @@ public class GameController {
         
         if (currentPlayer == null) return;
         
-        for (PropertyCard property : currentPlayer.getProperties()) {
+        for (PropertyCard property : currentPlayer.getAllProperties()) {
             CardView cardView = new CardView(property, false);
             playerProperties.getChildren().add(cardView);
         }
