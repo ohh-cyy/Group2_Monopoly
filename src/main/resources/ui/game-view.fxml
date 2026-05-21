@@ -86,14 +86,27 @@
                 </ScrollPane>
             </TitledPane>
             
-            <!-- 当前玩家的地产 -->
+            <!-- 当前玩家的银行（现金牌） -->
+            <TitledPane text="Your Bank" expanded="true">
+                <VBox spacing="8" style="-fx-padding: 10;">
+                    <Label fx:id="bankTotalLabel" text="Bank total: 0M"
+                           style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
+                    <ScrollPane fitToWidth="true" prefHeight="120" hbarPolicy="AS_NEEDED" vbarPolicy="NEVER">
+                        <FlowPane fx:id="playerBank"
+                                  hgap="10"
+                                  vgap="10"
+                                  prefWrapLength="700"
+                                  style="-fx-padding: 5;"/>
+                    </ScrollPane>
+                </VBox>
+            </TitledPane>
+
+            <!-- 当前玩家的地产（按颜色分组，可放多张） -->
             <TitledPane text="Your Properties" expanded="true">
-                <ScrollPane fitToWidth="true" hbarPolicy="AS_NEEDED">
-                    <FlowPane fx:id="playerProperties" 
-                              hgap="10" 
-                              vgap="10" 
-                              alignment="CENTER"
-                              style="-fx-padding: 10;"/>
+                <ScrollPane fitToWidth="true" prefHeight="180" vbarPolicy="AS_NEEDED">
+                    <VBox fx:id="playerProperties"
+                          spacing="10"
+                          style="-fx-padding: 10;"/>
                 </ScrollPane>
             </TitledPane>
         </VBox>

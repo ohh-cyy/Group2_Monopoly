@@ -27,6 +27,5 @@ public class PropertyCard extends Card {
     @Override
     public void use(Player player, GameEngine game) {
         player.addProperty(this);
-        game.getDiscardPile().addCard(this);
     }
 }

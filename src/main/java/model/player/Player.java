@@ -48,12 +48,16 @@ public class Player {
     }
 
     public void addProperty(PropertyCard card) {
-        if(card == null) return;
+        if (card == null) {
+            return;
+        }
 
         Color color = card.getColor();
+        if (color == null) {
+            color = Color.BROWN;
+        }
 
         properties.putIfAbsent(color, new ArrayList<>());
-
         properties.get(color).add(card);
     }
 
@@ -62,6 +66,21 @@ public class Player {
             bank.add(card);
         }
     }
+
+    public List<Card> getBank() {
+        return new ArrayList<>(bank);
+    }
+
+    public int getBankTotalValue() {
+        int total = money;
+        for (Card card : bank) {
+            if (card instanceof model.card.MoneyCard moneyCard) {
+                total += moneyCard.getMoney();
+            }
+        }
+        return total;
+    }
+
     public void removeFromBank(Card card) {
         bank.remove(card);
     }

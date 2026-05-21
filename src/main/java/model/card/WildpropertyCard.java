@@ -32,8 +32,7 @@ public class WildpropertyCard extends PropertyCard {
         }
         
         player.addProperty(this);
-        game.getDiscardPile().addCard(this);
-        
+
         System.out.println(player.getName() + " played " + getName() + 
             " as " + chosenColor + " property");
     }

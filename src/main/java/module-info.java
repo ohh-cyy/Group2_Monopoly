@@ -6,7 +6,6 @@ module com.example.zyzzs {
     requires com.dlsc.formsfx;
     requires org.kordamp.bootstrapfx.core;
     requires com.almasb.fxgl.all;
-    requires com.example.zyzzs;
 
     opens ui to javafx.fxml;
     opens engine to javafx.base;
@@ -19,7 +18,6 @@ module com.example.zyzzs {
     exports model.player;
     exports model.card;
     exports model.enums;
-    exports action;
     exports controller;
     opens controller to javafx.fxml;
 }

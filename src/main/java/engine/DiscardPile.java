@@ -49,7 +49,15 @@ public class DiscardPile {
 
     // 获取所有牌（后面可能洗回牌库）
     public List<Card> getCards() {
-        return cards;
+        return new ArrayList<>(cards);
+    }
+
+    public List<Card> getAllCards() {
+        return getCards();
+    }
+
+    public void clear() {
+        cards.clear();
     }
 
 }
