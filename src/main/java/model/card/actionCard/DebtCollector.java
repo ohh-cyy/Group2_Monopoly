@@ -6,27 +6,23 @@ import model.player.Player;
 
 public class DebtCollector extends ActionCard {
 
-    public DebtCollector(String name, String description, CardType ACTION) {
-        super(name, description, ACTION);
+    private static final int DEBT_AMOUNT = 5;
+
+    public DebtCollector(String name, String description, CardType type) {
+        super(name, description, type, 3);
     }
 
     @Override
     public void use(Player player, GameEngine game) {
-        Player target = game.getDefaultDefender(player);
-        
-        int debtAmount = 5;
-        
-        if (target.hasEnoughMoney(debtAmount)) {
-            target.removeMoney(debtAmount);
-            player.addMoney(debtAmount);
-            System.out.println(player.getName() + " used " + getName() +
-                " From " + target.getName() + " collected " + debtAmount + " $!");
-        } else {
-            int availableMoney = target.getMoney();
-            target.removeMoney(availableMoney);
-            player.addMoney(availableMoney);
-            System.out.println(player.getName() + " used " + getName() +
-                " From " + target.getName() + " collected " + availableMoney + " $!");
+        collectFrom(player, game.getDefaultDefender(player));
+    }
+
+    public void collectFrom(Player player, Player target) {
+        if (target == null || target.equals(player)) {
+            return;
         }
+        int paid = Math.min(DEBT_AMOUNT, target.getMoney());
+        target.removeMoney(paid);
+        player.addMoney(paid);
     }
 }

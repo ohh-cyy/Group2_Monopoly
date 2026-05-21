@@ -19,6 +19,7 @@ public class GameEngine {
     private boolean gameOver;
     private int playsThisTurn;
     private boolean hasDrawnThisTurn;
+    private boolean rentDoubled;
 
     public GameEngine(List<Player> players, Deck deck) {
         this.players = players;
@@ -50,6 +51,15 @@ public class GameEngine {
     public void startNewTurn() {
         playsThisTurn = 0;
         hasDrawnThisTurn = false;
+        rentDoubled = false;
+    }
+
+    public void setRentDoubled(boolean rentDoubled) {
+        this.rentDoubled = rentDoubled;
+    }
+
+    public boolean isRentDoubled() {
+        return rentDoubled;
     }
 
     /** 本回合是否还能抽牌（仅允许抽一次，共 2 张） */

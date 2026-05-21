@@ -273,37 +273,211 @@ public class GameController {
         try {
             Player player = gameEngine.getCurrentPlayer();
             Card played = selectedCard;
-
-            logMessage(player.getName() + " played: " + played.getName());
-
-            played.use(player, gameEngine);
-            player.removeFromHand(played);
-
-            if (played.getType() == CardType.ACTION) {
-                gameEngine.getDiscardPile().addCard(played);
-            }
-
-            gameEngine.recordCardPlayed();
             selectedCard = null;
 
-            if (gameEngine.checkWin(player)) {
-                gameEngine.setGameOver(true);
-                showGameOver(player);
+            if (played instanceof ActionCard actionCard) {
+                playActionCard(player, actionCard);
                 return;
             }
 
-            if (gameEngine.isTurnOver()) {
-                logMessage(player.getName() + " 已打出 3 张牌，回合结束");
-                forceEndTurn();
-                return;
-            }
-
-            showStatus("已打出。本回合还可出 " + gameEngine.getRemainingPlays() + " 张牌", false);
-            updateUI();
+            logMessage(player.getName() + " played: " + played.getName());
+            played.use(player, gameEngine);
+            player.removeFromHand(played);
+            completePlayStep(player, played, false);
         } catch (Exception e) {
             showStatus("Error playing card: " + e.getMessage(), true);
             logMessage("Error playing card: " + e.getMessage());
         }
+    }
+
+    private void playActionCard(Player player, ActionCard actionCard) {
+        Optional<ActionPlayChoice> choice = promptActionCardChoice(actionCard);
+        if (choice.isEmpty()) {
+            selectedCard = actionCard;
+            return;
+        }
+
+        player.removeFromHand(actionCard);
+
+        if (choice.get() == ActionPlayChoice.DEPOSIT_BANK) {
+            actionCard.depositToBank(player);
+            logMessage(player.getName() + " 将「" + actionCard.getName()
+                    + "」存入银行（" + actionCard.getBankValueM() + "M）");
+            showStatus("已存入银行 " + actionCard.getBankValueM() + "M", false);
+            completePlayStep(player, actionCard, true);
+            return;
+        }
+
+        boolean success = resolveActionCardEffect(player, actionCard);
+        if (success) {
+            logMessage(player.getName() + " 使用「" + actionCard.getName() + "」效果");
+            gameEngine.getDiscardPile().addCard(actionCard);
+            showStatus("已使用效果: " + actionCard.getName(), false);
+        } else {
+            logMessage(player.getName() + " 使用「" + actionCard.getName() + "」失败，牌进入弃牌堆");
+            gameEngine.getDiscardPile().addCard(actionCard);
+            showStatus("效果未能生效（目标无效等）", true);
+        }
+        completePlayStep(player, actionCard, false);
+    }
+
+    private void completePlayStep(Player player, Card played, boolean depositedToBank) {
+        gameEngine.recordCardPlayed();
+
+        if (gameEngine.checkWin(player)) {
+            gameEngine.setGameOver(true);
+            showGameOver(player);
+            return;
+        }
+
+        if (gameEngine.isTurnOver()) {
+            logMessage(player.getName() + " 已打出 3 张牌，回合结束");
+            forceEndTurn();
+            return;
+        }
+
+        if (!depositedToBank) {
+            showStatus("已打出。本回合还可出 " + gameEngine.getRemainingPlays() + " 张牌", false);
+        } else {
+            showStatus("已存入银行。本回合还可出 " + gameEngine.getRemainingPlays() + " 张牌", false);
+        }
+        updateUI();
+    }
+
+    private enum ActionPlayChoice {
+        USE_EFFECT, DEPOSIT_BANK
+    }
+
+    private Optional<ActionPlayChoice> promptActionCardChoice(ActionCard card) {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("行动牌");
+        alert.setHeaderText(card.getName() + " — 银行面值 " + card.getBankValueM() + "M");
+        alert.setContentText(card.getDescription() + "\n\n选择「使用效果」或「存入银行」？");
+        ButtonType useBtn = new ButtonType("使用效果");
+        ButtonType bankBtn = new ButtonType("存入银行 (" + card.getBankValueM() + "M)");
+        ButtonType cancelBtn = new ButtonType("取消", ButtonBar.ButtonData.CANCEL_CLOSE);
+        alert.getButtonTypes().setAll(useBtn, bankBtn, cancelBtn);
+
+        Optional<ButtonType> result = alert.showAndWait();
+        if (result.isEmpty()) {
+            return Optional.empty();
+        }
+        if (result.get() == useBtn) {
+            return Optional.of(ActionPlayChoice.USE_EFFECT);
+        }
+        if (result.get() == bankBtn) {
+            return Optional.of(ActionPlayChoice.DEPOSIT_BANK);
+        }
+        return Optional.empty();
+    }
+
+    private boolean resolveActionCardEffect(Player player, ActionCard actionCard) {
+        if (actionCard instanceof DealBreaker dealBreaker) {
+            return resolveDealBreaker(player, dealBreaker);
+        }
+        if (actionCard instanceof DebtCollector debtCollector) {
+            Player target = promptSelectOpponent(player, "选择要收取 5M 的玩家");
+            if (target == null) {
+                return false;
+            }
+            debtCollector.collectFrom(player, target);
+            return true;
+        }
+        if (actionCard instanceof SlyDeal slyDeal) {
+            Player target = promptSelectOpponent(player, "选择要偷取地产的玩家");
+            if (target == null) {
+                return false;
+            }
+            return slyDeal.stealOneProperty(player, target);
+        }
+        if (actionCard instanceof ForcedDeal forcedDeal) {
+            Player target = promptSelectOpponent(player, "选择要交换地产的玩家");
+            if (target == null) {
+                return false;
+            }
+            return forcedDeal.swapOneProperty(player, target);
+        }
+        if (actionCard instanceof House house) {
+            Color color = promptSelectOwnCompleteSet(player, "选择要加盖 House 的完整套组");
+            if (color == null) {
+                return false;
+            }
+            return house.addHouseToSet(player, color);
+        }
+        if (actionCard instanceof Hotel hotel) {
+            Color color = promptSelectOwnCompleteSet(player, "选择要加盖 Hotel 的完整套组");
+            if (color == null) {
+                return false;
+            }
+            return hotel.addHotelToSet(player, color);
+        }
+
+        actionCard.use(player, gameEngine);
+        return true;
+    }
+
+    private boolean resolveDealBreaker(Player player, DealBreaker dealBreaker) {
+        Player target = promptSelectOpponent(player, "Deal Breaker：选择要偷取套组的玩家");
+        if (target == null) {
+            return false;
+        }
+        Color color = promptSelectCompleteSetOnPlayer(target);
+        if (color == null) {
+            showStatus(target.getName() + " 没有可偷的完整地产套组", true);
+            return false;
+        }
+        return dealBreaker.useOnTarget(player, target, color);
+    }
+
+    private Player promptSelectOpponent(Player current, String title) {
+        List<Player> opponents = new ArrayList<>();
+        for (Player p : gameEngine.getPlayers()) {
+            if (!p.equals(current)) {
+                opponents.add(p);
+            }
+        }
+        if (opponents.isEmpty()) {
+            return null;
+        }
+        ChoiceDialog<Player> dialog = new ChoiceDialog<>(opponents.get(0), opponents);
+        dialog.setTitle(title);
+        dialog.setHeaderText(title);
+        dialog.setContentText("选择玩家:");
+        return dialog.showAndWait().orElse(null);
+    }
+
+    private Color promptSelectCompleteSetOnPlayer(Player target) {
+        List<Color> options = new ArrayList<>();
+        for (Color color : Color.values()) {
+            if (target.hasCompleteSet(color)) {
+                options.add(color);
+            }
+        }
+        if (options.isEmpty()) {
+            return null;
+        }
+        ChoiceDialog<Color> dialog = new ChoiceDialog<>(options.get(0), options);
+        dialog.setTitle("选择套组");
+        dialog.setHeaderText(target.getName() + " 的完整套组");
+        dialog.setContentText("要偷取哪种颜色？");
+        return dialog.showAndWait().orElse(null);
+    }
+
+    private Color promptSelectOwnCompleteSet(Player player, String title) {
+        List<Color> options = new ArrayList<>();
+        for (Color color : Color.values()) {
+            if (player.hasCompleteSet(color)) {
+                options.add(color);
+            }
+        }
+        if (options.isEmpty()) {
+            return null;
+        }
+        ChoiceDialog<Color> dialog = new ChoiceDialog<>(options.get(0), options);
+        dialog.setTitle(title);
+        dialog.setHeaderText(title);
+        dialog.setContentText("选择颜色套组:");
+        return dialog.showAndWait().orElse(null);
     }
 
     /** 出满 3 张牌后强制切换到下一名玩家 */
@@ -444,7 +618,12 @@ public class GameController {
         selectedCard = card;
         cardPane.setStyle(cardPane.getStyle() + "-fx-border-color: #f39c12; -fx-border-width: 3;");
         
-        showStatus("已选中: " + card.getName() + "，可点击「出牌」或双击该牌直接打出", false);
+        if (card instanceof ActionCard actionCard) {
+            showStatus("已选中行动牌「" + card.getName() + "」（银行 " + actionCard.getBankValueM()
+                    + "M）。出牌时可选择：使用效果 或 存入银行", false);
+        } else {
+            showStatus("已选中: " + card.getName() + "，可点击「出牌」或双击该牌直接打出", false);
+        }
         updateButtonStates();
     }
     
@@ -542,6 +721,10 @@ public class GameController {
             Label valueLabel = new Label(moneyCard.getMoney() + "M");
             valueLabel.setStyle("-fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;");
             content.getChildren().addAll(nameLabel, valueLabel);
+        } else if (card instanceof ActionCard actionCard) {
+            Label valueLabel = new Label(actionCard.getBankValueM() + "M");
+            valueLabel.setStyle("-fx-text-fill: white; -fx-font-size: 12px; -fx-font-weight: bold;");
+            content.getChildren().addAll(nameLabel, valueLabel);
         } else {
             content.getChildren().add(nameLabel);
         }
@@ -605,8 +788,14 @@ public class GameController {
         
         Label typeLabel = new Label(card.getType().toString());
         typeLabel.setStyle("-fx-text-fill: " + textColor + "; -fx-font-size: 9px; -fx-opacity: 0.8;");
-        
-        content.getChildren().addAll(nameLabel, typeLabel);
+
+        if (card instanceof ActionCard actionCard) {
+            Label bankLabel = new Label("Bank " + actionCard.getBankValueM() + "M");
+            bankLabel.setStyle("-fx-text-fill: " + textColor + "; -fx-font-size: 9px;");
+            content.getChildren().addAll(nameLabel, bankLabel, typeLabel);
+        } else {
+            content.getChildren().addAll(nameLabel, typeLabel);
+        }
         
         pane.getChildren().add(content);
         

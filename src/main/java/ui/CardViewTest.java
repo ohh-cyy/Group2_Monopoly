@@ -62,9 +62,9 @@ public class CardViewTest extends Application {
         actionCards.setPrefWrapLength(800);
         
         // 使用 SimpleActionCard 创建行动卡牌实例
-        actionCards.getChildren().add(new CardView(new SimpleActionCard("Pass Go", "Draw 2 extra cards"), true));
-        actionCards.getChildren().add(new CardView(new SimpleActionCard("Deal Breaker", "Steal a complete property set"), true));
-        actionCards.getChildren().add(new CardView(new SimpleActionCard("Just Say No", "Cancel any action card"), true));
+        actionCards.getChildren().add(new CardView(new SimpleActionCard("Pass Go", "Draw 2 extra cards", 1), true));
+        actionCards.getChildren().add(new CardView(new SimpleActionCard("Deal Breaker", "Steal a complete property set", 5), true));
+        actionCards.getChildren().add(new CardView(new SimpleActionCard("Just Say No", "Cancel any action card", 4), true));
         
         actionSection.getChildren().add(actionCards);
         
