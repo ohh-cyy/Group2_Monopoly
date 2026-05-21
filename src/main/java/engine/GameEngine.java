@@ -159,7 +159,7 @@ public class GameEngine {
         switch (color) {
             case BROWN:
             case DARK_BLUE:
-            case WHITE:
+            case LIGHT_GREEN:
                 return 2;
             case BLACK:
                 return 4;

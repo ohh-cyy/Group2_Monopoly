@@ -31,6 +31,11 @@ public class Player {
         return name;
     }
 
+    @Override
+    public String toString() {
+        return name;
+    }
+
     public void draw(Card card) {
         if (card != null) {
             hand.add(card);
@@ -108,7 +113,7 @@ public class Player {
         switch(color) {
             case BROWN:
             case DARK_BLUE:
-            case WHITE:
+            case LIGHT_BLUE:
                 return size>=2;
             case BLACK:
                 return size>=4;

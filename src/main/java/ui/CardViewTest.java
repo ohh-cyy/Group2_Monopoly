@@ -42,7 +42,11 @@ public class CardViewTest extends Application {
         propertyCards.getChildren().add(new CardView(new PropertyCard("Leicester Square", "Yellow property", Color.YELLOW, 3), true));
         propertyCards.getChildren().add(new CardView(new PropertyCard("Regent Street", "Green property", Color.GREEN, 4), true));
         propertyCards.getChildren().add(new CardView(new PropertyCard("Park Lane", "Dark Blue property", Color.DARK_BLUE, 4), true));
-        
+        propertyCards.getChildren().add(new CardView(new PropertyCard("Park Lane", "Black property", Color.BLACK, 2), true));
+        propertyCards.getChildren().add(new CardView(new PropertyCard("Park Lane", "Light Green property", Color.LIGHT_GREEN, 2), true));
+
+
+
         propertySection.getChildren().add(propertyCards);
         
         // 金钱卡展示

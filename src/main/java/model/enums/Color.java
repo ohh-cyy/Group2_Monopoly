@@ -9,7 +9,7 @@ public enum Color {
     YELLOW(3),
     BLACK(4),
     LIGHT_BLUE(3),
-    WHITE(2),
+    LIGHT_GREEN(2),
     PINK(3);
 
     private final int setSize;
