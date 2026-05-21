@@ -9,9 +9,10 @@ import javafx.scene.Cursor;
 import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.*;
-import ui.CardView;
 import model.card.*;
-import model.card.actionCard.SimpleActionCard;
+import model.card.actionCard.*;
+import model.enums.CardType;
+import model.enums.Color;
 import model.player.Player;
 
 import java.util.*;
@@ -42,7 +43,13 @@ public class GameController {
     private FlowPane playerHand;
     
     @FXML
-    private FlowPane playerProperties;
+    private VBox playerProperties;
+
+    @FXML
+    private FlowPane playerBank;
+
+    @FXML
+    private Label bankTotalLabel;
     
     @FXML
     private StackPane drawPile;
@@ -165,27 +172,35 @@ public class GameController {
         }
         
         // 行动卡
-        for (int i = 0; i < 3; i++) {
-            cards.add(new SimpleActionCard("Pass Go", "Draw 2 extra cards"));
-        }
-        for (int i = 0; i < 2; i++) {
-            cards.add(new SimpleActionCard("It's My Birthday", "Collect 2M from each player"));
-        }
-        for (int i = 0; i < 2; i++) {
-            cards.add(new SimpleActionCard("Double The Rent", "Double rent amount"));
-        }
-        cards.add(new SimpleActionCard("Deal Breaker", "Steal a complete property set"));
-        for (int i = 0; i < 3; i++) {
-            cards.add(new SimpleActionCard("Just Say No", "Cancel any action card"));
+        for (int i = 0; i < 10; i++) {
+            cards.add(new PassGoCard("Pass Go","Draw extra two card", CardType.ACTION));
         }
         for (int i = 0; i < 3; i++) {
-            cards.add(new SimpleActionCard("Sly Deal", "Steal a single property"));
+            cards.add(new MyBirthday("My birthday","Collect 2M from each player",CardType.ACTION));
         }
         for (int i = 0; i < 2; i++) {
-            cards.add(new SimpleActionCard("Forced Deal", "Swap properties with a player"));
+            cards.add(new DoubleTheRent("Double The Rent","Double rent amount",CardType.ACTION));
         }
-        for (int i = 0; i < 2; i++) {
-            cards.add(new SimpleActionCard("Debt Collector", "Collect 5M from a player"));
+        for(int i = 0; i < 2; i++) {
+            cards.add(new DealBreaker("Deal Breaker", "Steal a complete property set",CardType.ACTION));
+        }
+        for (int i = 0; i < 3; i++) {
+            cards.add(new JustSayNo("Just Say No", "Cancel any action card",CardType.ACTION));
+        }
+        for (int i = 0; i < 3; i++) {
+            cards.add(new SlyDeal("Sly Deal", "Steal a single property",CardType.ACTION));
+        }
+        for (int i = 0; i < 3; i++) {
+            cards.add(new ForcedDeal("Forced Deal", "Swap properties with a player", CardType.ACTION));
+        }
+        for (int i = 0; i < 3; i++) {
+            cards.add(new DebtCollector("Debt Collector", "Collect 5M from a player",CardType.ACTION));
+        }
+        for(int i = 0; i < 3; i++) {
+            cards.add(new Hotel("Debt Collector", "Collect 5M from a player",CardType.ACTION));
+        }
+        for(int i = 0; i < 3; i++) {
+            cards.add(new House("Debt Collector", "Collect 5M from a player",CardType.ACTION));
         }
         
         return cards;
@@ -212,22 +227,21 @@ public class GameController {
     }
     
     private void drawCardsFromPile() {
-        try {
-            Player player = gameEngine.getCurrentPlayer();
-            
-            // 抽2张牌
-            for (int i = 0; i < 2; i++) {
-                Card card = deck.draw();
-                player.draw(card);
-                logMessage(player.getName() + " drew a card");
-            }
-            
-            showStatus("Drew 2 cards successfully", false);
-            updateUI();
-        } catch (Exception e) {
-            showStatus("Error: " + e.getMessage(), true);
-            logMessage("Error drawing cards: " + e.getMessage());
+        if (!gameEngine.canDrawCards()) {
+            showStatus("本回合已经抽过牌了，不能再抽！", true);
+            return;
         }
+
+        Player player = gameEngine.getCurrentPlayer();
+        if (!gameEngine.drawCardsForCurrentPlayer()) {
+            showStatus("抽牌失败", true);
+            return;
+        }
+
+        logMessage(player.getName() + " 抽了 2 张牌");
+        showStatus("已抽 2 张牌（本回合不能再抽）。剩余可出牌次数: "
+                + gameEngine.getRemainingPlays(), false);
+        updateUI();
     }
     
     @FXML
@@ -238,7 +252,7 @@ public class GameController {
         }
         
         if (selectedCard == null) {
-            showStatus("Please select a card first!", true);
+            showStatus("请先点击手牌选中一张牌，再点「出牌」", true);
             return;
         }
         
@@ -246,31 +260,61 @@ public class GameController {
     }
     
     private void playSelectedCard() {
+        if (!gameEngine.canPlayCard()) {
+            showStatus("本回合已打出 3 张牌，不能再出牌！", true);
+            return;
+        }
+
+        if (selectedCard == null) {
+            showStatus("请先点击手牌选中一张牌，再点「出牌」", true);
+            return;
+        }
+
         try {
             Player player = gameEngine.getCurrentPlayer();
-            
-            logMessage(player.getName() + " played: " + selectedCard.getName());
-            
-            // 使用卡牌
-            selectedCard.use(player, gameEngine);
-            
-            // 从手牌中移除
-            player.removeFromHand(selectedCard);
-            
-            showStatus("Played: " + selectedCard.getName(), false);
+            Card played = selectedCard;
+
+            logMessage(player.getName() + " played: " + played.getName());
+
+            played.use(player, gameEngine);
+            player.removeFromHand(played);
+
+            if (played.getType() == CardType.ACTION) {
+                gameEngine.getDiscardPile().addCard(played);
+            }
+
+            gameEngine.recordCardPlayed();
             selectedCard = null;
-            
-            // 检查胜利条件
+
             if (gameEngine.checkWin(player)) {
+                gameEngine.setGameOver(true);
                 showGameOver(player);
                 return;
             }
-            
+
+            if (gameEngine.isTurnOver()) {
+                logMessage(player.getName() + " 已打出 3 张牌，回合结束");
+                forceEndTurn();
+                return;
+            }
+
+            showStatus("已打出。本回合还可出 " + gameEngine.getRemainingPlays() + " 张牌", false);
             updateUI();
         } catch (Exception e) {
             showStatus("Error playing card: " + e.getMessage(), true);
             logMessage("Error playing card: " + e.getMessage());
         }
+    }
+
+    /** 出满 3 张牌后强制切换到下一名玩家 */
+    private void forceEndTurn() {
+        Player ending = gameEngine.getCurrentPlayer();
+        gameEngine.nextTurn();
+        currentPlayer = gameEngine.getCurrentPlayer();
+        logMessage(ending.getName() + " 回合结束 → " + currentPlayer.getName() + " 的回合");
+        showStatus("已出 3 张牌，自动换到 " + currentPlayer.getName()
+                + "。请先抽 2 张牌再出牌", false);
+        updateUI();
     }
     
     @FXML
@@ -285,12 +329,10 @@ public class GameController {
     
     private void endCurrentTurn() {
         Player player = gameEngine.getCurrentPlayer();
-        logMessage(player.getName() + " ended their turn");
-        
+        logMessage(player.getName() + " 主动结束回合");
         gameEngine.nextTurn();
         currentPlayer = gameEngine.getCurrentPlayer();
-        
-        showStatus(currentPlayer.getName() + "'s turn now", false);
+        showStatus("轮到 " + currentPlayer.getName() + "，请先抽 2 张牌", false);
         updateUI();
     }
     
@@ -315,9 +357,13 @@ public class GameController {
     
     private void updateUI() {
         Platform.runLater(() -> {
+            if (gameEngine != null) {
+                currentPlayer = gameEngine.getCurrentPlayer();
+            }
             updatePlayerInfo();
             updateCurrentPlayerDisplay();
             updatePlayerHand();
+            updatePlayerBank();
             updatePlayerProperties();
             updateOpponentsHands();
             updatePileCounts();
@@ -347,16 +393,22 @@ public class GameController {
         
         Label handCountLabel = new Label("Hand: " + player.getHand().size() + " cards");
         Label propertyCountLabel = new Label("Properties: " + player.getAllProperties().size());
-        
-        box.getChildren().addAll(nameLabel, handCountLabel, propertyCountLabel);
+        Label bankLabel = new Label("Bank: " + player.getBankTotalValue() + "M");
+
+        box.getChildren().addAll(nameLabel, handCountLabel, propertyCountLabel, bankLabel);
         
         return box;
     }
     
     private void updateCurrentPlayerDisplay() {
-        if (currentPlayer != null) {
-            currentPlayerLabel.setText("Current Player: " + currentPlayer.getName());
+        if (currentPlayer == null || gameEngine == null) {
+            return;
         }
+        String drawStatus = gameEngine.hasDrawnThisTurn() ? "已抽牌" : "未抽牌";
+        currentPlayerLabel.setText("Current Player: " + currentPlayer.getName()
+                + " | " + drawStatus
+                + " | 剩余出牌: " + gameEngine.getRemainingPlays() + "/"
+                + GameEngine.MAX_PLAYS_PER_TURN);
     }
     
     private void updatePlayerHand() {
@@ -364,36 +416,138 @@ public class GameController {
         
         if (currentPlayer == null) return;
         
+        boolean handClickable = gameEngine.canPlayCard();
         for (Card card : currentPlayer.getHand()) {
-            CardView cardView = new CardView(card, true);
-            cardView.setOnMouseClicked(event -> selectCard(card, cardView));
-            playerHand.getChildren().add(cardView);
+            StackPane cardPane = createCardPane(card, handClickable);
+            if (handClickable) {
+                cardPane.setOnMouseClicked(event -> {
+                    if (event.getClickCount() == 2) {
+                        selectCard(card, cardPane);
+                        playSelectedCard();
+                    } else {
+                        selectCard(card, cardPane);
+                    }
+                });
+            }
+            playerHand.getChildren().add(cardPane);
         }
     }
     
-    private void selectCard(Card card, CardView cardView) {
+    private void selectCard(Card card, StackPane cardPane) {
         // 清除之前的选择
         for (javafx.scene.Node node : playerHand.getChildren()) {
-            if (node instanceof CardView) {
-                ((CardView) node).setSelected(false);
+            if (node instanceof StackPane) {
+                node.setStyle(node.getStyle().replace("-fx-border-color: #f39c12; -fx-border-width: 3;", ""));
             }
         }
         
         selectedCard = card;
-        cardView.setSelected(true);
+        cardPane.setStyle(cardPane.getStyle() + "-fx-border-color: #f39c12; -fx-border-width: 3;");
         
-        showStatus("Selected: " + card.getName(), false);
+        showStatus("已选中: " + card.getName() + "，可点击「出牌」或双击该牌直接打出", false);
+        updateButtonStates();
     }
     
+    private void updatePlayerBank() {
+        if (playerBank == null) {
+            return;
+        }
+        playerBank.getChildren().clear();
+
+        if (currentPlayer == null) {
+            return;
+        }
+
+        int total = currentPlayer.getBankTotalValue();
+        if (bankTotalLabel != null) {
+            bankTotalLabel.setText("Bank total: " + total + "M");
+        }
+
+        for (Card card : currentPlayer.getBank()) {
+            playerBank.getChildren().add(createBankCardPane(card));
+        }
+
+        if (playerBank.getChildren().isEmpty()) {
+            Label hint = new Label("（打出金钱牌会放入银行）");
+            hint.setStyle("-fx-text-fill: #7f8c8d; -fx-font-size: 12px;");
+            playerBank.getChildren().add(hint);
+        }
+    }
+
     private void updatePlayerProperties() {
         playerProperties.getChildren().clear();
-        
-        if (currentPlayer == null) return;
-        
-        for (PropertyCard property : currentPlayer.getAllProperties()) {
-            CardView cardView = new CardView(property, false);
-            playerProperties.getChildren().add(cardView);
+
+        if (currentPlayer == null) {
+            return;
         }
+
+        List<PropertyCard> all = currentPlayer.getAllProperties();
+        if (all.isEmpty()) {
+            Label empty = new Label("（暂无地产，打出地产牌会按颜色分组显示在这里）");
+            empty.setStyle("-fx-text-fill: #7f8c8d; -fx-font-size: 12px;");
+            playerProperties.getChildren().add(empty);
+            return;
+        }
+
+        Map<Color, List<PropertyCard>> byColor = new LinkedHashMap<>();
+        for (PropertyCard property : all) {
+            Color color = property.getColor() != null ? property.getColor() : Color.BROWN;
+            byColor.computeIfAbsent(color, k -> new ArrayList<>()).add(property);
+        }
+
+        for (Map.Entry<Color, List<PropertyCard>> entry : byColor.entrySet()) {
+            Color color = entry.getKey();
+            List<PropertyCard> cards = entry.getValue();
+
+            HBox row = new HBox(10);
+            row.setAlignment(Pos.CENTER_LEFT);
+            row.setStyle("-fx-padding: 4 0;");
+
+            int required = color.getSetSize();
+            Label groupLabel = new Label(color + " (" + cards.size() + "/" + required + ")");
+            groupLabel.setStyle("-fx-font-weight: bold; -fx-min-width: 120;");
+
+            FlowPane groupPane = new FlowPane(8, 8);
+            groupPane.setPrefWrapLength(600);
+            for (PropertyCard property : cards) {
+                groupPane.getChildren().add(createPropertyCardPane(property));
+            }
+
+            row.getChildren().addAll(groupLabel, groupPane);
+            playerProperties.getChildren().add(row);
+        }
+    }
+
+    private StackPane createBankCardPane(Card card) {
+        StackPane pane = new StackPane();
+        pane.setPrefSize(90, 120);
+
+        pane.setStyle(
+            "-fx-background-color: #27ae60;" +
+            "-fx-border-color: #1e8449;" +
+            "-fx-border-width: 2;" +
+            "-fx-background-radius: 8;" +
+            "-fx-border-radius: 8;"
+        );
+
+        VBox content = new VBox(5);
+        content.setAlignment(Pos.CENTER);
+        content.setStyle("-fx-padding: 5;");
+
+        Label nameLabel = new Label(card.getName());
+        nameLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-wrap-text: true;");
+        nameLabel.setMaxWidth(80);
+
+        if (card instanceof MoneyCard moneyCard) {
+            Label valueLabel = new Label(moneyCard.getMoney() + "M");
+            valueLabel.setStyle("-fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;");
+            content.getChildren().addAll(nameLabel, valueLabel);
+        } else {
+            content.getChildren().add(nameLabel);
+        }
+
+        pane.getChildren().add(content);
+        return pane;
     }
     
     private void updateOpponentsHands() {
@@ -414,12 +568,136 @@ public class GameController {
     }
     
     private void updateButtonStates() {
-        boolean canPlay = isCurrentPlayerTurn();
-        drawCardBtn.setDisable(!canPlay);
-        playCardBtn.setDisable(!canPlay || selectedCard == null);
-        endTurnBtn.setDisable(!canPlay);
+        boolean active = isCurrentPlayerTurn();
+        boolean canDraw = active && gameEngine.canDrawCards();
+        boolean canPlayCard = active && gameEngine.canPlayCard();
+
+        drawCardBtn.setDisable(!canDraw);
+        playCardBtn.setDisable(!canPlayCard || selectedCard == null);
+        endTurnBtn.setDisable(!active);
     }
     
+    private StackPane createCardPane(Card card, boolean clickable) {
+        StackPane pane = new StackPane();
+        pane.setPrefSize(100, 140);
+        pane.setCursor(clickable ? Cursor.HAND : Cursor.DEFAULT);
+        
+        // 根据卡牌类型设置背景色
+        String backgroundColor = getCardBackgroundColor(card);
+        String textColor = getCardTextColor(card);
+        
+        pane.setStyle(
+            "-fx-background-color: " + backgroundColor + ";" +
+            "-fx-border-color: #2c3e50;" +
+            "-fx-border-width: 2;" +
+            "-fx-background-radius: 8;" +
+            "-fx-border-radius: 8;" +
+            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 5, 0, 0, 2);"
+        );
+        
+        VBox content = new VBox(5);
+        content.setAlignment(Pos.CENTER);
+        content.setStyle("-fx-padding: 5;");
+        
+        Label nameLabel = new Label(card.getName());
+        nameLabel.setStyle("-fx-text-fill: " + textColor + "; -fx-font-weight: bold; -fx-font-size: 11px; -fx-wrap-text: true;");
+        nameLabel.setMaxWidth(90);
+        
+        Label typeLabel = new Label(card.getType().toString());
+        typeLabel.setStyle("-fx-text-fill: " + textColor + "; -fx-font-size: 9px; -fx-opacity: 0.8;");
+        
+        content.getChildren().addAll(nameLabel, typeLabel);
+        
+        pane.getChildren().add(content);
+        
+        // 添加悬停效果
+        if (clickable) {
+            pane.setOnMouseEntered(e -> pane.setStyle(pane.getStyle() + "-fx-scale-x: 1.05; -fx-scale-y: 1.05;"));
+            pane.setOnMouseExited(e -> pane.setStyle(pane.getStyle().replace("-fx-scale-x: 1.05; -fx-scale-y: 1.05;", "")));
+        }
+        
+        return pane;
+    }
+    
+    private StackPane createPropertyCardPane(PropertyCard property) {
+        StackPane pane = new StackPane();
+        pane.setPrefSize(100, 140);
+        
+        String backgroundColor = getPropertyColorHex(property.getColor());
+        
+        pane.setStyle(
+            "-fx-background-color: " + backgroundColor + ";" +
+            "-fx-border-color: #2c3e50;" +
+            "-fx-border-width: 2;" +
+            "-fx-background-radius: 8;" +
+            "-fx-border-radius: 8;" +
+            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 5, 0, 0, 2);"
+        );
+        
+        VBox content = new VBox(5);
+        content.setAlignment(Pos.CENTER);
+        content.setStyle("-fx-padding: 5;");
+        
+        Label nameLabel = new Label(property.getName());
+        nameLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-wrap-text: true;");
+        nameLabel.setMaxWidth(90);
+        
+        Label valueLabel = new Label(property.getPrice() + "M");
+        valueLabel.setStyle("-fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: bold;");
+        
+        content.getChildren().addAll(nameLabel, valueLabel);
+        
+        pane.getChildren().add(content);
+        
+        return pane;
+    }
+    
+    private String getCardBackgroundColor(Card card) {
+        switch (card.getType()) {
+            case PROPERTY:
+                if (card instanceof PropertyCard) {
+                    return getPropertyColorHex(((PropertyCard) card).getColor());
+                }
+                return "#95a5a6";
+            case MONEY:
+                return "#27ae60";
+            case ACTION:
+                return "#e74c3c";
+            default:
+                return "#95a5a6";
+        }
+    }
+    
+    private String getCardTextColor(Card card) {
+        return "white";
+    }
+    
+    private String getPropertyColorHex(model.enums.Color color) {
+        if (color == null) return "#95a5a6";
+        
+        switch (color) {
+            case BROWN:
+                return "#8B4513";
+            case LIGHT_BLUE:
+                return "#87CEEB";
+            case PINK:
+                return "#FF69B4";
+            case ORANGE:
+                return "#FFA500";
+            case RED:
+                return "#DC143C";
+            case YELLOW:
+                return "#FFD700";
+            case GREEN:
+                return "#228B22";
+            case DARK_BLUE:
+                return "#00008B";
+            case BLACK:
+                return "#2c3e50";
+            default:
+                return "#95a5a6";
+        }
+    }
 
     
     private void logMessage(String message) {
