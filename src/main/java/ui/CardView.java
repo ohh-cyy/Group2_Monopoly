@@ -14,8 +14,8 @@ import model.enums.Color;
  */
 public class CardView extends StackPane {
     
-    private static final int CARD_WIDTH = 100;
-    private static final int CARD_HEIGHT = 140;
+    private static final int CARD_WIDTH = 120;
+    private static final int CARD_HEIGHT = 168;
     
     private Card card;
     private boolean clickable;
@@ -101,10 +101,20 @@ public class CardView extends StackPane {
             Label label = new Label(moneyCard.getMoney() + "M");
             label.setStyle("-fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;");
             return label;
-        } else if (card instanceof PropertyCard) {
-            PropertyCard propertyCard = (PropertyCard) card;
-            Label label = new Label(propertyCard.getPrice() + "M");
-            label.setStyle("-fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;");
+        } else if (card instanceof PropertyCard propertyCard) {
+            String rent = propertyCard.getRentDisplay();
+            String text = propertyCard.getPrice() + "M"
+                    + (rent.isEmpty() ? "" : "\nRent " + rent);
+            Label label = new Label(text);
+            label.setStyle("-fx-text-fill: white; -fx-font-size: 11px; -fx-font-weight: bold;");
+            label.setWrapText(true);
+            label.setMaxWidth(CARD_WIDTH - 20);
+            return label;
+        } else if (card instanceof RentCard rentCard) {
+            String colors = rentCard.isAllColors() ? "All" : "Dual color";
+            Label label = new Label("Bank " + rentCard.getBankValueM() + "M\n" + colors);
+            label.setStyle("-fx-text-fill: white; -fx-font-size: 10px; -fx-font-weight: bold;");
+            label.setWrapText(true);
             return label;
         }
         return null;
@@ -177,6 +187,8 @@ public class CardView extends StackPane {
                 return "#00008B"; // Dark Blue
             case BLACK:
                 return "#2c3e50"; // Black
+            case LIGHT_GREEN:
+                return "#90EE90";
             default:
                 return "#95a5a6";
         }

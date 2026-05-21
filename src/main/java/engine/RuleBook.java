@@ -20,7 +20,8 @@ public class RuleBook {
         PROPERTY_SET_REQUIREMENTS.put(Color.YELLOW, 3);
         PROPERTY_SET_REQUIREMENTS.put(Color.GREEN, 3);
         PROPERTY_SET_REQUIREMENTS.put(Color.DARK_BLUE, 2);
-        PROPERTY_SET_REQUIREMENTS.put(Color.BLACK, 1);
+        PROPERTY_SET_REQUIREMENTS.put(Color.BLACK, 4);
+        PROPERTY_SET_REQUIREMENTS.put(Color.LIGHT_GREEN, 2);
 
         INITIAL_HAND_SIZE = 5;
         CARDS_PER_TURN = 2;

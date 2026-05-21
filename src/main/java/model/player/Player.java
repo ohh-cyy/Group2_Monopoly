@@ -3,7 +3,6 @@ package model.player;
 import model.card.Card;
 import model.card.MoneyCard;
 import model.card.PropertyCard;
-import model.card.RentCard;
 import model.card.actionCard.ActionCard;
 import model.enums.Color;
 

@@ -1,6 +1,7 @@
 package model.card;
 
 import engine.GameEngine;
+import engine.RentTable;
 import model.enums.CardType;
 import model.enums.Color;
 import model.player.Player;
@@ -22,6 +23,11 @@ public class PropertyCard extends Card {
 
     public int getPrice() {
         return price;
+    }
+
+    /** 牌面展示的租金阶梯，如 "1M / 2M / 3M" */
+    public String getRentDisplay() {
+        return RentTable.formatRentTiers(color);
     }
 
     @Override

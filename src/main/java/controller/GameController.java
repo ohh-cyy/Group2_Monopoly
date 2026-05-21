@@ -72,6 +72,9 @@ public class GameController {
     @FXML
     private Button newGameBtn;
     
+    private static final int CARD_WIDTH = 120;
+    private static final int CARD_HEIGHT = 168;
+
     private GameEngine gameEngine;
     private Deck deck;
     private List<Player> players;
@@ -218,6 +221,26 @@ public class GameController {
         cards.add(new WildpropertyCard("Light_Green/Black","Wild property",2,List.of(Color.LIGHT_GREEN,Color.BLACK),true));
         for (int i = 0; i < 2; i++) {
             cards.add(new WildpropertyCard("Yellow/Red","Wild property",3,List.of(Color.YELLOW,Color.RED),true));
+        }
+
+        // 租金卡
+        for (int i = 0; i < 3; i++) {
+            cards.add(RentCard.allColors());
+        }
+        for (int i = 0; i < 2; i++) {
+            cards.add(RentCard.dual(Color.DARK_BLUE, Color.GREEN));
+        }
+        for (int i = 0; i < 2; i++) {
+            cards.add(RentCard.dual(Color.BROWN, Color.LIGHT_BLUE));
+        }
+        for (int i = 0; i < 2; i++) {
+            cards.add(RentCard.dual(Color.PINK, Color.ORANGE));
+        }
+        for (int i = 0; i < 2; i++) {
+            cards.add(RentCard.dual(Color.BLACK, Color.LIGHT_GREEN));
+        }
+        for (int i = 0; i < 2; i++) {
+            cards.add(RentCard.dual(Color.RED, Color.YELLOW));
         }
 
         return cards;
@@ -450,9 +473,74 @@ public class GameController {
                     ? ActionEffectResult.SUCCESS
                     : ActionEffectResult.FAILED;
         }
+        if (actionCard instanceof RentCard rentCard) {
+            return resolveRentCard(player, rentCard);
+        }
 
         actionCard.use(player, gameEngine);
         return ActionEffectResult.SUCCESS;
+    }
+
+    private ActionEffectResult resolveRentCard(Player player, RentCard rentCard) {
+        if (!rentCard.canPlay(player)) {
+            showStatus("你没有适用颜色的地产，无法使用此租金卡", true);
+            return ActionEffectResult.FAILED;
+        }
+
+        List<Color> options = rentCard.getChargeableColors(player);
+        Color chargeColor;
+        if (rentCard.isAllColors() && options.isEmpty()) {
+            Optional<Color> picked = promptSelectRentColor(player, rentCard, Arrays.asList(Color.values()));
+            if (picked.isEmpty()) {
+                return ActionEffectResult.CANCELLED;
+            }
+            chargeColor = picked.get();
+        } else if (options.size() == 1) {
+            chargeColor = options.get(0);
+        } else {
+            Optional<Color> picked = promptSelectRentColor(player, rentCard, options);
+            if (picked.isEmpty()) {
+                return ActionEffectResult.CANCELLED;
+            }
+            chargeColor = picked.get();
+        }
+
+        int rent = rentCard.calculateRent(player, chargeColor);
+        if (rent <= 0) {
+            showStatus("该颜色下没有地产，租金为 0", true);
+            return ActionEffectResult.FAILED;
+        }
+
+        int total = rentCard.collectFromAll(player, gameEngine, chargeColor, rent);
+
+        logMessage(player.getName() + " 使用「" + rentCard.getName() + "」对 " + chargeColor
+                + " 收租 " + rent + "M/人，共收到 " + total + "M");
+        showStatus("已向所有玩家收取 " + chargeColor + " 租金 " + rent + "M（合计 " + total + "M）", false);
+        return ActionEffectResult.SUCCESS;
+    }
+
+    private Optional<Color> promptSelectRentColor(Player player, RentCard rentCard, List<Color> options) {
+        List<String> labels = new ArrayList<>();
+        List<Color> colors = new ArrayList<>();
+        for (Color color : options) {
+            int count = rentCard.countProperties(player, color);
+            int rent = rentCard.calculateRent(player, color);
+            labels.add(color + " (" + count + " 张 → " + rent + "M)");
+            colors.add(color);
+        }
+        if (colors.isEmpty()) {
+            return Optional.empty();
+        }
+        ChoiceDialog<String> dialog = new ChoiceDialog<>(labels.get(0), labels);
+        dialog.setTitle("选择收租颜色");
+        dialog.setHeaderText("选择要按哪套地产收租");
+        dialog.setContentText("颜色（张数 → 租金）:");
+        Optional<String> result = dialog.showAndWait();
+        if (result.isEmpty()) {
+            return Optional.empty();
+        }
+        int index = labels.indexOf(result.get());
+        return Optional.of(colors.get(index));
     }
 
     private ActionEffectResult resolveDealBreaker(Player player, DealBreaker dealBreaker) {
@@ -672,7 +760,10 @@ public class GameController {
         selectedCard = card;
         cardPane.setStyle(cardPane.getStyle() + "-fx-border-color: #f39c12; -fx-border-width: 3;");
         
-        if (card instanceof ActionCard actionCard) {
+        if (card instanceof RentCard rentCard) {
+            showStatus("已选中租金卡「" + card.getName() + "」（银行 " + rentCard.getBankValueM()
+                    + "M）。出牌时可收租或存入银行", false);
+        } else if (card instanceof ActionCard actionCard) {
             showStatus("已选中行动牌「" + card.getName() + "」（银行 " + actionCard.getBankValueM()
                     + "M）。出牌时可选择：使用效果 或 存入银行", false);
         } else {
@@ -816,7 +907,7 @@ public class GameController {
     
     private StackPane createCardPane(Card card, boolean clickable) {
         StackPane pane = new StackPane();
-        pane.setPrefSize(100, 140);
+        pane.setPrefSize(CARD_WIDTH, CARD_HEIGHT);
         pane.setCursor(clickable ? Cursor.HAND : Cursor.DEFAULT);
         
         // 根据卡牌类型设置背景色
@@ -838,12 +929,24 @@ public class GameController {
         
         Label nameLabel = new Label(card.getName());
         nameLabel.setStyle("-fx-text-fill: " + textColor + "; -fx-font-weight: bold; -fx-font-size: 11px; -fx-wrap-text: true;");
-        nameLabel.setMaxWidth(90);
+        nameLabel.setMaxWidth(CARD_WIDTH - 16);
         
         Label typeLabel = new Label(card.getType().toString());
         typeLabel.setStyle("-fx-text-fill: " + textColor + "; -fx-font-size: 9px; -fx-opacity: 0.8;");
 
-        if (card instanceof ActionCard actionCard) {
+        if (card instanceof RentCard rentCard) {
+            Label bankLabel = new Label("Bank " + rentCard.getBankValueM() + "M");
+            bankLabel.setStyle("-fx-text-fill: " + textColor + "; -fx-font-size: 9px;");
+            String colorsText = rentCard.isAllColors()
+                    ? "All colors"
+                    : String.join(" / ", Arrays.stream(rentCard.getApplicableColors())
+                    .map(Color::name).toArray(String[]::new));
+            Label colorsLabel = new Label(colorsText);
+            colorsLabel.setStyle("-fx-text-fill: " + textColor + "; -fx-font-size: 8px; -fx-wrap-text: true;");
+            colorsLabel.setMaxWidth(CARD_WIDTH - 16);
+            colorsLabel.setWrapText(true);
+            content.getChildren().addAll(nameLabel, colorsLabel, bankLabel, typeLabel);
+        } else if (card instanceof ActionCard actionCard) {
             Label bankLabel = new Label("Bank " + actionCard.getBankValueM() + "M");
             bankLabel.setStyle("-fx-text-fill: " + textColor + "; -fx-font-size: 9px;");
             content.getChildren().addAll(nameLabel, bankLabel, typeLabel);
@@ -864,7 +967,7 @@ public class GameController {
     
     private StackPane createPropertyCardPane(PropertyCard property) {
         StackPane pane = new StackPane();
-        pane.setPrefSize(100, 140);
+        pane.setPrefSize(CARD_WIDTH, CARD_HEIGHT);
         
         String backgroundColor = getPropertyColorHex(property.getColor());
         
@@ -882,13 +985,23 @@ public class GameController {
         content.setStyle("-fx-padding: 5;");
         
         Label nameLabel = new Label(property.getName());
-        nameLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-wrap-text: true;");
-        nameLabel.setMaxWidth(90);
+        nameLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-wrap-text: true;");
+        nameLabel.setMaxWidth(CARD_WIDTH - 16);
+        nameLabel.setWrapText(true);
         
-        Label valueLabel = new Label(property.getPrice() + "M");
-        valueLabel.setStyle("-fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: bold;");
-        
-        content.getChildren().addAll(nameLabel, valueLabel);
+        Label valueLabel = new Label("Value " + property.getPrice() + "M");
+        valueLabel.setStyle("-fx-text-fill: white; -fx-font-size: 12px; -fx-font-weight: bold;");
+
+        String rentText = property.getRentDisplay();
+        if (!rentText.isEmpty()) {
+            Label rentLabel = new Label("Rent " + rentText);
+            rentLabel.setStyle("-fx-text-fill: #ecf0f1; -fx-font-size: 9px; -fx-wrap-text: true;");
+            rentLabel.setMaxWidth(CARD_WIDTH - 16);
+            rentLabel.setWrapText(true);
+            content.getChildren().addAll(nameLabel, valueLabel, rentLabel);
+        } else {
+            content.getChildren().addAll(nameLabel, valueLabel);
+        }
         
         pane.getChildren().add(content);
         
@@ -937,6 +1050,8 @@ public class GameController {
                 return "#00008B";
             case BLACK:
                 return "#2c3e50";
+            case LIGHT_GREEN:
+                return "#90EE90";
             default:
                 return "#95a5a6";
         }
