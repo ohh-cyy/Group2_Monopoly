@@ -49,7 +49,7 @@ public class GameEngine {
         // key: 颜色, value: 该颜色的卡数量
         Map<Color, Integer> colorCount = new HashMap<>();
 
-        for (PropertyCard card : player.getProperties()) {
+        for (PropertyCard card : player.getAllProperties()) {
             Color color = card.getColor();
             if (color != null) {
                 colorCount.put(color, colorCount.getOrDefault(color, 0) + 1);
