@@ -2,7 +2,9 @@ package controller;
 
 import engine.Deck;
 import engine.GameEngine;
+import engine.PropertyRules;
 import javafx.application.Platform;
+import ui.CardView;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
@@ -180,25 +182,25 @@ public class GameController {
             cards.add(new PassGoCard("Pass Go","Draw extra two card", CardType.ACTION));
         }
         for (int i = 0; i < 3; i++) {
-            cards.add(new MyBirthday("My birthday","Collect 2M from each player",CardType.ACTION));
+            cards.add(new MyBirthday("My Birthday", "Everyone pays you 2M (property if short)", CardType.ACTION));
         }
         for (int i = 0; i < 2; i++) {
-            cards.add(new DoubleTheRent("Double The Rent","Double rent amount",CardType.ACTION));
+            cards.add(new DoubleTheRent("Double The Rent", "Next Rent card charges double", CardType.ACTION));
         }
         for(int i = 0; i < 2; i++) {
-            cards.add(new DealBreaker("Deal Breaker", "Steal a complete property set",CardType.ACTION));
+            cards.add(new DealBreaker("Deal Breaker", "Steal a complete property set from any player", CardType.ACTION));
         }
         for (int i = 0; i < 3; i++) {
-            cards.add(new JustSayNo("Just Say No", "Cancel any action card",CardType.ACTION));
+            cards.add(new JustSayNo("Just Say No", "Cancel an action played against you", CardType.ACTION));
         }
         for (int i = 0; i < 3; i++) {
-            cards.add(new SlyDeal("Sly Deal", "Steal a single property",CardType.ACTION));
+            cards.add(new SlyDeal("Sly Deal", "Steal one property (not from a complete set)", CardType.ACTION));
         }
         for (int i = 0; i < 3; i++) {
-            cards.add(new ForcedDeal("Forced Deal", "Swap properties with a player", CardType.ACTION));
+            cards.add(new ForcedDeal("Forced Deal", "Swap one property with a player (not from their complete set)", CardType.ACTION));
         }
         for (int i = 0; i < 3; i++) {
-            cards.add(new DebtCollector("Debt Collector", "Collect 5M from a player",CardType.ACTION));
+            cards.add(new DebtCollector("Debt Collector", "Collect 5M from any player", CardType.ACTION));
         }
         for (int i = 0; i < 3; i++) {
             cards.add(new Hotel("Hotel", "Add hotel to a complete property set", CardType.ACTION));
@@ -320,6 +322,11 @@ public class GameController {
                 return;
             }
 
+            if (played instanceof WildpropertyCard wildCard) {
+                playWildPropertyCard(player, wildCard);
+                return;
+            }
+
             logMessage(player.getName() + " played: " + played.getName());
             played.use(player, gameEngine);
             player.removeFromHand(played);
@@ -422,34 +429,27 @@ public class GameController {
     }
 
     private ActionEffectResult resolveActionCardEffect(Player player, ActionCard actionCard) {
+        if (actionCard instanceof JustSayNo) {
+            showStatus("Just Say No 只能在对手对你打出行动牌时响应使用", true);
+            return ActionEffectResult.CANCELLED;
+        }
         if (actionCard instanceof DealBreaker dealBreaker) {
             return resolveDealBreaker(player, dealBreaker);
         }
         if (actionCard instanceof DebtCollector debtCollector) {
-            Optional<Player> target = promptSelectOpponent(player, "选择要收取 5M 的玩家");
-            if (target.isEmpty()) {
-                return ActionEffectResult.CANCELLED;
-            }
-            debtCollector.collectFrom(player, target.get());
-            return ActionEffectResult.SUCCESS;
+            return resolveDebtCollector(player, debtCollector);
+        }
+        if (actionCard instanceof MyBirthday myBirthday) {
+            return resolveMyBirthday(player, myBirthday);
+        }
+        if (actionCard instanceof DoubleTheRent doubleRent) {
+            return resolveDoubleTheRent(doubleRent);
         }
         if (actionCard instanceof SlyDeal slyDeal) {
-            Optional<Player> target = promptSelectOpponent(player, "选择要偷取地产的玩家");
-            if (target.isEmpty()) {
-                return ActionEffectResult.CANCELLED;
-            }
-            return slyDeal.stealOneProperty(player, target.get())
-                    ? ActionEffectResult.SUCCESS
-                    : ActionEffectResult.FAILED;
+            return resolveSlyDeal(player, slyDeal);
         }
         if (actionCard instanceof ForcedDeal forcedDeal) {
-            Optional<Player> target = promptSelectOpponent(player, "选择要交换地产的玩家");
-            if (target.isEmpty()) {
-                return ActionEffectResult.CANCELLED;
-            }
-            return forcedDeal.swapOneProperty(player, target.get())
-                    ? ActionEffectResult.SUCCESS
-                    : ActionEffectResult.FAILED;
+            return resolveForcedDeal(player, forcedDeal);
         }
         if (actionCard instanceof House house) {
             Optional<Color> color = promptSelectOwnCompleteSet(player, "选择要加盖 House 的完整套组");
@@ -511,12 +511,170 @@ public class GameController {
             return ActionEffectResult.FAILED;
         }
 
+        boolean doubled = gameEngine.isRentDoubled();
         int total = rentCard.collectFromAll(player, gameEngine, chargeColor, rent);
 
+        String rentNote = doubled ? "（双倍租金）" : "";
         logMessage(player.getName() + " 使用「" + rentCard.getName() + "」对 " + chargeColor
-                + " 收租 " + rent + "M/人，共收到 " + total + "M");
-        showStatus("已向所有玩家收取 " + chargeColor + " 租金 " + rent + "M（合计 " + total + "M）", false);
+                + " 收租 " + (doubled ? rent * 2 : rent) + "M/人" + rentNote + "，共收到 " + total + "M");
+        showStatus("已向所有玩家收取 " + chargeColor + " 租金" + rentNote + "（合计 " + total + "M）", false);
         return ActionEffectResult.SUCCESS;
+    }
+
+    private ActionEffectResult resolveDebtCollector(Player player, DebtCollector debtCollector) {
+        Optional<Player> target = promptSelectOpponent(player, "Debt Collector：选择要收取 5M 的玩家");
+        if (target.isEmpty()) {
+            return ActionEffectResult.CANCELLED;
+        }
+        if (tryRespondWithJustSayNo(target.get(), player, "Debt Collector（收取 5M）")) {
+            return ActionEffectResult.CANCELLED;
+        }
+        int paid = debtCollector.collectFrom(player, target.get());
+        logMessage(player.getName() + " 从 " + target.get().getName() + " 收到 " + paid + "M");
+        return paid > 0 ? ActionEffectResult.SUCCESS : ActionEffectResult.FAILED;
+    }
+
+    private ActionEffectResult resolveMyBirthday(Player player, MyBirthday myBirthday) {
+        int total = myBirthday.collectFromEveryone(player, gameEngine);
+        logMessage(player.getName() + " 过生日，共收到 " + total + "M（每人应付 "
+                + MyBirthday.GIFT_AMOUNT + "M，不足可用地产抵）");
+        showStatus("所有玩家共支付 " + total + "M", false);
+        return total > 0 ? ActionEffectResult.SUCCESS : ActionEffectResult.FAILED;
+    }
+
+    private ActionEffectResult resolveDoubleTheRent(DoubleTheRent doubleRent) {
+        if (!doubleRent.activateForNextRent(gameEngine)) {
+            showStatus("本回合已激活双倍租金，请先打出一张 Rent 牌", true);
+            return ActionEffectResult.FAILED;
+        }
+        showStatus("已激活双倍租金：请在本回合再打出一张 Rent 牌", false);
+        logMessage("双倍租金已激活，下一张 Rent 将双倍收租");
+        return ActionEffectResult.SUCCESS;
+    }
+
+    private ActionEffectResult resolveSlyDeal(Player player, SlyDeal slyDeal) {
+        Optional<Player> target = promptSelectOpponent(player, "Sly Deal：选择要偷取地产的玩家");
+        if (target.isEmpty()) {
+            return ActionEffectResult.CANCELLED;
+        }
+        if (tryRespondWithJustSayNo(target.get(), player, "Sly Deal（偷取一张地产）")) {
+            return ActionEffectResult.CANCELLED;
+        }
+        List<PropertyCard> stealable = PropertyRules.getPropertiesOutsideCompleteSets(target.get());
+        if (stealable.isEmpty()) {
+            showStatus(target.get().getName() + " 没有可偷的地产（完整套组中的牌不能偷）", true);
+            return ActionEffectResult.FAILED;
+        }
+        Optional<PropertyCard> property = promptSelectProperty(stealable,
+                "选择要偷的地产", target.get().getName() + " 的可偷地产（非完整套组）");
+        if (property.isEmpty()) {
+            return ActionEffectResult.CANCELLED;
+        }
+        if (slyDeal.stealProperty(player, target.get(), property.get())) {
+            logMessage(player.getName() + " 从 " + target.get().getName()
+                    + " 偷走 " + property.get().getName());
+            return ActionEffectResult.SUCCESS;
+        }
+        return ActionEffectResult.FAILED;
+    }
+
+    private ActionEffectResult resolveForcedDeal(Player player, ForcedDeal forcedDeal) {
+        Optional<Player> target = promptSelectOpponent(player, "Forced Deal：选择交换地产的玩家");
+        if (target.isEmpty()) {
+            return ActionEffectResult.CANCELLED;
+        }
+        if (tryRespondWithJustSayNo(target.get(), player, "Forced Deal（交换地产）")) {
+            return ActionEffectResult.CANCELLED;
+        }
+        List<PropertyCard> myProps = player.getAllProperties();
+        if (myProps.isEmpty()) {
+            showStatus("你没有地产可交换", true);
+            return ActionEffectResult.FAILED;
+        }
+        List<PropertyCard> theirSwappable = PropertyRules.getPropertiesOutsideCompleteSets(target.get());
+        if (theirSwappable.isEmpty()) {
+            showStatus(target.get().getName() + " 没有可交换的地产（完整套组中的不能换）", true);
+            return ActionEffectResult.FAILED;
+        }
+        Optional<PropertyCard> mine = promptSelectProperty(myProps,
+                "选择你交出的地产", "你的地产");
+        if (mine.isEmpty()) {
+            return ActionEffectResult.CANCELLED;
+        }
+        Optional<PropertyCard> theirs = promptSelectProperty(theirSwappable,
+                "选择对方交出的地产", target.get().getName() + " 可交换的地产（不能是完整套组里的牌）");
+        if (theirs.isEmpty()) {
+            return ActionEffectResult.CANCELLED;
+        }
+        if (forcedDeal.swapProperties(player, mine.get(), target.get(), theirs.get())) {
+            logMessage(player.getName() + " 与 " + target.get().getName() + " 交换地产："
+                    + mine.get().getName() + " ↔ " + theirs.get().getName());
+            return ActionEffectResult.SUCCESS;
+        }
+        return ActionEffectResult.FAILED;
+    }
+
+    /**
+     * 若防守方手牌有 Just Say No 且选择打出，则取消本次行动效果。
+     */
+    private boolean tryRespondWithJustSayNo(Player defender, Player attacker, String actionName) {
+        JustSayNo justSayNo = findJustSayNoInHand(defender);
+        if (justSayNo == null) {
+            return false;
+        }
+
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Just Say No");
+        alert.setHeaderText(defender.getName() + "：是否拒绝 " + attacker.getName() + " 的行动？");
+        alert.setContentText(actionName + "\n\n选择「拒绝」将打出 Just Say No 并取消该效果。");
+        ButtonType noBtn = new ButtonType("拒绝 (Just Say No)");
+        ButtonType allowBtn = new ButtonType("允许生效");
+        ButtonType cancelBtn = new ButtonType("取消", ButtonBar.ButtonData.CANCEL_CLOSE);
+        alert.getButtonTypes().setAll(noBtn, allowBtn, cancelBtn);
+
+        Optional<ButtonType> choice = alert.showAndWait();
+        if (choice.isEmpty() || choice.get() == cancelBtn) {
+            return false;
+        }
+        if (choice.get() == allowBtn) {
+            return false;
+        }
+
+        defender.removeFromHand(justSayNo);
+        gameEngine.getDiscardPile().addCard(justSayNo);
+        logMessage(defender.getName() + " 打出 Just Say No，取消 " + attacker.getName() + " 的「" + actionName + "」");
+        showStatus(defender.getName() + " 使用 Just Say No 拒绝了该行动", false);
+        return true;
+    }
+
+    private JustSayNo findJustSayNoInHand(Player player) {
+        for (Card card : player.getHand()) {
+            if (card instanceof JustSayNo js) {
+                return js;
+            }
+        }
+        return null;
+    }
+
+    private Optional<PropertyCard> promptSelectProperty(List<PropertyCard> properties,
+                                                          String title, String header) {
+        if (properties.isEmpty()) {
+            return Optional.empty();
+        }
+        List<String> labels = new ArrayList<>();
+        for (PropertyCard p : properties) {
+            labels.add(p.getName() + " (" + p.getColor() + ", " + p.getPrice() + "M)");
+        }
+        ChoiceDialog<String> dialog = new ChoiceDialog<>(labels.get(0), labels);
+        dialog.setTitle(title);
+        dialog.setHeaderText(header);
+        dialog.setContentText("选择一张地产：");
+        Optional<String> result = dialog.showAndWait();
+        if (result.isEmpty()) {
+            return Optional.empty();
+        }
+        int idx = labels.indexOf(result.get());
+        return Optional.of(properties.get(idx));
     }
 
     private Optional<Color> promptSelectRentColor(Player player, RentCard rentCard, List<Color> options) {
@@ -544,22 +702,110 @@ public class GameController {
     }
 
     private ActionEffectResult resolveDealBreaker(Player player, DealBreaker dealBreaker) {
-        Optional<Player> target = promptSelectOpponent(player, "Deal Breaker：选择要偷取套组的玩家");
+        Optional<Player> target = promptSelectOpponentWithCompleteSets(player);
         if (target.isEmpty()) {
+            showStatus("当前没有玩家拥有可偷的完整地产套组", true);
             return ActionEffectResult.CANCELLED;
         }
         Player opponent = target.get();
-        if (!hasAnyCompleteSet(opponent)) {
-            showStatus(opponent.getName() + " 没有可偷的完整地产套组", true);
-            return ActionEffectResult.FAILED;
-        }
         Optional<Color> color = promptSelectCompleteSetOnPlayer(opponent);
         if (color.isEmpty()) {
             return ActionEffectResult.CANCELLED;
         }
-        return dealBreaker.useOnTarget(player, opponent, color.get())
-                ? ActionEffectResult.SUCCESS
-                : ActionEffectResult.FAILED;
+        if (tryRespondWithJustSayNo(opponent, player, "Deal Breaker（偷取完整套组）")) {
+            return ActionEffectResult.CANCELLED;
+        }
+        if (!dealBreaker.useOnTarget(player, opponent, color.get())) {
+            showStatus("偷取失败", true);
+            return ActionEffectResult.FAILED;
+        }
+        logMessage(player.getName() + " 从 " + opponent.getName() + " 偷走整套 " + color.get());
+        return ActionEffectResult.SUCCESS;
+    }
+
+    private Optional<Player> promptSelectOpponentWithCompleteSets(Player current) {
+        List<Player> valid = new ArrayList<>();
+        for (Player p : gameEngine.getPlayers()) {
+            if (!p.equals(current) && hasAnyCompleteSet(p)) {
+                valid.add(p);
+            }
+        }
+        if (valid.isEmpty()) {
+            return Optional.empty();
+        }
+        ChoiceDialog<Player> dialog = new ChoiceDialog<>(valid.get(0), valid);
+        dialog.setTitle("Deal Breaker");
+        dialog.setHeaderText("选择要偷取完整套组的玩家");
+        dialog.setContentText("仅显示拥有完整套组的玩家:");
+        return dialog.showAndWait();
+    }
+
+    private void playWildPropertyCard(Player player, WildpropertyCard wild) {
+        if (wild.isBankable()) {
+            Optional<ActionPlayChoice> choice = promptWildPropertyChoice(wild);
+            if (choice.isEmpty()) {
+                selectedCard = wild;
+                return;
+            }
+            if (choice.get() == ActionPlayChoice.DEPOSIT_BANK) {
+                player.removeFromHand(wild);
+                wild.depositToBank(player);
+                logMessage(player.getName() + " 将万能地产「" + wild.getName()
+                        + "」存入银行（" + wild.getBankValueM() + "M）");
+                showStatus("万能卡已存入银行 " + wild.getBankValueM() + "M", false);
+                completePlayStep(player, wild, true);
+                return;
+            }
+        }
+
+        Optional<Color> color = promptSelectWildColor(wild);
+        if (color.isEmpty()) {
+            selectedCard = wild;
+            showStatus("已取消，万能卡保留在手牌", false);
+            updateUI();
+            return;
+        }
+
+        wild.setChosenColor(color.get());
+        player.removeFromHand(wild);
+        wild.use(player, gameEngine);
+        logMessage(player.getName() + " 打出万能地产「" + wild.getName() + "」作为 " + color.get());
+        showStatus("万能地产已作为 " + color.get() + " 放入地产区", false);
+        completePlayStep(player, wild, false);
+    }
+
+    private Optional<ActionPlayChoice> promptWildPropertyChoice(WildpropertyCard wild) {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("万能地产卡");
+        alert.setHeaderText(wild.getName() + " — 可存银行 " + wild.getBankValueM() + "M");
+        alert.setContentText("选择作为地产打出（并选颜色），或存入银行？");
+        ButtonType useBtn = new ButtonType("作为地产打出");
+        ButtonType bankBtn = new ButtonType("存入银行 (" + wild.getBankValueM() + "M)");
+        ButtonType cancelBtn = new ButtonType("取消", ButtonBar.ButtonData.CANCEL_CLOSE);
+        alert.getButtonTypes().setAll(useBtn, bankBtn, cancelBtn);
+        Optional<ButtonType> result = alert.showAndWait();
+        if (result.isEmpty()) {
+            return Optional.empty();
+        }
+        if (result.get() == useBtn) {
+            return Optional.of(ActionPlayChoice.USE_EFFECT);
+        }
+        if (result.get() == bankBtn) {
+            return Optional.of(ActionPlayChoice.DEPOSIT_BANK);
+        }
+        return Optional.empty();
+    }
+
+    private Optional<Color> promptSelectWildColor(WildpropertyCard wild) {
+        List<Color> options = wild.getAvailableColors();
+        if (options.isEmpty()) {
+            return Optional.empty();
+        }
+        ChoiceDialog<Color> dialog = new ChoiceDialog<>(options.get(0), options);
+        dialog.setTitle("万能地产颜色");
+        dialog.setHeaderText(wild.getName());
+        dialog.setContentText("选择要当作哪种颜色的地产：");
+        return dialog.showAndWait();
     }
 
     private boolean hasAnyCompleteSet(Player player) {
@@ -734,33 +980,36 @@ public class GameController {
         
         boolean handClickable = gameEngine.canPlayCard();
         for (Card card : currentPlayer.getHand()) {
-            StackPane cardPane = createCardPane(card, handClickable);
+            CardView cardView = new CardView(card, handClickable);
             if (handClickable) {
-                cardPane.setOnMouseClicked(event -> {
+                cardView.setOnMouseClicked(event -> {
                     if (event.getClickCount() == 2) {
-                        selectCard(card, cardPane);
+                        selectCard(card, cardView);
                         playSelectedCard();
                     } else {
-                        selectCard(card, cardPane);
+                        selectCard(card, cardView);
                     }
                 });
             }
-            playerHand.getChildren().add(cardPane);
+            playerHand.getChildren().add(cardView);
         }
     }
     
-    private void selectCard(Card card, StackPane cardPane) {
-        // 清除之前的选择
+    private void selectCard(Card card, CardView cardView) {
         for (javafx.scene.Node node : playerHand.getChildren()) {
-            if (node instanceof StackPane) {
-                node.setStyle(node.getStyle().replace("-fx-border-color: #f39c12; -fx-border-width: 3;", ""));
+            if (node instanceof CardView cv) {
+                cv.setSelected(false);
             }
         }
-        
+
         selectedCard = card;
-        cardPane.setStyle(cardPane.getStyle() + "-fx-border-color: #f39c12; -fx-border-width: 3;");
-        
-        if (card instanceof RentCard rentCard) {
+        cardView.setSelected(true);
+
+        if (card instanceof WildpropertyCard wild) {
+            showStatus("已选中万能地产「" + card.getName() + "」"
+                    + (wild.isBankable() ? "（可存银行 " + wild.getBankValueM() + "M）" : "（不可存银行）")
+                    + "。出牌时选择颜色或存银行", false);
+        } else if (card instanceof RentCard rentCard) {
             showStatus("已选中租金卡「" + card.getName() + "」（银行 " + rentCard.getBankValueM()
                     + "M）。出牌时可收租或存入银行", false);
         } else if (card instanceof ActionCard actionCard) {
@@ -788,7 +1037,7 @@ public class GameController {
         }
 
         for (Card card : currentPlayer.getBank()) {
-            playerBank.getChildren().add(createBankCardPane(card));
+            playerBank.getChildren().add(new CardView(card, false));
         }
 
         if (playerBank.getChildren().isEmpty()) {
@@ -834,7 +1083,8 @@ public class GameController {
             FlowPane groupPane = new FlowPane(8, 8);
             groupPane.setPrefWrapLength(600);
             for (PropertyCard property : cards) {
-                groupPane.getChildren().add(createPropertyCardPane(property));
+                CardView cardView = new CardView(property, false);
+                groupPane.getChildren().add(cardView);
             }
 
             row.getChildren().addAll(groupLabel, groupPane);
@@ -842,42 +1092,6 @@ public class GameController {
         }
     }
 
-    private StackPane createBankCardPane(Card card) {
-        StackPane pane = new StackPane();
-        pane.setPrefSize(90, 120);
-
-        pane.setStyle(
-            "-fx-background-color: #27ae60;" +
-            "-fx-border-color: #1e8449;" +
-            "-fx-border-width: 2;" +
-            "-fx-background-radius: 8;" +
-            "-fx-border-radius: 8;"
-        );
-
-        VBox content = new VBox(5);
-        content.setAlignment(Pos.CENTER);
-        content.setStyle("-fx-padding: 5;");
-
-        Label nameLabel = new Label(card.getName());
-        nameLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-wrap-text: true;");
-        nameLabel.setMaxWidth(80);
-
-        if (card instanceof MoneyCard moneyCard) {
-            Label valueLabel = new Label(moneyCard.getMoney() + "M");
-            valueLabel.setStyle("-fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;");
-            content.getChildren().addAll(nameLabel, valueLabel);
-        } else if (card instanceof ActionCard actionCard) {
-            Label valueLabel = new Label(actionCard.getBankValueM() + "M");
-            valueLabel.setStyle("-fx-text-fill: white; -fx-font-size: 12px; -fx-font-weight: bold;");
-            content.getChildren().addAll(nameLabel, valueLabel);
-        } else {
-            content.getChildren().add(nameLabel);
-        }
-
-        pane.getChildren().add(content);
-        return pane;
-    }
-    
     private void updateOpponentsHands() {
         opponentsHands.getChildren().clear();
         

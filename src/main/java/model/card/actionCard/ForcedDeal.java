@@ -1,11 +1,10 @@
 package model.card.actionCard;
 
 import engine.GameEngine;
+import engine.PropertyRules;
 import model.card.PropertyCard;
 import model.enums.CardType;
 import model.player.Player;
-
-import java.util.List;
 
 public class ForcedDeal extends ActionCard {
 
@@ -15,24 +14,29 @@ public class ForcedDeal extends ActionCard {
 
     @Override
     public void use(Player player, GameEngine game) {
-        swapOneProperty(player, game.getDefaultDefender(player));
+        // 由 GameController 选择双方地产并交换
     }
 
-    public boolean swapOneProperty(Player player, Player target) {
-        if (target == null || target.equals(player)) {
+    public boolean swapProperties(Player player, PropertyCard playerGives,
+                                  Player target, PropertyCard targetGives) {
+        if (player == null || target == null || player.equals(target)
+                || playerGives == null || targetGives == null) {
             return false;
         }
-        List<PropertyCard> targetProps = target.getAllProperties();
-        List<PropertyCard> playerProps = player.getAllProperties();
-        if (targetProps.isEmpty() || playerProps.isEmpty()) {
+        if (!player.getAllProperties().contains(playerGives)) {
             return false;
         }
-        PropertyCard fromTarget = targetProps.get(0);
-        PropertyCard fromPlayer = playerProps.get(0);
-        target.removeProperty(fromTarget);
-        player.removeProperty(fromPlayer);
-        player.addProperty(fromTarget);
-        target.addProperty(fromPlayer);
+        if (!target.getAllProperties().contains(targetGives)) {
+            return false;
+        }
+        if (PropertyRules.isCompleteSet(target, targetGives.getColor())) {
+            return false;
+        }
+
+        player.removeProperty(playerGives);
+        target.removeProperty(targetGives);
+        player.addProperty(targetGives);
+        target.addProperty(playerGives);
         return true;
     }
 }

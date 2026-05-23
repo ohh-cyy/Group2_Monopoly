@@ -3,6 +3,7 @@ package model.player;
 import model.card.Card;
 import model.card.MoneyCard;
 import model.card.PropertyCard;
+import model.card.WildpropertyCard;
 import model.card.actionCard.ActionCard;
 import model.enums.Color;
 
@@ -84,6 +85,8 @@ public class Player {
                 total += moneyCard.getMoney();
             } else if (card instanceof ActionCard actionCard) {
                 total += actionCard.getBankValueM();
+            } else if (card instanceof WildpropertyCard wildCard) {
+                total += wildCard.getBankValueM();
             }
         }
         return total;
@@ -104,21 +107,12 @@ public class Player {
         }
     }
 
-    // use for dealbreaker to judge whether this player has complete set
+    /** 该颜色地产是否已凑齐完整套组 */
     public boolean hasCompleteSet(Color color) {
-        int size =
-                getPropertiesByColor(color).size();
-
-        switch(color) {
-            case BROWN:
-            case DARK_BLUE:
-            case LIGHT_BLUE:
-                return size>=2;
-            case BLACK:
-                return size>=4;
-            default:
-                return size>=3;
+        if (color == null) {
+            return false;
         }
+        return getPropertiesByColor(color).size() >= color.getSetSize();
     }
 
     //use for dealbreaker to remove one player's set

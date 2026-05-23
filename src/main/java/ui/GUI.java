@@ -19,8 +19,8 @@ public class GUI extends Application {
         Scene scene = new Scene(fxmlLoader.load(), 1200, 800);
         primaryStage.setTitle("Monopoly Deal Card Game");
         primaryStage.setScene(scene);
-        primaryStage.setMinWidth(1000);
-        primaryStage.setMinHeight(600);
+        primaryStage.setMinWidth(1200);
+        primaryStage.setMinHeight(800);
         primaryStage.show();
     }
 }

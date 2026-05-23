@@ -4,26 +4,34 @@ import engine.GameEngine;
 import model.enums.Color;
 import model.player.Player;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class WildpropertyCard extends PropertyCard {
     private Color chosenColor;
-    private List<Color> availableColors;
-    private boolean bankable;
+    private final List<Color> availableColors;
+    private final boolean bankable;
+    private final int bankValueM;
 
-    public WildpropertyCard(String name, String description, int price,List<Color> availableColors, boolean bankable) {
-        super(name, description, null, price);
+    public WildpropertyCard(String name, String description, int bankValueM,
+                            List<Color> availableColors, boolean bankable) {
+        super(name, description, null, bankValueM);
         this.chosenColor = null;
-        this.availableColors = availableColors;
+        this.availableColors = new ArrayList<>(availableColors);
         this.bankable = bankable;
+        this.bankValueM = bankValueM;
     }
 
     public List<Color> getAvailableColors() {
-        return availableColors;
+        return new ArrayList<>(availableColors);
     }
 
     public boolean isBankable() {
         return bankable;
+    }
+
+    public int getBankValueM() {
+        return bankValueM;
     }
 
     public Color getChosenColor() {
@@ -31,10 +39,8 @@ public class WildpropertyCard extends PropertyCard {
     }
 
     public void setChosenColor(Color color) {
-        if (availableColors.contains(color)) {
+        if (color != null && availableColors.contains(color)) {
             this.chosenColor = color;
-        } else {
-            System.out.println("Invalid color choice for this wildcard");
         }
     }
 
@@ -43,34 +49,17 @@ public class WildpropertyCard extends PropertyCard {
         return chosenColor;
     }
 
+    public void depositToBank(Player player) {
+        if (bankable) {
+            player.addBank(this);
+        }
+    }
+
     @Override
     public void use(Player player, GameEngine game) {
         if (chosenColor == null) {
-            chosenColor = selectColor(player);
+            return;
         }
-        
         player.addProperty(this);
-
-        System.out.println(player.getName() + " played " + getName() + 
-            " as " + chosenColor + " property");
-    }
-    
-    private Color selectColor(Player player) {
-        Color mostNeededColor = null;
-        int maxCount = -1;
-        
-        for (Color color : availableColors) {
-            int count = player.getPropertiesByColor(color).size();
-            if (count > maxCount && count < color.getSetSize()) {
-                maxCount = count;
-                mostNeededColor = color;
-            }
-        }
-        
-        if (mostNeededColor == null) {
-            mostNeededColor = Color.BROWN;
-        }
-        
-        return mostNeededColor;
     }
 }

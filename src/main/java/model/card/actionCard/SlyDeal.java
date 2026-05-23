@@ -1,11 +1,10 @@
 package model.card.actionCard;
 
 import engine.GameEngine;
+import engine.PropertyRules;
 import model.card.PropertyCard;
 import model.enums.CardType;
 import model.player.Player;
-
-import java.util.List;
 
 public class SlyDeal extends ActionCard {
 
@@ -15,20 +14,21 @@ public class SlyDeal extends ActionCard {
 
     @Override
     public void use(Player player, GameEngine game) {
-        stealOneProperty(player, game.getDefaultDefender(player));
+        // 由 GameController 选择目标与地产
     }
 
-    public boolean stealOneProperty(Player player, Player target) {
-        if (target == null || target.equals(player)) {
+    public boolean stealProperty(Player thief, Player target, PropertyCard property) {
+        if (thief == null || target == null || property == null || thief.equals(target)) {
             return false;
         }
-        List<PropertyCard> props = target.getAllProperties();
-        if (props.isEmpty()) {
+        if (!target.getAllProperties().contains(property)) {
             return false;
         }
-        PropertyCard stolen = props.get(0);
-        target.removeProperty(stolen);
-        player.addProperty(stolen);
+        if (PropertyRules.isCompleteSet(target, property.getColor())) {
+            return false;
+        }
+        target.removeProperty(property);
+        thief.addProperty(property);
         return true;
     }
 }

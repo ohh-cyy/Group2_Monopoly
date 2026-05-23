@@ -18,7 +18,7 @@ public class MoneyCard extends Card {
 
     @Override
     public void use(Player player, GameEngine game) {
+        // 只放入银行区；面值由 getBank() 中的牌计算，勿再 addMoney 以免总额翻倍
         player.addBank(this);
-        player.addMoney(money);
     }
 }
