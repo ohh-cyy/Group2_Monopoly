@@ -15,7 +15,7 @@ import java.util.Set;
  * 将卡牌实例映射到 {@code src/main/resources/image/Card/} 下的 PNG 资源。
  */
 public final class CardImageLoader {
-    private static final String BASE = "/image/Card/";
+    private static final String BASE = "/Card/";
 
     private CardImageLoader() {
     }
