@@ -7,9 +7,7 @@ import javafx.application.Platform;
 import ui.CardView;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
-import javafx.scene.Cursor;
 import javafx.scene.control.*;
-import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.*;
 import model.card.*;
 import model.card.actionCard.*;
@@ -27,37 +25,25 @@ public class GameController {
     private Label gameStatusText;
     
     @FXML
-    private Label drawPileCount;
-    
-    @FXML
-    private Label discardPileCount;
-    
-    @FXML
     private Label statusMessage;
     
     @FXML
     private VBox playersList;
     
     @FXML
-    private VBox opponentsHands;
-    
+    private ScrollPane playerHandScroll;
+
     @FXML
-    private FlowPane playerHand;
-    
+    private HBox playerHand;
+
     @FXML
-    private VBox playerProperties;
+    private FlowPane playerProperties;
 
     @FXML
     private FlowPane playerBank;
 
     @FXML
     private Label bankTotalLabel;
-    
-    @FXML
-    private StackPane drawPile;
-    
-    @FXML
-    private StackPane discardPile;
     
     @FXML
     private TextArea gameLog;
@@ -74,9 +60,6 @@ public class GameController {
     @FXML
     private Button newGameBtn;
     
-    private static final int CARD_WIDTH = 120;
-    private static final int CARD_HEIGHT = 168;
-
     private GameEngine gameEngine;
     private Deck deck;
     private List<Player> players;
@@ -87,6 +70,13 @@ public class GameController {
     @FXML
     public void initialize() {
         random = new Random();
+        if (playerHandScroll != null) {
+            playerHandScroll.widthProperty().addListener((obs, oldW, newW) -> {
+                if (currentPlayer != null && gameEngine != null) {
+                    updatePlayerHand();
+                }
+            });
+        }
         initializeGame();
     }
     
@@ -246,16 +236,6 @@ public class GameController {
         }
 
         return cards;
-    }
-    
-    @FXML
-    private void onDrawPileClick(MouseEvent event) {
-        if (!isCurrentPlayerTurn()) {
-            showStatus("Not your turn!", true);
-            return;
-        }
-        
-        drawCardsFromPile();
     }
     
     @FXML
@@ -927,7 +907,6 @@ public class GameController {
             updatePlayerHand();
             updatePlayerBank();
             updatePlayerProperties();
-            updateOpponentsHands();
             updatePileCounts();
             updateButtonStates();
         });
@@ -974,15 +953,24 @@ public class GameController {
     }
     
     private void updatePlayerHand() {
+        if (playerHand == null) {
+            return;
+        }
         playerHand.getChildren().clear();
-        
-        if (currentPlayer == null) return;
-        
+
+        if (currentPlayer == null) {
+            return;
+        }
+
+        List<Card> hand = currentPlayer.getHand();
         boolean handClickable = gameEngine.canPlayCard();
-        for (Card card : currentPlayer.getHand()) {
-            CardView cardView = new CardView(card, handClickable);
-            if (handClickable) {
-                cardView.setOnMouseClicked(event -> {
+        CardView.CardMetrics metrics = computeHandMetrics(hand.size());
+
+        for (Card card : hand) {
+            StackPane slot = CardView.wrapInSlot(card, handClickable, metrics);
+            CardView cardView = CardView.getCardView(slot);
+            if (handClickable && cardView != null) {
+                slot.setOnMouseClicked(event -> {
                     if (event.getClickCount() == 2) {
                         selectCard(card, cardView);
                         playSelectedCard();
@@ -991,13 +979,32 @@ public class GameController {
                     }
                 });
             }
-            playerHand.getChildren().add(cardView);
+            playerHand.getChildren().add(slot);
         }
+    }
+
+    /** 手牌单行显示：宽度不够时按比例缩小牌面（含悬停尺寸） */
+    private CardView.CardMetrics computeHandMetrics(int cardCount) {
+        if (cardCount <= 0) {
+            return CardView.HAND;
+        }
+        double available = 750;
+        if (playerHandScroll != null && playerHandScroll.getViewportBounds().getWidth() > 0) {
+            available = playerHandScroll.getViewportBounds().getWidth() - 20;
+        }
+        double gap = 6;
+        double total = cardCount * CardView.HAND.slotW() + (cardCount - 1) * gap;
+        if (total <= available) {
+            return CardView.HAND;
+        }
+        double factor = Math.max(0.42, available / total);
+        return CardView.HAND.scaled(factor);
     }
     
     private void selectCard(Card card, CardView cardView) {
         for (javafx.scene.Node node : playerHand.getChildren()) {
-            if (node instanceof CardView cv) {
+            CardView cv = node instanceof StackPane sp ? CardView.getCardView(sp) : null;
+            if (cv != null) {
                 cv.setSelected(false);
             }
         }
@@ -1037,7 +1044,7 @@ public class GameController {
         }
 
         for (Card card : currentPlayer.getBank()) {
-            playerBank.getChildren().add(new CardView(card, false));
+            playerBank.getChildren().add(CardView.wrapInSlot(card, false, CardView.COMPACT));
         }
 
         if (playerBank.getChildren().isEmpty()) {
@@ -1072,41 +1079,35 @@ public class GameController {
             Color color = entry.getKey();
             List<PropertyCard> cards = entry.getValue();
 
-            HBox row = new HBox(10);
-            row.setAlignment(Pos.CENTER_LEFT);
-            row.setStyle("-fx-padding: 4 0;");
+            HBox colorSet = new HBox(5);
+            colorSet.setAlignment(Pos.CENTER_LEFT);
+            colorSet.setStyle(
+                    "-fx-background-color: rgba(255,255,255,0.85); -fx-background-radius: 6; -fx-padding: 4 8;");
 
             int required = color.getSetSize();
-            Label groupLabel = new Label(color + " (" + cards.size() + "/" + required + ")");
-            groupLabel.setStyle("-fx-font-weight: bold; -fx-min-width: 120;");
+            Label groupLabel = new Label(color + "\n" + cards.size() + "/" + required);
+            groupLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 10px; -fx-text-fill: #074001;");
+            groupLabel.setMinWidth(52);
+            groupLabel.setAlignment(Pos.CENTER);
 
-            FlowPane groupPane = new FlowPane(8, 8);
-            groupPane.setPrefWrapLength(600);
+            HBox cardsRow = new HBox(4);
+            cardsRow.setAlignment(Pos.CENTER_LEFT);
             for (PropertyCard property : cards) {
-                CardView cardView = new CardView(property, false);
-                groupPane.getChildren().add(cardView);
+                cardsRow.getChildren().add(CardView.wrapInSlot(property, false, CardView.COMPACT));
             }
 
-            row.getChildren().addAll(groupLabel, groupPane);
-            playerProperties.getChildren().add(row);
+            colorSet.getChildren().addAll(groupLabel, cardsRow);
+            playerProperties.getChildren().add(colorSet);
         }
     }
 
-    private void updateOpponentsHands() {
-        opponentsHands.getChildren().clear();
-        
-        for (Player player : players) {
-            if (!player.equals(currentPlayer)) {
-                Label label = new Label(player.getName() + ": " + player.getHand().size() + " cards");
-                label.setStyle("-fx-padding: 5;");
-                opponentsHands.getChildren().add(label);
-            }
-        }
-    }
-    
     private void updatePileCounts() {
-        drawPileCount.setText("Draw Pile");
-        discardPileCount.setText("Discard Pile");
+        if (gameStatusText == null || gameEngine == null || gameEngine.isGameOver()) {
+            return;
+        }
+        int draw = gameEngine.getDeck().size();
+        int discard = gameEngine.getDiscardPile().size();
+        gameStatusText.setText("Draw pile: " + draw + "  |  Discard pile: " + discard);
     }
     
     private void updateButtonStates() {
@@ -1118,160 +1119,8 @@ public class GameController {
         playCardBtn.setDisable(!canPlayCard || selectedCard == null);
         endTurnBtn.setDisable(!active);
     }
-    
-    private StackPane createCardPane(Card card, boolean clickable) {
-        StackPane pane = new StackPane();
-        pane.setPrefSize(CARD_WIDTH, CARD_HEIGHT);
-        pane.setCursor(clickable ? Cursor.HAND : Cursor.DEFAULT);
-        
-        // 根据卡牌类型设置背景色
-        String backgroundColor = getCardBackgroundColor(card);
-        String textColor = getCardTextColor(card);
-        
-        pane.setStyle(
-            "-fx-background-color: " + backgroundColor + ";" +
-            "-fx-border-color: #2c3e50;" +
-            "-fx-border-width: 2;" +
-            "-fx-background-radius: 8;" +
-            "-fx-border-radius: 8;" +
-            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 5, 0, 0, 2);"
-        );
-        
-        VBox content = new VBox(5);
-        content.setAlignment(Pos.CENTER);
-        content.setStyle("-fx-padding: 5;");
-        
-        Label nameLabel = new Label(card.getName());
-        nameLabel.setStyle("-fx-text-fill: " + textColor + "; -fx-font-weight: bold; -fx-font-size: 11px; -fx-wrap-text: true;");
-        nameLabel.setMaxWidth(CARD_WIDTH - 16);
-        
-        Label typeLabel = new Label(card.getType().toString());
-        typeLabel.setStyle("-fx-text-fill: " + textColor + "; -fx-font-size: 9px; -fx-opacity: 0.8;");
 
-        if (card instanceof RentCard rentCard) {
-            Label bankLabel = new Label("Bank " + rentCard.getBankValueM() + "M");
-            bankLabel.setStyle("-fx-text-fill: " + textColor + "; -fx-font-size: 9px;");
-            String colorsText = rentCard.isAllColors()
-                    ? "All colors"
-                    : String.join(" / ", Arrays.stream(rentCard.getApplicableColors())
-                    .map(Color::name).toArray(String[]::new));
-            Label colorsLabel = new Label(colorsText);
-            colorsLabel.setStyle("-fx-text-fill: " + textColor + "; -fx-font-size: 8px; -fx-wrap-text: true;");
-            colorsLabel.setMaxWidth(CARD_WIDTH - 16);
-            colorsLabel.setWrapText(true);
-            content.getChildren().addAll(nameLabel, colorsLabel, bankLabel, typeLabel);
-        } else if (card instanceof ActionCard actionCard) {
-            Label bankLabel = new Label("Bank " + actionCard.getBankValueM() + "M");
-            bankLabel.setStyle("-fx-text-fill: " + textColor + "; -fx-font-size: 9px;");
-            content.getChildren().addAll(nameLabel, bankLabel, typeLabel);
-        } else {
-            content.getChildren().addAll(nameLabel, typeLabel);
-        }
-        
-        pane.getChildren().add(content);
-        
-        // 添加悬停效果
-        if (clickable) {
-            pane.setOnMouseEntered(e -> pane.setStyle(pane.getStyle() + "-fx-scale-x: 1.05; -fx-scale-y: 1.05;"));
-            pane.setOnMouseExited(e -> pane.setStyle(pane.getStyle().replace("-fx-scale-x: 1.05; -fx-scale-y: 1.05;", "")));
-        }
-        
-        return pane;
-    }
-    
-    private StackPane createPropertyCardPane(PropertyCard property) {
-        StackPane pane = new StackPane();
-        pane.setPrefSize(CARD_WIDTH, CARD_HEIGHT);
-        
-        String backgroundColor = getPropertyColorHex(property.getColor());
-        
-        pane.setStyle(
-            "-fx-background-color: " + backgroundColor + ";" +
-            "-fx-border-color: #2c3e50;" +
-            "-fx-border-width: 2;" +
-            "-fx-background-radius: 8;" +
-            "-fx-border-radius: 8;" +
-            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 5, 0, 0, 2);"
-        );
-        
-        VBox content = new VBox(5);
-        content.setAlignment(Pos.CENTER);
-        content.setStyle("-fx-padding: 5;");
-        
-        Label nameLabel = new Label(property.getName());
-        nameLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-wrap-text: true;");
-        nameLabel.setMaxWidth(CARD_WIDTH - 16);
-        nameLabel.setWrapText(true);
-        
-        Label valueLabel = new Label("Value " + property.getPrice() + "M");
-        valueLabel.setStyle("-fx-text-fill: white; -fx-font-size: 12px; -fx-font-weight: bold;");
 
-        String rentText = property.getRentDisplay();
-        if (!rentText.isEmpty()) {
-            Label rentLabel = new Label("Rent " + rentText);
-            rentLabel.setStyle("-fx-text-fill: #ecf0f1; -fx-font-size: 9px; -fx-wrap-text: true;");
-            rentLabel.setMaxWidth(CARD_WIDTH - 16);
-            rentLabel.setWrapText(true);
-            content.getChildren().addAll(nameLabel, valueLabel, rentLabel);
-        } else {
-            content.getChildren().addAll(nameLabel, valueLabel);
-        }
-        
-        pane.getChildren().add(content);
-        
-        return pane;
-    }
-    
-    private String getCardBackgroundColor(Card card) {
-        switch (card.getType()) {
-            case PROPERTY:
-                if (card instanceof PropertyCard) {
-                    return getPropertyColorHex(((PropertyCard) card).getColor());
-                }
-                return "#95a5a6";
-            case MONEY:
-                return "#27ae60";
-            case ACTION:
-                return "#e74c3c";
-            default:
-                return "#95a5a6";
-        }
-    }
-    
-    private String getCardTextColor(Card card) {
-        return "white";
-    }
-    
-    private String getPropertyColorHex(model.enums.Color color) {
-        if (color == null) return "#95a5a6";
-        
-        switch (color) {
-            case BROWN:
-                return "#8B4513";
-            case LIGHT_BLUE:
-                return "#87CEEB";
-            case PINK:
-                return "#FF69B4";
-            case ORANGE:
-                return "#FFA500";
-            case RED:
-                return "#DC143C";
-            case YELLOW:
-                return "#FFD700";
-            case GREEN:
-                return "#228B22";
-            case DARK_BLUE:
-                return "#00008B";
-            case BLACK:
-                return "#2c3e50";
-            case LIGHT_GREEN:
-                return "#90EE90";
-            default:
-                return "#95a5a6";
-        }
-    }
-
-    
     private void logMessage(String message) {
         Platform.runLater(() -> {
             String timestamp = java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss"));

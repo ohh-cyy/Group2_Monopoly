@@ -3,6 +3,7 @@ package ui;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.control.Label;
+import javafx.scene.effect.DropShadow;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.StackPane;
@@ -12,84 +13,138 @@ import model.card.actionCard.ActionCard;
 import model.enums.Color;
 
 /**
- * 统一卡牌 UI：优先显示关联图片，无图时回退为色块+文字。
+ * 统一卡牌 UI：默认较小，鼠标悬停放大；尺寸由 {@link CardMetrics} 控制。
  */
 public class CardView extends StackPane {
 
-    private static final int CARD_WIDTH = 120;
-    private static final int CARD_HEIGHT = 168;
+    public static final CardMetrics HAND = new CardMetrics(78, 110, 120, 168);
+    public static final CardMetrics COMPACT = new CardMetrics(52, 72, 88, 122);
 
     private final Card card;
     private final boolean clickable;
+    private final CardMetrics metrics;
     private boolean selected;
+    private boolean hovered;
 
     public CardView(Card card, boolean clickable) {
+        this(card, clickable, HAND);
+    }
+
+    public CardView(Card card, boolean clickable, CardMetrics metrics) {
         this.card = card;
         this.clickable = clickable;
+        this.metrics = metrics;
         this.selected = false;
+        this.hovered = false;
         initializeCard();
     }
 
+    public static StackPane wrapInSlot(Card card, boolean clickable) {
+        return wrapInSlot(card, clickable, HAND);
+    }
+
+    public static StackPane wrapInSlot(Card card, boolean clickable, CardMetrics metrics) {
+        StackPane slot = new StackPane();
+        slot.setMinSize(metrics.slotW(), metrics.slotH());
+        slot.setPrefSize(metrics.slotW(), metrics.slotH());
+        slot.setMaxSize(metrics.slotW(), metrics.slotH());
+        slot.setAlignment(Pos.CENTER);
+        slot.setPickOnBounds(true);
+
+        CardView cardView = new CardView(card, clickable, metrics);
+        slot.getChildren().add(cardView);
+
+        slot.setOnMouseEntered(e -> cardView.setHovered(true));
+        slot.setOnMouseExited(e -> cardView.setHovered(false));
+        if (clickable) {
+            slot.setCursor(Cursor.HAND);
+        }
+        return slot;
+    }
+
+    public static CardView getCardView(StackPane slot) {
+        if (slot == null || slot.getChildren().isEmpty()) {
+            return null;
+        }
+        return (CardView) slot.getChildren().get(0);
+    }
+
     private void initializeCard() {
-        setPrefSize(CARD_WIDTH, CARD_HEIGHT);
+        setPrefSize(metrics.normalW(), metrics.normalH());
+        setMinSize(metrics.normalW(), metrics.normalH());
+        setMaxSize(metrics.normalW(), metrics.normalH());
         setCursor(clickable ? Cursor.HAND : Cursor.DEFAULT);
 
         String imagePath = CardImageLoader.resolvePath(card);
         if (imagePath != null) {
             Image image = new Image(
                     getClass().getResourceAsStream(imagePath),
-                    CARD_WIDTH,
-                    CARD_HEIGHT,
+                    metrics.hoverW(),
+                    metrics.hoverH(),
                     true,
                     true
             );
             if (!image.isError()) {
                 ImageView imageView = new ImageView(image);
-                imageView.setFitWidth(CARD_WIDTH);
-                imageView.setFitHeight(CARD_HEIGHT);
+                imageView.setFitWidth(metrics.normalW());
+                imageView.setFitHeight(metrics.normalH());
                 imageView.setPreserveRatio(false);
                 getChildren().add(imageView);
-                updateCardStyle();
+                applyVisualState();
                 addHoverEffect();
                 return;
             }
         }
 
         VBox content = createFallbackContent();
-        updateCardStyle();
         getChildren().add(content);
+        applyVisualState();
         addHoverEffect();
     }
 
     private void addHoverEffect() {
-        if (!clickable) {
-            return;
+        setOnMouseEntered(e -> setHovered(true));
+        setOnMouseExited(e -> setHovered(false));
+    }
+
+    public void setHovered(boolean hovered) {
+        this.hovered = hovered;
+        applyVisualState();
+    }
+
+    private void applyVisualState() {
+        boolean enlarged = selected || hovered;
+        double scaleX = enlarged ? metrics.hoverW() / metrics.normalW() : 1.0;
+        double scaleY = enlarged ? metrics.hoverH() / metrics.normalH() : 1.0;
+        setScaleX(scaleX);
+        setScaleY(scaleY);
+
+        if (enlarged) {
+            setEffect(new DropShadow(10, 0, 3, javafx.scene.paint.Color.rgb(0, 0, 0, 0.45)));
+        } else {
+            setEffect(new DropShadow(3, 0, 1, javafx.scene.paint.Color.rgb(0, 0, 0, 0.22)));
         }
-        setOnMouseEntered(e -> {
-            if (!selected) {
-                setStyle(getStyle() + "-fx-scale-x: 1.05; -fx-scale-y: 1.05;");
-            }
-        });
-        setOnMouseExited(e -> {
-            if (!selected) {
-                setStyle(getStyle().replace("-fx-scale-x: 1.05; -fx-scale-y: 1.05;", ""));
-            }
-        });
+
+        updateCardStyle();
     }
 
     private VBox createFallbackContent() {
-        VBox content = new VBox(5);
+        VBox content = new VBox(3);
         content.setAlignment(Pos.CENTER);
-        content.setStyle("-fx-padding: 8;");
+        content.setStyle("-fx-padding: 3;");
+
+        double fontScale = metrics.normalW() / HAND.normalW();
+        int nameSize = Math.max(7, (int) (8 * fontScale));
+        int subSize = Math.max(6, (int) (7 * fontScale));
 
         Label nameLabel = new Label(card.getName());
-        nameLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-wrap-text: true;");
-        nameLabel.setMaxWidth(CARD_WIDTH - 20);
+        nameLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: " + nameSize + "px; -fx-wrap-text: true;");
+        nameLabel.setMaxWidth(metrics.normalW() - 10);
         nameLabel.setWrapText(true);
 
-        Label specialInfoLabel = createSpecialInfoLabel();
+        Label specialInfoLabel = createSpecialInfoLabel(subSize);
         Label typeLabel = new Label(getTypeDisplayName());
-        typeLabel.setStyle("-fx-text-fill: white; -fx-font-size: 9px; -fx-opacity: 0.9;");
+        typeLabel.setStyle("-fx-text-fill: white; -fx-font-size: " + subSize + "px; -fx-opacity: 0.9;");
 
         if (specialInfoLabel != null) {
             content.getChildren().addAll(nameLabel, specialInfoLabel, typeLabel);
@@ -99,36 +154,30 @@ public class CardView extends StackPane {
         return content;
     }
 
-    private Label createSpecialInfoLabel() {
+    private Label createSpecialInfoLabel(int subSize) {
         if (card instanceof MoneyCard moneyCard) {
             Label label = new Label(moneyCard.getMoney() + "M");
-            label.setStyle("-fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;");
+            label.setStyle("-fx-text-fill: white; -fx-font-size: " + Math.max(9, subSize + 2) + "px; -fx-font-weight: bold;");
             return label;
         }
         if (card instanceof PropertyCard propertyCard) {
-            String rent = propertyCard.getRentDisplay();
-            String text = propertyCard.getPrice() + "M" + (rent.isEmpty() ? "" : "\nRent " + rent);
-            Label label = new Label(text);
-            label.setStyle("-fx-text-fill: white; -fx-font-size: 11px; -fx-font-weight: bold;");
-            label.setWrapText(true);
-            label.setMaxWidth(CARD_WIDTH - 20);
+            Label label = new Label(propertyCard.getPrice() + "M");
+            label.setStyle("-fx-text-fill: white; -fx-font-size: " + (subSize + 1) + "px; -fx-font-weight: bold;");
             return label;
         }
         if (card instanceof RentCard rentCard) {
-            String colors = rentCard.isAllColors() ? "All" : "Dual color";
-            Label label = new Label("Bank " + rentCard.getBankValueM() + "M\n" + colors);
-            label.setStyle("-fx-text-fill: white; -fx-font-size: 10px; -fx-font-weight: bold;");
-            label.setWrapText(true);
+            Label label = new Label(rentCard.getBankValueM() + "M");
+            label.setStyle("-fx-text-fill: white; -fx-font-size: " + subSize + "px; -fx-font-weight: bold;");
             return label;
         }
         if (card instanceof ActionCard actionCard) {
             Label label = new Label(actionCard.getBankValueM() + "M");
-            label.setStyle("-fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;");
+            label.setStyle("-fx-text-fill: white; -fx-font-size: " + (subSize + 2) + "px; -fx-font-weight: bold;");
             return label;
         }
         if (card instanceof WildpropertyCard wild) {
-            Label label = new Label(wild.isBankable() ? wild.getPrice() + "M" : "No bank");
-            label.setStyle("-fx-text-fill: white; -fx-font-size: 11px; -fx-font-weight: bold;");
+            Label label = new Label(wild.isBankable() ? wild.getPrice() + "M" : "—");
+            label.setStyle("-fx-text-fill: white; -fx-font-size: " + subSize + "px; -fx-font-weight: bold;");
             return label;
         }
         return null;
@@ -144,7 +193,7 @@ public class CardView extends StackPane {
     }
 
     private void updateCardStyle() {
-        String borderColor = selected ? "#f39c12" : "#2c3e50";
+        String borderColor = selected ? "#f39c12" : "#ffffff";
         int borderWidth = selected ? 3 : 2;
         String background = getChildren().stream().anyMatch(n -> n instanceof ImageView)
                 ? "transparent"
@@ -154,9 +203,8 @@ public class CardView extends StackPane {
                 "-fx-background-color: " + background + ";" +
                 "-fx-border-color: " + borderColor + ";" +
                 "-fx-border-width: " + borderWidth + ";" +
-                "-fx-background-radius: 8;" +
-                "-fx-border-radius: 8;" +
-                "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 5, 0, 0, 2);"
+                "-fx-background-radius: 5;" +
+                "-fx-border-radius: 5;"
         );
     }
 
@@ -195,7 +243,7 @@ public class CardView extends StackPane {
 
     public void setSelected(boolean selected) {
         this.selected = selected;
-        updateCardStyle();
+        applyVisualState();
     }
 
     public boolean isSelected() {
@@ -204,5 +252,35 @@ public class CardView extends StackPane {
 
     public Card getCard() {
         return card;
+    }
+
+    /** 手牌/银行/地产区的卡牌尺寸配置 */
+    public record CardMetrics(double normalW, double normalH, double slotW, double slotH) {
+        public CardMetrics(double normalW, double normalH, double slotW, double slotH) {
+            this.normalW = normalW;
+            this.normalH = normalH;
+            this.slotW = slotW;
+            this.slotH = slotH;
+        }
+
+        public double hoverW() {
+            return slotW;
+        }
+
+        public double hoverH() {
+            return slotH;
+        }
+
+        public CardMetrics scaled(double factor) {
+            if (factor >= 0.999) {
+                return this;
+            }
+            return new CardMetrics(
+                    normalW * factor,
+                    normalH * factor,
+                    slotW * factor,
+                    slotH * factor
+            );
+        }
     }
 }
