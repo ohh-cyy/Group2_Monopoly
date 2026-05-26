@@ -140,6 +140,18 @@ public class Player {
         return this.money >= amount;
     }
 
+    public Card findInHandById(String instanceId) {
+        if (instanceId == null) {
+            return null;
+        }
+        for (Card card : hand) {
+            if (instanceId.equals(card.getInstanceId())) {
+                return card;
+            }
+        }
+        return null;
+    }
+
     public int getHandSize() {
         return hand.size();
     }

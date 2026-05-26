@@ -48,6 +48,10 @@ public class GameEngine {
         return players.get(currentPlayerIndex);
     }
 
+    public int getCurrentPlayerIndex() {
+        return currentPlayerIndex;
+    }
+
     public void startNewTurn() {
         playsThisTurn = 0;
         hasDrawnThisTurn = false;
