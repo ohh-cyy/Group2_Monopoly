@@ -5,7 +5,7 @@ import network.server.GameServer;
 /** 联机服务端入口（无 JavaFX） */
 public class ServerMain {
     public static void main(String[] args) {
-        int port = 8888;
+        int port = 47390;
         if (args.length > 0) {
             try {
                 port = Integer.parseInt(args[0]);

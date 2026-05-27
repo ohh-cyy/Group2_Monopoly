@@ -78,7 +78,24 @@ public class GameController {
                 }
             });
         }
+        
+        setupButtonActions();
         initializeGame();
+    }
+    
+    private void setupButtonActions() {
+        if (drawCardBtn != null) {
+            drawCardBtn.setOnAction(e -> onDrawCardsClick());
+        }
+        if (playCardBtn != null) {
+            playCardBtn.setOnAction(e -> onPlayCardClick());
+        }
+        if (endTurnBtn != null) {
+            endTurnBtn.setOnAction(e -> onEndTurnClick());
+        }
+        if (newGameBtn != null) {
+            newGameBtn.setOnAction(e -> onNewGameClick());
+        }
     }
     
     private void initializeGame() {

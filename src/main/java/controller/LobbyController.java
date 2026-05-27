@@ -80,6 +80,8 @@ public class LobbyController {
     private void onLocalGameClick() {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/ui/game-view.fxml"));
+            GameController controller = new GameController();
+            loader.setController(controller);
             Scene scene = new Scene(loader.load(), 1200, 800);
             stage.setTitle("Monopoly Deal - 单机");
             stage.setScene(scene);

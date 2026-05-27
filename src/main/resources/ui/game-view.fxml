@@ -6,7 +6,6 @@
 <?import javafx.scene.text.Font?>
 
 <BorderPane xmlns:fx="http://javafx.com/fxml"
-            fx:controller="controller.GameController"
             prefWidth="1200"
             prefHeight="800">
     
@@ -119,22 +118,18 @@
                        style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
                 <Button fx:id="drawCardBtn" 
                         text="Draw Cards (2)" 
-                        onAction="#onDrawCardsClick"
                         maxWidth="Infinity"
                         style="-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 10;"/>
                 <Button fx:id="playCardBtn" 
                         text="Play Selected Card" 
-                        onAction="#onPlayCardClick"
                         maxWidth="Infinity"
                         style="-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 10;"/>
                 <Button fx:id="endTurnBtn" 
                         text="End Turn" 
-                        onAction="#onEndTurnClick"
                         maxWidth="Infinity"
                         style="-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 10;"/>
                 <Button fx:id="newGameBtn" 
                         text="New Game" 
-                        onAction="#onNewGameClick"
                         maxWidth="Infinity"
                         style="-fx-background-color: #9b59b6; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 10;"/>
             </VBox>

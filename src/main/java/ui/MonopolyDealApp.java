@@ -16,7 +16,7 @@ public class MonopolyDealApp extends Application {
         controller.setStage(primaryStage);
 
         Scene scene = new Scene(loader.getRoot(), 520, 420);
-        primaryStage.setTitle("Monopoly Deal - 大厅");
+        primaryStage.setTitle("Monopoly Deal - Lobby");
         primaryStage.setScene(scene);
         primaryStage.show();
     }

@@ -57,21 +57,27 @@ public class NetworkGameController {
     private List<Card> localBank = new ArrayList<>();
     private List<Card> localProperties = new ArrayList<>();
 
-    public void attach(NetworkClient client, int seat) {
-        this.client = client;
-        this.localSeat = seat;
-        client.setMessageListener(this::onServerMessage);
-        if (newGameBtn != null) {
-            newGameBtn.setText("断开连接");
-            newGameBtn.setOnAction(e -> disconnect());
-        }
-        client.requestSync();
-    }
-
     @FXML
     public void initialize() {
         if (playerHandScroll != null) {
             playerHandScroll.widthProperty().addListener((obs, o, n) -> updatePlayerHand());
+        }
+        setupButtonActions();
+    }
+    
+    private void setupButtonActions() {
+        if (drawCardBtn != null) {
+            drawCardBtn.setOnAction(e -> onDrawCardsClick());
+        }
+        if (playCardBtn != null) {
+            playCardBtn.setOnAction(e -> onPlayCardClick());
+        }
+        if (endTurnBtn != null) {
+            endTurnBtn.setOnAction(e -> onEndTurnClick());
+        }
+        if (newGameBtn != null) {
+            newGameBtn.setText("断开连接");
+            newGameBtn.setOnAction(e -> disconnect());
         }
     }
 
@@ -127,8 +133,7 @@ public class NetworkGameController {
         }
     }
 
-    @FXML
-    private void onDrawCardsClick() {
+    public void onDrawCardsClick() {
         if (!isMyTurn()) {
             showStatus("还没轮到你", true);
             return;
@@ -136,8 +141,7 @@ public class NetworkGameController {
         client.draw();
     }
 
-    @FXML
-    private void onPlayCardClick() {
+    public void onPlayCardClick() {
         if (!isMyTurn()) {
             showStatus("还没轮到你", true);
             return;
@@ -223,8 +227,7 @@ public class NetworkGameController {
         return kind != null && !kind.equals("MONEY") && !kind.equals("PROPERTY") && !kind.equals("WILD_PROPERTY");
     }
 
-    @FXML
-    private void onEndTurnClick() {
+    public void onEndTurnClick() {
         if (!isMyTurn()) {
             showStatus("还没轮到你", true);
             return;
@@ -433,4 +436,12 @@ public class NetworkGameController {
             gameLog.setScrollTop(Double.MAX_VALUE);
         }
     }
+
+    public void attach(NetworkClient client, int seat) {
+        this.client = client;
+        this.localSeat = seat;
+        client.setMessageListener(this::onServerMessage);
+        client.requestSync();
+    }
+
 }
