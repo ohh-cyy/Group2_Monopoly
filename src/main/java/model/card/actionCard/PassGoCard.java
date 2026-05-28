@@ -7,6 +7,8 @@ import model.player.Player;
 
 public class PassGoCard extends ActionCard {
 
+    public static final int CARDS_TO_DRAW = 2;
+
     public PassGoCard(String name, String description, CardType type) {
         super(name, description, type, 1);
     }
@@ -17,7 +19,10 @@ public class PassGoCard extends ActionCard {
 
     @Override
     public void use(Player player, GameEngine game) {
-        for (int i = 0; i < 2; i++) {
+        if (player == null || game == null) {
+            return;
+        }
+        for (int i = 0; i < CARDS_TO_DRAW; i++) {
             if (game.getDeck().isEmpty()) {
                 break;
             }

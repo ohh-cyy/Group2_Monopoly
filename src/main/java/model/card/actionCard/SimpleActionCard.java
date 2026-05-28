@@ -16,6 +16,6 @@ public class SimpleActionCard extends ActionCard {
 
     @Override
     public void use(Player player, GameEngine game) {
-        // 无额外效果
+        // This card has no special effect.
     }
 }

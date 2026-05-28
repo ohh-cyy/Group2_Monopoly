@@ -19,15 +19,20 @@ public class MyBirthday extends ActionCard {
 
     @Override
     public void use(Player player, GameEngine game) {
-        // 由 GameController 调用 collectFromEveryone
+        collectFromEveryone(player, game);
     }
 
     /**
-     * 每位其他玩家向 birthday 玩家支付 2M（银行不足时用地产抵付，地产进入收礼者地产区）。
+     * Collects 2M from every other player. If a player cannot pay the full amount,
+     * the method collects as much as possible from that player.
      *
-     * @return 总共收到的金额
+     * @return the total amount collected
      */
     public int collectFromEveryone(Player birthdayPlayer, GameEngine game) {
+        if (birthdayPlayer == null || game == null) {
+            return 0;
+        }
+
         int total = 0;
         for (Player other : game.getPlayers()) {
             if (other.equals(birthdayPlayer)) {

@@ -5,7 +5,7 @@ import model.enums.CardType;
 import model.player.Player;
 
 /**
- * 必须与租金牌在同一回合内紧接着使用：先打本牌，再打 Rent，租金翻倍。
+ * Activates the double rent effect for the next Rent card played by the same player.
  */
 public class DoubleTheRent extends ActionCard {
 
@@ -19,11 +19,14 @@ public class DoubleTheRent extends ActionCard {
 
     @Override
     public void use(Player player, GameEngine game) {
-        game.setRentDoubled(true);
+        activateForNextRent(game);
     }
 
+    /**
+     * Marks the next Rent card as doubled. The effect cannot be stacked.
+     */
     public boolean activateForNextRent(GameEngine game) {
-        if (game.isRentDoubled()) {
+        if (game == null || game.isRentDoubled()) {
             return false;
         }
         game.setRentDoubled(true);

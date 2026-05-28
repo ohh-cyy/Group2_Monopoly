@@ -20,24 +20,30 @@ public class DealBreaker extends ActionCard {
 
     @Override
     public void use(Player player, GameEngine game) {
-        // 由界面选择目标后调用 useOnTarget
+        // The controller asks the player to choose a target and then calls useOnTarget.
     }
 
     /**
-     * 从目标玩家偷走一整套指定颜色的地产。
-     * @return 是否成功偷取
+     * Steals one complete property set of the selected color from another player.
+     *
+     * @return true if the full set was moved successfully
      */
     public boolean useOnTarget(Player player, Player target, Color color) {
-        if (target == null || color == null || player.equals(target)) {
+        if (player == null || target == null || color == null || player.equals(target)) {
             return false;
         }
         if (!target.hasCompleteSet(color)) {
             return false;
         }
+
         List<PropertyCard> stolen = target.removePropertySet(color);
+        if (stolen.isEmpty()) {
+            return false;
+        }
+
         for (PropertyCard property : stolen) {
             player.addProperty(property);
         }
-        return !stolen.isEmpty();
+        return true;
     }
 }

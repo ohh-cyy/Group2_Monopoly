@@ -6,6 +6,7 @@ module com.example.zyzzs {
     requires com.dlsc.formsfx;
     requires org.kordamp.bootstrapfx.core;
     requires com.almasb.fxgl.all;
+    requires javafx.graphics;
 
     opens ui to javafx.fxml;
     opens engine to javafx.base;

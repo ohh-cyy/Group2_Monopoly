@@ -19,11 +19,15 @@ public class DebtCollector extends ActionCard {
 
     @Override
     public void use(Player player, GameEngine game) {
-        // 由 GameController 选择目标后调用 collectFrom
+        // The controller chooses the target player and then calls collectFrom.
     }
 
+    /**
+     * Collects 5M from one chosen opponent. If the opponent cannot pay the full
+     * amount, the method collects as much as possible.
+     */
     public int collectFrom(Player collector, Player target) {
-        if (target == null || target.equals(collector)) {
+        if (collector == null || target == null || target.equals(collector)) {
             return 0;
         }
         return RentPayment.collectUpTo(collector, target, DEBT_AMOUNT);

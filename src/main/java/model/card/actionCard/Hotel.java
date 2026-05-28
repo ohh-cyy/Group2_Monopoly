@@ -8,6 +8,8 @@ import model.player.Player;
 
 public class Hotel extends ActionCard {
 
+    private static final String IMPROVEMENT_NAME_PREFIX = "Hotel+";
+
     public Hotel(String name, String description, CardType type) {
         super(name, description, type, 4);
     }
@@ -18,14 +20,43 @@ public class Hotel extends ActionCard {
 
     @Override
     public void use(Player player, GameEngine game) {
-        addHotelToSet(player, Color.RED);
+        // The controller chooses the complete set and then calls addHotelToSet.
     }
 
+    /**
+     * Adds a hotel to a complete property set. A hotel requires a house first.
+     */
     public boolean addHotelToSet(Player player, Color color) {
-        if (!player.hasCompleteSet(color)) {
+        if (player == null || color == null || !player.hasCompleteSet(color)) {
             return false;
         }
-        player.addProperty(new PropertyCard("Hotel+" + color, "Hotel on " + color, color, 4));
+        if (!hasHouse(player, color) || hasHotel(player, color)) {
+            return false;
+        }
+        player.addProperty(new PropertyCard(IMPROVEMENT_NAME_PREFIX + color, "Hotel on " + color, color, 4));
         return true;
+    }
+
+    private boolean hasHouse(Player player, Color color) {
+        String expectedName = "House+" + color;
+        for (PropertyCard property : player.getPropertiesByColor(color)) {
+            if (expectedName.equals(property.getName())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean hasHotel(Player player, Color color) {
+        if (player == null || color == null) {
+            return false;
+        }
+        String expectedName = IMPROVEMENT_NAME_PREFIX + color;
+        for (PropertyCard property : player.getPropertiesByColor(color)) {
+            if (expectedName.equals(property.getName())) {
+                return true;
+            }
+        }
+        return false;
     }
 }

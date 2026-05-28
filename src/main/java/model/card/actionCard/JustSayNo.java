@@ -5,8 +5,8 @@ import model.enums.CardType;
 import model.player.Player;
 
 /**
- * 响应牌：当其他玩家对你打出行动牌效果时可打出，取消该效果。
- * 实际响应逻辑在 GameController 中处理。
+ * Response card used to cancel an action card played against the player.
+ * The actual response choice is handled by the controller.
  */
 public class JustSayNo extends ActionCard {
 
@@ -20,6 +20,6 @@ public class JustSayNo extends ActionCard {
 
     @Override
     public void use(Player player, GameEngine game) {
-        // 仅作为响应打出，由控制器从手牌移除并放入弃牌堆
+        // This card is played as a response, so the controller handles the effect.
     }
 }

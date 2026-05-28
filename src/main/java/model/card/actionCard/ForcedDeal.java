@@ -18,9 +18,13 @@ public class ForcedDeal extends ActionCard {
 
     @Override
     public void use(Player player, GameEngine game) {
-        // 由 GameController 选择双方地产并交换
+        // The controller chooses both properties and then calls swapProperties.
     }
 
+    /**
+     * Swaps one property from the current player with one property from an opponent.
+     * The opponent's property cannot be part of a complete set.
+     */
     public boolean swapProperties(Player player, PropertyCard playerGives,
                                   Player target, PropertyCard targetGives) {
         if (player == null || target == null || player.equals(target)
