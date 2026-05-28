@@ -18,13 +18,17 @@ public class House extends ActionCard {
         super(instanceId, name, description, type, 3);
     }
 
+    /**
+     * Empty by design — the controller chooses the target set via UI and
+     * calls {@link #addHouseToSet}.
+     */
     @Override
     public void use(Player player, GameEngine game) {
-        // The controller chooses the complete set and then calls addHouseToSet.
     }
 
     /**
-     * Adds a house to a complete property set. A set can only have one house.
+     * Adds a house to a complete property set. Only one house per set is
+     * allowed; returns false if a house already exists on this set.
      */
     public boolean addHouseToSet(Player player, Color color) {
         if (player == null || color == null || !player.hasCompleteSet(color)) {

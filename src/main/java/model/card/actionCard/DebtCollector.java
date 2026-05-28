@@ -17,14 +17,17 @@ public class DebtCollector extends ActionCard {
         super(instanceId, name, description, type, 3);
     }
 
+    /**
+     * Empty by design — the controller picks the target via UI and calls
+     * {@link #collectFrom}.
+     */
     @Override
     public void use(Player player, GameEngine game) {
-        // The controller chooses the target player and then calls collectFrom.
     }
 
     /**
      * Collects 5M from one chosen opponent. If the opponent cannot pay the full
-     * amount, the method collects as much as possible.
+     * amount, bank cards are taken first, then properties.
      */
     public int collectFrom(Player collector, Player target) {
         if (collector == null || target == null || target.equals(collector)) {

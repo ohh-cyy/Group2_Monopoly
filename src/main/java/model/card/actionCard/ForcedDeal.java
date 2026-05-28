@@ -16,14 +16,17 @@ public class ForcedDeal extends ActionCard {
         super(instanceId, name, description, type, 3);
     }
 
+    /**
+     * Empty by design — the controller prompts both players to pick
+     * properties, then calls {@link #swapProperties}.
+     */
     @Override
     public void use(Player player, GameEngine game) {
-        // The controller chooses both properties and then calls swapProperties.
     }
 
     /**
-     * Swaps one property from the current player with one property from an opponent.
-     * The opponent's property cannot be part of a complete set.
+     * Swaps one property from the current player with one property from an
+     * opponent. The opponent's property cannot be part of a complete set.
      */
     public boolean swapProperties(Player player, PropertyCard playerGives,
                                   Player target, PropertyCard targetGives) {

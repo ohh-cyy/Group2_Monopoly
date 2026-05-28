@@ -18,13 +18,17 @@ public class Hotel extends ActionCard {
         super(instanceId, name, description, type, 4);
     }
 
+    /**
+     * Empty by design — the controller chooses the target set via UI and
+     * calls {@link #addHotelToSet}.
+     */
     @Override
     public void use(Player player, GameEngine game) {
-        // The controller chooses the complete set and then calls addHotelToSet.
     }
 
     /**
-     * Adds a hotel to a complete property set. A hotel requires a house first.
+     * Adds a hotel to a complete property set. Requires a house on that set
+     * first; returns false if no house exists or a hotel is already present.
      */
     public boolean addHotelToSet(Player player, Color color) {
         if (player == null || color == null || !player.hasCompleteSet(color)) {
