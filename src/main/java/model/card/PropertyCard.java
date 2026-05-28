@@ -16,6 +16,12 @@ public class PropertyCard extends Card {
         this.price = price;
     }
 
+    public PropertyCard(String instanceId, String name, String description, Color color, int price) {
+        super(instanceId, name, description, CardType.PROPERTY);
+        this.color = color;
+        this.price = price;
+    }
+
     @Override
     public Color getColor() {
         return color;

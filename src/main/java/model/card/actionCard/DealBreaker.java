@@ -14,6 +14,10 @@ public class DealBreaker extends ActionCard {
         super(name, description, type, 5);
     }
 
+    public DealBreaker(String instanceId, String name, String description, CardType type) {
+        super(instanceId, name, description, type, 5);
+    }
+
     @Override
     public void use(Player player, GameEngine game) {
         // 由界面选择目标后调用 useOnTarget

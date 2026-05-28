@@ -12,6 +12,10 @@ public class Hotel extends ActionCard {
         super(name, description, type, 4);
     }
 
+    public Hotel(String instanceId, String name, String description, CardType type) {
+        super(instanceId, name, description, type, 4);
+    }
+
     @Override
     public void use(Player player, GameEngine game) {
         addHotelToSet(player, Color.RED);

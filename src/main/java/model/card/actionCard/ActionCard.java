@@ -16,6 +16,11 @@ public abstract class ActionCard extends Card {
         this.bankValueM = bankValueM;
     }
 
+    public ActionCard(String instanceId, String name, String description, CardType type, int bankValueM) {
+        super(instanceId, name, description, type);
+        this.bankValueM = bankValueM;
+    }
+
     public int getBankValueM() {
         return bankValueM;
     }

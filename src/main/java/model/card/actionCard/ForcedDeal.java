@@ -12,6 +12,10 @@ public class ForcedDeal extends ActionCard {
         super(name, description, type, 3);
     }
 
+    public ForcedDeal(String instanceId, String name, String description, CardType type) {
+        super(instanceId, name, description, type, 3);
+    }
+
     @Override
     public void use(Player player, GameEngine game) {
         // 由 GameController 选择双方地产并交换

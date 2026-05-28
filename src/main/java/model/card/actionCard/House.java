@@ -12,6 +12,10 @@ public class House extends ActionCard {
         super(name, description, type, 3);
     }
 
+    public House(String instanceId, String name, String description, CardType type) {
+        super(instanceId, name, description, type, 3);
+    }
+
     @Override
     public void use(Player player, GameEngine game) {
         addHouseToSet(player, Color.GREEN);

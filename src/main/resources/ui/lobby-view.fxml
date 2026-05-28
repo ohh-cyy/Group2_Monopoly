@@ -5,36 +5,53 @@
 
 <BorderPane xmlns:fx="http://javafx.com/fxml"
             fx:controller="controller.LobbyController"
-            prefWidth="520"
-            prefHeight="420"
+            prefWidth="540"
+            prefHeight="460"
             style="-fx-padding: 24; -fx-background-color: #ecf0f1;">
     <center>
-        <VBox spacing="16" alignment="CENTER" maxWidth="420">
+        <VBox spacing="14" alignment="CENTER" maxWidth="460">
             <Label text="Monopoly Deal"
                    style="-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: #074001;"/>
-            <Label text="2 人联机调试 · TCP + JSON"
-                   style="-fx-font-size: 14px; -fx-text-fill: #555;"/>
+            <Label text="伪联机：共享房间文件夹同步（无需 TCP）"
+                   wrapText="true"
+                   style="-fx-font-size: 13px; -fx-text-fill: #555;"/>
 
             <VBox spacing="8" style="-fx-background-color: white; -fx-padding: 16; -fx-background-radius: 8;">
-                <Label text="服务器地址" style="-fx-font-weight: bold;"/>
-                <TextField fx:id="hostField" text="127.0.0.1" promptText="IP 地址"/>
-                <Label text="端口" style="-fx-font-weight: bold;"/>
-                <TextField fx:id="portField" text="8888" promptText="端口"/>
                 <Label text="你的昵称" style="-fx-font-weight: bold;"/>
                 <TextField fx:id="nameField" promptText="玩家昵称"/>
-                <Button fx:id="connectBtn" text="加入联机（需 2 人）"
-                        onAction="#onConnectClick"
-                        maxWidth="Infinity"
-                        style="-fx-background-color: #3498db; -fx-text-fill: white; -fx-padding: 10;"/>
+
+                <HBox spacing="8">
+                    <Button fx:id="hostBtn" text="创建房间（Host）"
+                            onAction="#onHostClick"
+                            HBox.hgrow="ALWAYS"
+                            maxWidth="Infinity"
+                            style="-fx-background-color: #3498db; -fx-text-fill: white; -fx-padding: 10;"/>
+                    <Button fx:id="joinBtn" text="加入房间"
+                            onAction="#onJoinClick"
+                            HBox.hgrow="ALWAYS"
+                            maxWidth="Infinity"
+                            style="-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-padding: 10;"/>
+                </HBox>
+
+                <Label text="房间号（加入时填写）" style="-fx-font-weight: bold;"/>
+                <TextField fx:id="roomCodeField" promptText="例如 1234"/>
             </VBox>
 
-            <Label fx:id="statusLabel" text="请先启动服务器，再连接"
-                   wrapText="true"
-                   style="-fx-text-fill: #333;"/>
+            <Label fx:id="statusLabel" text="Host 创建房间后会显示房间号，发给其他玩家加入"
+                   wrapText="true"/>
 
-            <ListView fx:id="waitingList" prefHeight="100" maxHeight="120"/>
+            <Label fx:id="roomCodeLabel" text=""
+                   style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #074001;"/>
 
-            <Button text="单机游戏（本地 4 人热座）"
+            <ListView fx:id="playerList" prefHeight="100"/>
+
+            <Button fx:id="startBtn" text="开始游戏（至少 2 人，仅 Host）"
+                    onAction="#onStartClick"
+                    disable="true"
+                    maxWidth="Infinity"
+                    style="-fx-background-color: #e67e22; -fx-text-fill: white; -fx-padding: 10;"/>
+
+            <Button text="单机热座（本机 4 人）"
                     onAction="#onLocalGameClick"
                     maxWidth="Infinity"
                     style="-fx-background-color: #9b59b6; -fx-text-fill: white; -fx-padding: 10;"/>

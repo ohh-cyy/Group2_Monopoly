@@ -10,6 +10,10 @@ public class SimpleActionCard extends ActionCard {
         super(name, description, CardType.ACTION, bankValueM);
     }
 
+    public SimpleActionCard(String instanceId, String name, String description, CardType type, int bankValueM) {
+        super(instanceId, name, description, type, bankValueM);
+    }
+
     @Override
     public void use(Player player, GameEngine game) {
         // 无额外效果

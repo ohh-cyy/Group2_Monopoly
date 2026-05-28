@@ -13,6 +13,10 @@ public class MyBirthday extends ActionCard {
         super(name, description, type, 2);
     }
 
+    public MyBirthday(String instanceId, String name, String description, CardType type) {
+        super(instanceId, name, description, type, 2);
+    }
+
     @Override
     public void use(Player player, GameEngine game) {
         // 由 GameController 调用 collectFromEveryone

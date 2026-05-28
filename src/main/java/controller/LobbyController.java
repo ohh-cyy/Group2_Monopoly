@@ -9,141 +9,184 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
-import network.client.NetworkClient;
-import network.protocol.MessageTypes;
-import network.protocol.ServerMessage;
-import network.server.GameSession;
+import sync.RoomFolder;
+import sync.RoomStorage;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class LobbyController {
     @FXML
-    private TextField hostField;
-    @FXML
-    private TextField portField;
-    @FXML
     private TextField nameField;
+    @FXML
+    private TextField roomCodeField;
     @FXML
     private Label statusLabel;
     @FXML
-    private ListView<String> waitingList;
+    private Label roomCodeLabel;
     @FXML
-    private Button connectBtn;
+    private ListView<String> playerList;
+    @FXML
+    private Button hostBtn;
+    @FXML
+    private Button joinBtn;
+    @FXML
+    private Button startBtn;
 
-    private NetworkClient client;
     private Stage stage;
-    private int yourSeat = -1;
+    private RoomFolder roomFolder;
+    private int localSeat = -1;
+    private boolean isHost;
+    private Timer pollTimer;
 
     public void setStage(Stage stage) {
         this.stage = stage;
     }
 
     @FXML
-    private void onConnectClick() {
-        String host = hostField.getText().trim();
+    public void initialize() {
+        startPollTimer();
+    }
+
+    @FXML
+    private void onHostClick() {
         String name = nameField.getText().trim();
-        int port;
-        try {
-            port = Integer.parseInt(portField.getText().trim());
-        } catch (NumberFormatException e) {
-            statusLabel.setText("端口必须是数字");
-            return;
-        }
         if (name.isEmpty()) {
             statusLabel.setText("请输入昵称");
             return;
         }
-        if (client != null) {
-            client.disconnect();
+        try {
+            roomFolder = RoomStorage.createRoom(name);
+            localSeat = 0;
+            isHost = true;
+            roomCodeField.setText(roomFolder.getRoomCode());
+            roomCodeLabel.setText("房间号: " + roomFolder.getRoomCode());
+            statusLabel.setText("房间已创建。把房间号发给其他玩家，等人齐后点「开始游戏」。");
+            startBtn.setDisable(false);
+            hostBtn.setDisable(true);
+            joinBtn.setDisable(true);
+            refreshPlayers();
+        } catch (IOException e) {
+            statusLabel.setText("创建失败: " + e.getMessage());
         }
+    }
 
-        connectBtn.setDisable(true);
-        statusLabel.setText("正在连接 " + host + ":" + port + " ...");
-
-        client = new NetworkClient();
-        client.setMessageListener(this::handleServerMessage);
-
-        new Thread(() -> {
-            try {
-                client.connect(host, port);
-                client.join(name);
-            } catch (IOException e) {
-                Platform.runLater(() -> {
-                    statusLabel.setText("连接失败: " + e.getMessage());
-                    connectBtn.setDisable(false);
-                });
+    @FXML
+    private void onJoinClick() {
+        String name = nameField.getText().trim();
+        String code = roomCodeField.getText().trim();
+        if (name.isEmpty() || code.isEmpty()) {
+            statusLabel.setText("请输入昵称和房间号");
+            return;
+        }
+        try {
+            roomFolder = RoomStorage.openRoom(code);
+            if (RoomStorage.isStarted(roomFolder)) {
+                statusLabel.setText("游戏已开始，无法加入");
+                return;
             }
-        }, "lobby-connect").start();
+            localSeat = RoomStorage.joinNextSeat(roomFolder, name);
+            isHost = false;
+            roomCodeLabel.setText("已加入房间: " + roomFolder.getRoomCode());
+            statusLabel.setText("已加入，等待 Host 开始游戏…");
+            hostBtn.setDisable(true);
+            joinBtn.setDisable(true);
+            startBtn.setDisable(true);
+            refreshPlayers();
+        } catch (IOException e) {
+            statusLabel.setText("加入失败: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    private void onStartClick() {
+        if (!isHost || roomFolder == null) {
+            return;
+        }
+        try {
+            List<String> names = RoomStorage.listPlayerNames(roomFolder);
+            if (names.size() < RoomFolder.MIN_PLAYERS_TO_START) {
+                statusLabel.setText("至少需要 " + RoomFolder.MIN_PLAYERS_TO_START + " 名玩家");
+                return;
+            }
+            openGame(true, names);
+        } catch (Exception e) {
+            statusLabel.setText("开始失败: " + e.getMessage());
+        }
     }
 
     @FXML
     private void onLocalGameClick() {
+        stopPollTimer();
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/ui/game-view.fxml"));
-            GameController controller = new GameController();
-            loader.setController(controller);
-            Scene scene = new Scene(loader.load(), 1200, 800);
+            loader.load();
+            GameController controller = loader.getController();
+            Scene scene = new Scene(loader.getRoot(), 1200, 800);
+            controller.startLocalGame();
             stage.setTitle("Monopoly Deal - 单机");
             stage.setScene(scene);
         } catch (IOException e) {
-            statusLabel.setText("无法打开游戏: " + e.getMessage());
+            statusLabel.setText("无法打开: " + e.getMessage());
         }
     }
 
-    private void handleServerMessage(ServerMessage message) {
-        Platform.runLater(() -> processMessage(message));
+    private void openGame(boolean host, List<String> playerNames) throws Exception {
+        stopPollTimer();
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("/ui/game-view.fxml"));
+        loader.load();
+        GameController controller = loader.getController();
+        Scene scene = new Scene(loader.getRoot(), 1200, 800);
+        if (host) {
+            controller.startRoomHost(roomFolder, localSeat, playerNames);
+        } else {
+            controller.startRoomClient(roomFolder, localSeat);
+        }
+        stage.setTitle("Monopoly Deal - 房间 " + roomFolder.getRoomCode());
+        stage.setScene(scene);
     }
 
-    private void processMessage(ServerMessage message) {
-        if (message == null) {
+    private void refreshPlayers() {
+        if (roomFolder == null) {
             return;
         }
-        switch (message.type) {
-            case MessageTypes.JOINED -> {
-                yourSeat = message.yourSeat;
-                statusLabel.setText(message.message + "（" + message.waitingCount
-                        + "/" + GameSession.MAX_PLAYERS + " 人）");
-                refreshWaitingList(message.waitingCount);
-            }
-            case MessageTypes.WAITING -> {
-                statusLabel.setText(message.message);
-                refreshWaitingList(message.waitingCount);
-            }
-            case MessageTypes.GAME_STARTED -> {
-                statusLabel.setText(message.message);
-                openNetworkGame();
-            }
-            case MessageTypes.ERROR -> {
-                statusLabel.setText(message.message);
-                connectBtn.setDisable(false);
-            }
-            default -> {
-            }
-        }
-    }
-
-    private void refreshWaitingList(int count) {
-        waitingList.getItems().clear();
-        for (int i = 1; i <= count; i++) {
-            waitingList.getItems().add("玩家 " + i + (i - 1 == yourSeat ? "（你）" : ""));
-        }
-        while (waitingList.getItems().size() < GameSession.MAX_PLAYERS) {
-            waitingList.getItems().add("等待加入...");
-        }
-    }
-
-    private void openNetworkGame() {
         try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/ui/game-view.fxml"));
-            NetworkGameController controller = new NetworkGameController();
-            loader.setController(controller);
-            Scene scene = new Scene(loader.load(), 1200, 800);
-            controller.attach(client, yourSeat);
-            stage.setTitle("Monopoly Deal - 联机");
-            stage.setScene(scene);
-        } catch (IOException e) {
-            statusLabel.setText("无法进入游戏: " + e.getMessage());
-            connectBtn.setDisable(false);
+            List<String> names = RoomStorage.listPlayerNames(roomFolder);
+            playerList.getItems().setAll(names);
+            if (isHost && !RoomStorage.isStarted(roomFolder)) {
+                startBtn.setDisable(names.size() < RoomFolder.MIN_PLAYERS_TO_START);
+            }
+            if (!isHost && RoomStorage.isStarted(roomFolder)) {
+                statusLabel.setText("游戏已开始，正在进入…");
+                try {
+                    openGame(false, names);
+                } catch (Exception ex) {
+                    statusLabel.setText("进入游戏失败: " + ex.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            statusLabel.setText("刷新失败: " + e.getMessage());
+        }
+    }
+
+    private void startPollTimer() {
+        pollTimer = new Timer("lobby-poll", true);
+        pollTimer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                if (roomFolder != null) {
+                    Platform.runLater(LobbyController.this::refreshPlayers);
+                }
+            }
+        }, 500, 500);
+    }
+
+    private void stopPollTimer() {
+        if (pollTimer != null) {
+            pollTimer.cancel();
+            pollTimer = null;
         }
     }
 }

@@ -4,7 +4,11 @@ import engine.Deck;
 import engine.DeckFactory;
 import engine.GameEngine;
 import engine.PropertyRules;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Platform;
+import javafx.util.Duration;
+import sync.*;
 import ui.CardView;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
@@ -16,6 +20,7 @@ import model.enums.CardType;
 import model.enums.Color;
 import model.player.Player;
 
+import java.io.IOException;
 import java.util.*;
 
 public class GameController {
@@ -32,13 +37,16 @@ public class GameController {
     private VBox playersList;
     
     @FXML
+    private VBox allPlayersPropertiesPanel;
+
+    @FXML
+    private Label turnBankLabel;
+    
+    @FXML
     private ScrollPane playerHandScroll;
 
     @FXML
     private HBox playerHand;
-
-    @FXML
-    private FlowPane playerProperties;
 
     @FXML
     private FlowPane playerBank;
@@ -67,20 +75,61 @@ public class GameController {
     private Player currentPlayer;
     private Card selectedCard;
     private Random random;
+
+    private enum SessionMode { LOCAL, HOST, CLIENT }
+    private SessionMode sessionMode = SessionMode.LOCAL;
+    private RoomFolder roomFolder;
+    private int localSeat;
+    private Timeline syncTimeline;
+    private final List<String> roomLogLines = new ArrayList<>();
+    private List<Card> viewHand = new ArrayList<>();
+    private List<Card> viewBank = new ArrayList<>();
+    private RoomPublicSnapshot remotePublic;
+    private long lastSeenVersion = -1;
     
     @FXML
     public void initialize() {
         random = new Random();
         if (playerHandScroll != null) {
             playerHandScroll.widthProperty().addListener((obs, oldW, newW) -> {
-                if (currentPlayer != null && gameEngine != null) {
+                if (!viewHand.isEmpty() || currentPlayer != null) {
                     updatePlayerHand();
                 }
             });
         }
-        
         setupButtonActions();
+    }
+
+    public void startLocalGame() {
+        stopSync();
+        sessionMode = SessionMode.LOCAL;
+        roomFolder = null;
         initializeGame();
+    }
+
+    public void startRoomHost(RoomFolder folder, int seat, List<String> playerNames) throws Exception {
+        stopSync();
+        sessionMode = SessionMode.HOST;
+        roomFolder = folder;
+        localSeat = seat;
+        initializeGameWithPlayers(playerNames);
+        RoomStorage.markStarted(folder);
+        publishRoomState();
+        startSyncTimer();
+    }
+
+    public void startRoomClient(RoomFolder folder, int seat) {
+        stopSync();
+        sessionMode = SessionMode.CLIENT;
+        roomFolder = folder;
+        localSeat = seat;
+        gameEngine = null;
+        players = new ArrayList<>();
+        remotePublic = null;
+        viewHand = new ArrayList<>();
+        viewBank = new ArrayList<>();
+        startSyncTimer();
+        pullRemoteStateQuiet();
     }
     
     private void setupButtonActions() {
@@ -99,40 +148,35 @@ public class GameController {
     }
     
     private void initializeGame() {
+        initializeGameWithPlayers(List.of("Player 1", "Player 2", "Player 3", "Player 4"));
+    }
+
+    private void initializeGameWithPlayers(List<String> names) {
         logMessage("=== Starting New Game ===");
-        
-        // 创建玩家
         players = new ArrayList<>();
-        players.add(new Player("Player 1"));
-        players.add(new Player("Player 2"));
-        players.add(new Player("Player 3"));
-        players.add(new Player("Player 4"));
-        
-        // 创建卡牌
+        for (String name : names) {
+            players.add(new Player(name));
+        }
         List<Card> cardList = DeckFactory.createFullDeck();
-        
-        // 创建牌堆
         deck = new Deck(cardList);
-        
-        // 创建游戏引擎
         gameEngine = new GameEngine(players, deck);
-        
-        // 开始游戏（发初始牌）
         gameEngine.startGame();
-        
         currentPlayer = gameEngine.getCurrentPlayer();
-        
-        logMessage("Game initialized with " + players.size() + " players");
+        roomLogLines.clear();
+        logMessage("Players: " + String.join(", ", names));
         updateUI();
     }
     
     @FXML
     private void onDrawCardsClick() {
-        if (!isCurrentPlayerTurn()) {
-            showStatus("Not your turn!", true);
+        if (!isMyActionTurn()) {
+            showStatus("还没轮到你", true);
             return;
         }
-        
+        if (sessionMode == SessionMode.CLIENT) {
+            submitRoomCommand("DRAW", null, null, null);
+            return;
+        }
         drawCardsFromPile();
     }
     
@@ -151,21 +195,23 @@ public class GameController {
         logMessage(player.getName() + " 抽了 2 张牌");
         showStatus("已抽 2 张牌（本回合不能再抽）。剩余可出牌次数: "
                 + gameEngine.getRemainingPlays(), false);
-        updateUI();
+        afterStateChange();
     }
     
     @FXML
     private void onPlayCardClick() {
-        if (!isCurrentPlayerTurn()) {
-            showStatus("Not your turn!", true);
+        if (!isMyActionTurn()) {
+            showStatus("还没轮到你", true);
             return;
         }
-        
         if (selectedCard == null) {
             showStatus("请先点击手牌选中一张牌，再点「出牌」", true);
             return;
         }
-        
+        if (sessionMode == SessionMode.CLIENT) {
+            playSelectedCardAsClient();
+            return;
+        }
         playSelectedCard();
     }
     
@@ -262,7 +308,7 @@ public class GameController {
         } else {
             showStatus("已存入银行。本回合还可出 " + gameEngine.getRemainingPlays() + " 张牌", false);
         }
-        updateUI();
+        afterStateChange();
     }
 
     private enum ActionPlayChoice {
@@ -744,16 +790,19 @@ public class GameController {
         logMessage(ending.getName() + " 回合结束 → " + currentPlayer.getName() + " 的回合");
         showStatus("已出 3 张牌，自动换到 " + currentPlayer.getName()
                 + "。请先抽 2 张牌再出牌", false);
-        updateUI();
+        afterStateChange();
     }
     
     @FXML
     private void onEndTurnClick() {
-        if (!isCurrentPlayerTurn()) {
-            showStatus("Not your turn!", true);
+        if (!isMyActionTurn()) {
+            showStatus("还没轮到你", true);
             return;
         }
-        
+        if (sessionMode == SessionMode.CLIENT) {
+            submitRoomCommand("END_TURN", null, null, null);
+            return;
+        }
         endCurrentTurn();
     }
     
@@ -763,7 +812,7 @@ public class GameController {
         gameEngine.nextTurn();
         currentPlayer = gameEngine.getCurrentPlayer();
         showStatus("轮到 " + currentPlayer.getName() + "，请先抽 2 张牌", false);
-        updateUI();
+        afterStateChange();
     }
     
     @FXML
@@ -779,10 +828,22 @@ public class GameController {
         }
     }
     
+    private boolean isMyActionTurn() {
+        if (sessionMode == SessionMode.CLIENT) {
+            return remotePublic != null
+                    && remotePublic.currentPlayerIndex == localSeat
+                    && !remotePublic.gameOver;
+        }
+        if (sessionMode == SessionMode.HOST) {
+            return gameEngine != null
+                    && gameEngine.getCurrentPlayerIndex() == localSeat
+                    && !gameEngine.isGameOver();
+        }
+        return gameEngine != null && !gameEngine.isGameOver();
+    }
+
     private boolean isCurrentPlayerTurn() {
-        return currentPlayer != null && 
-               gameEngine != null && 
-               !gameEngine.isGameOver();
+        return isMyActionTurn();
     }
     
     private void updateUI() {
@@ -792,44 +853,105 @@ public class GameController {
             }
             updatePlayerInfo();
             updateCurrentPlayerDisplay();
+            updateAllPlayersProperties();
+            updateTurnBankLabel();
             updatePlayerHand();
             updatePlayerBank();
-            updatePlayerProperties();
             updatePileCounts();
             updateButtonStates();
         });
     }
     
     private void updatePlayerInfo() {
+        if (playersList == null) {
+            return;
+        }
         playersList.getChildren().clear();
-        
+
+        if (sessionMode == SessionMode.CLIENT && remotePublic != null) {
+            for (PlayerPublicSnapshot view : remotePublic.players) {
+                Player stub = new Player(view.name);
+                playersList.getChildren().add(createPlayerInfoBox(stub, isTurnSeat(view.seat)));
+            }
+            return;
+        }
+
+        if (players == null) {
+            return;
+        }
         for (Player player : players) {
-            VBox playerBox = createPlayerInfoBox(player);
-            playersList.getChildren().add(playerBox);
+            boolean current = gameEngine != null && player.equals(gameEngine.getCurrentPlayer());
+            playersList.getChildren().add(createPlayerInfoBox(player, current));
         }
     }
     
-    private VBox createPlayerInfoBox(Player player) {
+    private VBox createPlayerInfoBox(Player player, boolean isCurrent) {
         VBox box = new VBox(5);
-        box.setStyle("-fx-background-color: white; -fx-padding: 10; -fx-background-radius: 5; -fx-border-color: #bdc3c7; -fx-border-width: 1; -fx-border-radius: 5;");
-        
-        boolean isCurrentPlayer = player.equals(gameEngine.getCurrentPlayer());
-        String borderColor = isCurrentPlayer ? "#f39c12" : "#bdc3c7";
-        box.setStyle(box.getStyle() + " -fx-border-color: " + borderColor + "; -fx-border-width: " + (isCurrentPlayer ? "2" : "1") + ";");
-        
+        String borderColor = isCurrent ? "#f39c12" : "#bdc3c7";
+        box.setStyle("-fx-background-color: white; -fx-padding: 10; -fx-background-radius: 5;"
+                + " -fx-border-color: " + borderColor + "; -fx-border-width: " + (isCurrent ? "2" : "1") + ";");
+
         Label nameLabel = new Label(player.getName());
         nameLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
-        
-        Label handCountLabel = new Label("Hand: " + player.getHand().size() + " cards");
-        Label propertyCountLabel = new Label("Properties: " + player.getAllProperties().size());
-        Label bankLabel = new Label("Bank: " + player.getBankTotalValue() + "M");
+
+        int handSize = sessionMode == SessionMode.CLIENT && remotePublic != null
+                ? handSizeFor(player.getName()) : player.getHand().size();
+
+        Label handCountLabel = new Label("Hand: " + handSize + " cards");
+        Label propertyCountLabel = new Label("Properties: " + propertyCountFor(player));
+        Label bankLabel = new Label("Bank: " + bankTotalFor(player) + "M");
 
         box.getChildren().addAll(nameLabel, handCountLabel, propertyCountLabel, bankLabel);
-        
         return box;
+    }
+
+    private int handSizeFor(String name) {
+        if (remotePublic == null) {
+            return 0;
+        }
+        for (PlayerPublicSnapshot p : remotePublic.players) {
+            if (p.name.equals(name)) {
+                return p.handSize;
+            }
+        }
+        return 0;
+    }
+
+    private int propertyCountFor(Player player) {
+        if (sessionMode == SessionMode.CLIENT && remotePublic != null) {
+            for (PlayerPublicSnapshot p : remotePublic.players) {
+                if (p.name.equals(player.getName())) {
+                    return p.properties.size();
+                }
+            }
+        }
+        return player.getAllProperties().size();
+    }
+
+    private int bankTotalFor(Player player) {
+        if (sessionMode == SessionMode.CLIENT && remotePublic != null) {
+            for (PlayerPublicSnapshot p : remotePublic.players) {
+                if (p.name.equals(player.getName())) {
+                    return p.bankTotal;
+                }
+            }
+        }
+        return player.getBankTotalValue();
     }
     
     private void updateCurrentPlayerDisplay() {
+        if (currentPlayerLabel == null) {
+            return;
+        }
+        if (sessionMode == SessionMode.CLIENT && remotePublic != null) {
+            String name = playerNameAt(remotePublic.currentPlayerIndex);
+            String drawStatus = remotePublic.hasDrawnThisTurn ? "已抽牌" : "未抽牌";
+            currentPlayerLabel.setText("Current Player: " + name
+                    + " | " + drawStatus
+                    + " | 剩余出牌: " + remotePublic.remainingPlays + "/3"
+                    + (remotePublic.gameOver ? " | 结束" : ""));
+            return;
+        }
         if (currentPlayer == null || gameEngine == null) {
             return;
         }
@@ -850,8 +972,8 @@ public class GameController {
             return;
         }
 
-        List<Card> hand = currentPlayer.getHand();
-        boolean handClickable = gameEngine.canPlayCard();
+        List<Card> hand = getHandCardsForView();
+        boolean handClickable = isMyActionTurn() && canPlayFromView();
         CardView.CardMetrics metrics = computeHandMetrics(hand.size());
 
         for (Card card : hand) {
@@ -922,16 +1044,16 @@ public class GameController {
         }
         playerBank.getChildren().clear();
 
-        if (currentPlayer == null) {
+        if (currentPlayer == null && sessionMode != SessionMode.CLIENT) {
             return;
         }
 
-        int total = currentPlayer.getBankTotalValue();
+        int total = getBankTotalForView();
         if (bankTotalLabel != null) {
-            bankTotalLabel.setText("Bank total: " + total + "M");
+            bankTotalLabel.setText(total + "M");
         }
 
-        for (Card card : currentPlayer.getBank()) {
+        for (Card card : getBankCardsForView()) {
             playerBank.getChildren().add(CardView.wrapInSlot(card, false, CardView.COMPACT));
         }
 
@@ -943,54 +1065,107 @@ public class GameController {
     }
 
     private void updatePlayerProperties() {
-        playerProperties.getChildren().clear();
+        updateAllPlayersProperties();
+    }
 
-        if (currentPlayer == null) {
+    private void updateAllPlayersProperties() {
+        if (allPlayersPropertiesPanel == null) {
+            return;
+        }
+        allPlayersPropertiesPanel.getChildren().clear();
+
+        List<PlayerPublicSnapshot> views = getPublicPlayerViews();
+        if (views.isEmpty()) {
+            Label empty = new Label("（暂无玩家地产）");
+            empty.setStyle("-fx-text-fill: #7f8c8d;");
+            allPlayersPropertiesPanel.getChildren().add(empty);
             return;
         }
 
-        List<PropertyCard> all = currentPlayer.getAllProperties();
-        if (all.isEmpty()) {
-            Label empty = new Label("（暂无地产，打出地产牌会按颜色分组显示在这里）");
-            empty.setStyle("-fx-text-fill: #7f8c8d; -fx-font-size: 12px;");
-            playerProperties.getChildren().add(empty);
-            return;
-        }
+        for (PlayerPublicSnapshot view : views) {
+            VBox playerBlock = new VBox(6);
+            boolean isTurn = isTurnSeat(view.seat);
+            playerBlock.setStyle("-fx-background-color: white; -fx-padding: 8; -fx-background-radius: 6;"
+                    + " -fx-border-color: " + (isTurn ? "#f39c12" : "#dcdde1") + "; -fx-border-width: "
+                    + (isTurn ? "2" : "1") + ";");
 
-        Map<Color, List<PropertyCard>> byColor = new LinkedHashMap<>();
-        for (PropertyCard property : all) {
-            Color color = property.getColor() != null ? property.getColor() : Color.BROWN;
-            byColor.computeIfAbsent(color, k -> new ArrayList<>()).add(property);
-        }
+            Label title = new Label(view.name + "  |  手牌 " + view.handSize + " 张");
+            title.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
 
-        for (Map.Entry<Color, List<PropertyCard>> entry : byColor.entrySet()) {
-            Color color = entry.getKey();
-            List<PropertyCard> cards = entry.getValue();
-
-            HBox colorSet = new HBox(5);
-            colorSet.setAlignment(Pos.CENTER_LEFT);
-            colorSet.setStyle(
-                    "-fx-background-color: rgba(255,255,255,0.85); -fx-background-radius: 6; -fx-padding: 4 8;");
-
-            int required = color.getSetSize();
-            Label groupLabel = new Label(color + "\n" + cards.size() + "/" + required);
-            groupLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 10px; -fx-text-fill: #074001;");
-            groupLabel.setMinWidth(52);
-            groupLabel.setAlignment(Pos.CENTER);
-
-            HBox cardsRow = new HBox(4);
-            cardsRow.setAlignment(Pos.CENTER_LEFT);
-            for (PropertyCard property : cards) {
-                cardsRow.getChildren().add(CardView.wrapInSlot(property, false, CardView.COMPACT));
+            FlowPane props = new FlowPane(8, 8);
+            props.setPrefWrapLength(900);
+            if (view.properties.isEmpty()) {
+                props.getChildren().add(new Label("（无地产）"));
+            } else {
+                Map<Color, List<Card>> byColor = groupPropertiesByColor(
+                        CardSnapshotMapper.fromSnapshots(view.properties));
+                for (Map.Entry<Color, List<Card>> entry : byColor.entrySet()) {
+                    HBox set = buildPropertyColorSet(entry.getKey(), entry.getValue());
+                    props.getChildren().add(set);
+                }
             }
-
-            colorSet.getChildren().addAll(groupLabel, cardsRow);
-            playerProperties.getChildren().add(colorSet);
+            playerBlock.getChildren().addAll(title, props);
+            allPlayersPropertiesPanel.getChildren().add(playerBlock);
         }
     }
 
+    private void updateTurnBankLabel() {
+        if (turnBankLabel == null) {
+            return;
+        }
+        int seat = getCurrentTurnSeat();
+        int total = 0;
+        String name = playerNameAt(seat);
+        if (sessionMode == SessionMode.CLIENT && remotePublic != null) {
+            for (PlayerPublicSnapshot p : remotePublic.players) {
+                if (p.seat == seat) {
+                    total = p.bankTotal;
+                    break;
+                }
+            }
+        } else if (gameEngine != null && seat >= 0 && seat < gameEngine.getPlayers().size()) {
+            total = gameEngine.getPlayers().get(seat).getBankTotalValue();
+        }
+        turnBankLabel.setText(name + ": " + total + "M");
+    }
+
+    private HBox buildPropertyColorSet(Color color, List<Card> cards) {
+        HBox colorSet = new HBox(5);
+        colorSet.setAlignment(Pos.CENTER_LEFT);
+        colorSet.setStyle("-fx-background-color: rgba(255,255,255,0.9); -fx-background-radius: 4; -fx-padding: 4 6;");
+        Label groupLabel = new Label(color + "\n" + cards.size() + "/" + color.getSetSize());
+        groupLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 10px;");
+        groupLabel.setMinWidth(48);
+        HBox row = new HBox(4);
+        for (Card card : cards) {
+            row.getChildren().add(CardView.wrapInSlot(card, false, CardView.COMPACT));
+        }
+        colorSet.getChildren().addAll(groupLabel, row);
+        return colorSet;
+    }
+
+    private Map<Color, List<Card>> groupPropertiesByColor(List<Card> properties) {
+        Map<Color, List<Card>> byColor = new LinkedHashMap<>();
+        for (Card card : properties) {
+            Color color = card.getColor() != null ? card.getColor() : Color.BROWN;
+            byColor.computeIfAbsent(color, k -> new ArrayList<>()).add(card);
+        }
+        return byColor;
+    }
+
     private void updatePileCounts() {
-        if (gameStatusText == null || gameEngine == null || gameEngine.isGameOver()) {
+        if (gameStatusText == null) {
+            return;
+        }
+        if (sessionMode == SessionMode.CLIENT && remotePublic != null) {
+            gameStatusText.setText("Draw pile: " + remotePublic.drawPileSize
+                    + "  |  Discard pile: " + remotePublic.discardPileSize);
+            if (remotePublic.gameOver && remotePublic.winnerName != null) {
+                gameStatusText.setText("Winner: " + remotePublic.winnerName);
+            }
+            return;
+        }
+        if (gameEngine == null || gameEngine.isGameOver()) {
             return;
         }
         int draw = gameEngine.getDeck().size();
@@ -999,21 +1174,33 @@ public class GameController {
     }
     
     private void updateButtonStates() {
-        boolean active = isCurrentPlayerTurn();
-        boolean canDraw = active && gameEngine.canDrawCards();
-        boolean canPlayCard = active && gameEngine.canPlayCard();
+        boolean canDraw;
+        boolean canPlayCard;
+        if (sessionMode == SessionMode.CLIENT && remotePublic != null) {
+            canDraw = isMyActionTurn() && !remotePublic.hasDrawnThisTurn;
+            canPlayCard = isMyActionTurn() && remotePublic.remainingPlays > 0;
+        } else if (gameEngine != null) {
+            canDraw = isMyActionTurn() && gameEngine.canDrawCards();
+            canPlayCard = isMyActionTurn() && gameEngine.canPlayCard();
+        } else {
+            canDraw = false;
+            canPlayCard = false;
+        }
 
         drawCardBtn.setDisable(!canDraw);
         playCardBtn.setDisable(!canPlayCard || selectedCard == null);
-        endTurnBtn.setDisable(!active);
+        endTurnBtn.setDisable(!isMyActionTurn());
     }
 
 
     private void logMessage(String message) {
         Platform.runLater(() -> {
-            String timestamp = java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss"));
-            gameLog.appendText("[" + timestamp + "] " + message + "\n");
+            String timestamp = java.time.LocalTime.now().format(
+                    java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss"));
+            String line = "[" + timestamp + "] " + message;
+            gameLog.appendText(line + "\n");
             gameLog.setScrollTop(Double.MAX_VALUE);
+            roomLogLines.add(line);
         });
     }
     
@@ -1044,5 +1231,316 @@ public class GameController {
             playCardBtn.setDisable(true);
             endTurnBtn.setDisable(true);
         });
+    }
+
+    private void afterStateChange() {
+        updateUI();
+        if (sessionMode == SessionMode.HOST && roomFolder != null) {
+            publishRoomState();
+        }
+    }
+
+    private void startSyncTimer() {
+        stopSync();
+        syncTimeline = new Timeline(new KeyFrame(Duration.millis(400), e -> syncTick()));
+        syncTimeline.setCycleCount(Timeline.INDEFINITE);
+        syncTimeline.play();
+    }
+
+    private void stopSync() {
+        if (syncTimeline != null) {
+            syncTimeline.stop();
+            syncTimeline = null;
+        }
+    }
+
+    private void syncTick() {
+        if (roomFolder == null) {
+            return;
+        }
+        try {
+            if (sessionMode == SessionMode.HOST) {
+                for (RoomCommand cmd : RoomStorage.drainCommands(roomFolder)) {
+                    handleRoomCommand(cmd);
+                }
+                publishRoomState();
+            } else if (sessionMode == SessionMode.CLIENT) {
+                pullRemoteStateQuiet();
+            }
+        } catch (Exception ex) {
+            showStatus("同步失败: " + ex.getMessage(), true);
+        }
+    }
+
+    private void publishRoomState() {
+        if (gameEngine == null || roomFolder == null) {
+            return;
+        }
+        try {
+            roomLogLines.addAll(collectNewLogLines());
+            RoomPublicSnapshot pub = RoomSnapshotBuilder.buildPublic(gameEngine, roomLogLines);
+            RoomStorage.writeSnapshots(roomFolder, pub, RoomSnapshotBuilder.buildAllPrivate(gameEngine));
+            lastSeenVersion = pub.version;
+        } catch (Exception ex) {
+            showStatus("保存房间状态失败: " + ex.getMessage(), true);
+        }
+    }
+
+    private List<String> collectNewLogLines() {
+        return new ArrayList<>(roomLogLines);
+    }
+
+    private void pullRemoteStateQuiet() {
+        try {
+            long version = RoomStorage.readVersion(roomFolder);
+            if (version <= lastSeenVersion) {
+                return;
+            }
+            RoomPublicSnapshot pub = RoomStorage.readPublic(roomFolder);
+            PlayerPrivateSnapshot priv = RoomStorage.readPrivate(roomFolder, localSeat);
+            if (pub == null || priv == null) {
+                return;
+            }
+            lastSeenVersion = version;
+            remotePublic = pub;
+            viewHand = CardSnapshotMapper.fromSnapshots(priv.hand);
+            viewBank = CardSnapshotMapper.fromSnapshots(priv.bank);
+            mergeRemoteLog(pub.logLines);
+            updateUI();
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void mergeRemoteLog(List<String> lines) {
+        if (lines == null || gameLog == null) {
+            return;
+        }
+        int start = Math.min(roomLogLines.size(), lines.size());
+        for (int i = start; i < lines.size(); i++) {
+            String line = lines.get(i);
+            roomLogLines.add(line);
+            gameLog.appendText(line + "\n");
+        }
+        gameLog.setScrollTop(Double.MAX_VALUE);
+    }
+
+    private void submitRoomCommand(String action, String cardId, String mode, String color) {
+        if (roomFolder == null) {
+            return;
+        }
+        try {
+            RoomCommand cmd = new RoomCommand();
+            cmd.seat = localSeat;
+            cmd.action = action;
+            cmd.cardId = cardId;
+            cmd.mode = mode;
+            cmd.color = color;
+            RoomStorage.submitCommand(roomFolder, cmd);
+            showStatus("已提交操作，等待同步…", false);
+        } catch (IOException e) {
+            showStatus("提交失败: " + e.getMessage(), true);
+        }
+    }
+
+    private void handleRoomCommand(RoomCommand cmd) throws Exception {
+        if (gameEngine == null || cmd == null || cmd.seat != gameEngine.getCurrentPlayerIndex()) {
+            return;
+        }
+        switch (cmd.action) {
+            case "DRAW" -> drawCardsFromPile();
+            case "END_TURN" -> endCurrentTurn();
+            case "PLAY" -> playCardById(cmd.cardId, cmd.mode, cmd.color);
+            default -> {
+            }
+        }
+    }
+
+    private void playCardById(String cardId, String mode, String color) {
+        if (cardId == null || gameEngine == null) {
+            return;
+        }
+        Player player = gameEngine.getCurrentPlayer();
+        Card card = player.findInHandById(cardId);
+        if (card == null) {
+            return;
+        }
+        selectedCard = card;
+        if (card instanceof WildpropertyCard wild) {
+            if ("BANK".equalsIgnoreCase(mode)) {
+                if (wild.isBankable()) {
+                    player.removeFromHand(wild);
+                    wild.depositToBank(player);
+                    completePlayStep(player, wild, true);
+                }
+            } else if (color != null) {
+                Color c = CardSnapshotMapper.parseColor(color);
+                if (c != null) {
+                    wild.setChosenColor(c);
+                    player.removeFromHand(wild);
+                    wild.use(player, gameEngine);
+                    completePlayStep(player, wild, false);
+                }
+            }
+            return;
+        }
+        if (card instanceof ActionCard action && "BANK".equalsIgnoreCase(mode)) {
+            player.removeFromHand(action);
+            action.depositToBank(player);
+            completePlayStep(player, action, true);
+            return;
+        }
+        if (card instanceof MoneyCard || card instanceof PropertyCard) {
+            card.use(player, gameEngine);
+            player.removeFromHand(card);
+            completePlayStep(player, card, false);
+        }
+    }
+
+    private void playSelectedCardAsClient() {
+        Card card = selectedCard;
+        selectedCard = null;
+        if (card instanceof WildpropertyCard wild) {
+            if (wild.isBankable()) {
+                Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+                alert.setHeaderText(wild.getName());
+                ButtonType asProp = new ButtonType("作为地产");
+                ButtonType asBank = new ButtonType("存银行");
+                ButtonType cancel = new ButtonType("取消", ButtonBar.ButtonData.CANCEL_CLOSE);
+                alert.getButtonTypes().setAll(asProp, asBank, cancel);
+                Optional<ButtonType> r = alert.showAndWait();
+                if (r.isEmpty() || r.get() == cancel) {
+                    selectedCard = wild;
+                    return;
+                }
+                if (r.get() == asBank) {
+                    submitRoomCommand("PLAY", wild.getInstanceId(), "BANK", null);
+                    return;
+                }
+            }
+            List<Color> colors = wild.getAvailableColors();
+            if (!colors.isEmpty()) {
+                ChoiceDialog<Color> d = new ChoiceDialog<>(colors.get(0), colors);
+                Optional<Color> c = d.showAndWait();
+                if (c.isPresent()) {
+                    submitRoomCommand("PLAY", wild.getInstanceId(), "PROPERTY", c.get().name());
+                } else {
+                    selectedCard = wild;
+                }
+            }
+            return;
+        }
+        if (card instanceof ActionCard || card instanceof RentCard) {
+            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+            alert.setHeaderText(card.getName());
+            alert.setContentText("伪联机：行动/租金牌请先存入银行");
+            ButtonType bank = new ButtonType("存银行");
+            ButtonType cancel = new ButtonType("取消", ButtonBar.ButtonData.CANCEL_CLOSE);
+            alert.getButtonTypes().setAll(bank, cancel);
+            Optional<ButtonType> r = alert.showAndWait();
+            if (r.isPresent() && r.get() == bank) {
+                submitRoomCommand("PLAY", card.getInstanceId(), "BANK", null);
+            } else {
+                selectedCard = card;
+            }
+            return;
+        }
+        submitRoomCommand("PLAY", card.getInstanceId(), "PLAY", null);
+    }
+
+    private List<Card> getHandCardsForView() {
+        if (sessionMode == SessionMode.CLIENT) {
+            return viewHand;
+        }
+        if (sessionMode == SessionMode.HOST || sessionMode == SessionMode.LOCAL) {
+            if (sessionMode == SessionMode.LOCAL && gameEngine != null) {
+                return gameEngine.getCurrentPlayer().getHand();
+            }
+            if (sessionMode == SessionMode.HOST && gameEngine != null && localSeat >= 0) {
+                return gameEngine.getPlayers().get(localSeat).getHand();
+            }
+        }
+        return currentPlayer != null ? currentPlayer.getHand() : List.of();
+    }
+
+    private List<Card> getBankCardsForView() {
+        if (sessionMode == SessionMode.CLIENT) {
+            return viewBank;
+        }
+        if (gameEngine != null && localSeat >= 0 && sessionMode != SessionMode.LOCAL) {
+            return gameEngine.getPlayers().get(localSeat).getBank();
+        }
+        return currentPlayer != null ? currentPlayer.getBank() : List.of();
+    }
+
+    private int getBankTotalForView() {
+        if (sessionMode == SessionMode.CLIENT && remotePublic != null) {
+            for (PlayerPublicSnapshot p : remotePublic.players) {
+                if (p.seat == localSeat) {
+                    return p.bankTotal;
+                }
+            }
+        }
+        if (gameEngine != null && localSeat >= 0 && sessionMode != SessionMode.LOCAL) {
+            return gameEngine.getPlayers().get(localSeat).getBankTotalValue();
+        }
+        return currentPlayer != null ? currentPlayer.getBankTotalValue() : 0;
+    }
+
+    private boolean canPlayFromView() {
+        if (sessionMode == SessionMode.CLIENT && remotePublic != null) {
+            return remotePublic.remainingPlays > 0;
+        }
+        return gameEngine != null && gameEngine.canPlayCard();
+    }
+
+    private List<PlayerPublicSnapshot> getPublicPlayerViews() {
+        if (sessionMode == SessionMode.CLIENT && remotePublic != null) {
+            return remotePublic.players;
+        }
+        if (gameEngine == null) {
+            return List.of();
+        }
+        List<PlayerPublicSnapshot> list = new ArrayList<>();
+        for (int i = 0; i < gameEngine.getPlayers().size(); i++) {
+            Player p = gameEngine.getPlayers().get(i);
+            PlayerPublicSnapshot v = new PlayerPublicSnapshot();
+            v.seat = i;
+            v.name = p.getName();
+            v.handSize = p.getHandSize();
+            v.bankTotal = p.getBankTotalValue();
+            for (PropertyCard property : p.getAllProperties()) {
+                v.properties.add(CardSnapshotMapper.toSnapshot(property));
+            }
+            list.add(v);
+        }
+        return list;
+    }
+
+    private int getCurrentTurnSeat() {
+        if (sessionMode == SessionMode.CLIENT && remotePublic != null) {
+            return remotePublic.currentPlayerIndex;
+        }
+        if (gameEngine != null) {
+            return gameEngine.getCurrentPlayerIndex();
+        }
+        return 0;
+    }
+
+    private boolean isTurnSeat(int seat) {
+        return seat == getCurrentTurnSeat();
+    }
+
+    private String playerNameAt(int seat) {
+        if (sessionMode == SessionMode.CLIENT && remotePublic != null) {
+            for (PlayerPublicSnapshot p : remotePublic.players) {
+                if (p.seat == seat) {
+                    return p.name;
+                }
+            }
+        }
+        if (gameEngine != null && seat >= 0 && seat < gameEngine.getPlayers().size()) {
+            return gameEngine.getPlayers().get(seat).getName();
+        }
+        return "Player " + (seat + 1);
     }
 }

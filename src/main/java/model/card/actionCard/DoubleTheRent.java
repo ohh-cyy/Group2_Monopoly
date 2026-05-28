@@ -13,6 +13,10 @@ public class DoubleTheRent extends ActionCard {
         super(name, description, type, 1);
     }
 
+    public DoubleTheRent(String instanceId, String name, String description, CardType type) {
+        super(instanceId, name, description, type, 1);
+    }
+
     @Override
     public void use(Player player, GameEngine game) {
         game.setRentDoubled(true);

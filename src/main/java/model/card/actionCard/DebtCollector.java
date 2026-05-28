@@ -13,6 +13,10 @@ public class DebtCollector extends ActionCard {
         super(name, description, type, 3);
     }
 
+    public DebtCollector(String instanceId, String name, String description, CardType type) {
+        super(instanceId, name, description, type, 3);
+    }
+
     @Override
     public void use(Player player, GameEngine game) {
         // 由 GameController 选择目标后调用 collectFrom

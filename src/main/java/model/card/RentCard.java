@@ -26,6 +26,17 @@ public class RentCard extends ActionCard {
         );
     }
 
+    public static RentCard allColors(String instanceId) {
+        return new RentCard(
+                instanceId,
+                "Rent (All)",
+                "Charge rent on any color you own",
+                3,
+                true,
+                Color.values()
+        );
+    }
+
     /** 双色租金卡，存银行 1M */
     public static RentCard dual(Color c1, Color c2) {
         String label = c1.name() + " / " + c2.name();
@@ -38,8 +49,27 @@ public class RentCard extends ActionCard {
         );
     }
 
+    public static RentCard dual(String instanceId, Color c1, Color c2) {
+        String label = c1.name() + " / " + c2.name();
+        return new RentCard(
+                instanceId,
+                "Rent (" + label + ")",
+                "Charge rent on " + c1 + " or " + c2 + " properties you own",
+                1,
+                false,
+                c1, c2
+        );
+    }
+
     private RentCard(String name, String description, int bankValueM, boolean allColors, Color... colors) {
         super(name, description, CardType.ACTION, bankValueM);
+        this.allColors = allColors;
+        this.applicableColors = colors;
+    }
+
+    private RentCard(String instanceId, String name, String description, int bankValueM, boolean allColors,
+                       Color... colors) {
+        super(instanceId, name, description, CardType.ACTION, bankValueM);
         this.allColors = allColors;
         this.applicableColors = colors;
     }

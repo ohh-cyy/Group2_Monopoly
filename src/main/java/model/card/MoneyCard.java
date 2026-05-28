@@ -12,6 +12,11 @@ public class MoneyCard extends Card {
         this.money = money;
     }
 
+    public MoneyCard(String instanceId, String name, String description, int money) {
+        super(instanceId, name, description, CardType.MONEY);
+        this.money = money;
+    }
+
     public int getMoney() {
         return money;
     }

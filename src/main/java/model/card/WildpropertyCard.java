@@ -22,6 +22,15 @@ public class WildpropertyCard extends PropertyCard {
         this.bankValueM = bankValueM;
     }
 
+    public WildpropertyCard(String instanceId, String name, String description, int bankValueM,
+                            List<Color> availableColors, boolean bankable) {
+        super(instanceId, name, description, null, bankValueM);
+        this.chosenColor = null;
+        this.availableColors = new ArrayList<>(availableColors);
+        this.bankable = bankable;
+        this.bankValueM = bankValueM;
+    }
+
     public List<Color> getAvailableColors() {
         return new ArrayList<>(availableColors);
     }

@@ -11,6 +11,10 @@ public class PassGoCard extends ActionCard {
         super(name, description, type, 1);
     }
 
+    public PassGoCard(String instanceId, String name, String description, CardType type) {
+        super(instanceId, name, description, type, 1);
+    }
+
     @Override
     public void use(Player player, GameEngine game) {
         for (int i = 0; i < 2; i++) {

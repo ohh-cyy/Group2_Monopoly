@@ -14,6 +14,10 @@ public class JustSayNo extends ActionCard {
         super(name, description, type, 4);
     }
 
+    public JustSayNo(String instanceId, String name, String description, CardType type) {
+        super(instanceId, name, description, type, 4);
+    }
+
     @Override
     public void use(Player player, GameEngine game) {
         // 仅作为响应打出，由控制器从手牌移除并放入弃牌堆
