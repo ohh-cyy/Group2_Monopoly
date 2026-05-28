@@ -17,16 +17,17 @@ public class MyBirthday extends ActionCard {
         super(instanceId, name, description, type, 2);
     }
 
+    /** Collects 2M from every other player immediately. */
     @Override
     public void use(Player player, GameEngine game) {
         collectFromEveryone(player, game);
     }
 
     /**
-     * Collects 2M from every other player. If a player cannot pay the full amount,
-     * the method collects as much as possible from that player.
+     * Collects 2M from every other player. If a player cannot pay the full
+     * amount, bank cards are taken first, then properties.
      *
-     * @return the total amount collected
+     * @return the total amount collected across all opponents
      */
     public int collectFromEveryone(Player birthdayPlayer, GameEngine game) {
         if (birthdayPlayer == null || game == null) {

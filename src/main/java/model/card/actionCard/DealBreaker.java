@@ -18,13 +18,17 @@ public class DealBreaker extends ActionCard {
         super(instanceId, name, description, type, 5);
     }
 
+    /**
+     * Empty by design — the controller prompts the player to pick a target
+     * and color, then calls {@link #useOnTarget}.
+     */
     @Override
     public void use(Player player, GameEngine game) {
-        // The controller asks the player to choose a target and then calls useOnTarget.
     }
 
     /**
      * Steals one complete property set of the selected color from another player.
+     * The target must own a full set of that color.
      *
      * @return true if the full set was moved successfully
      */

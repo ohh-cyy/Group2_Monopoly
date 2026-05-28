@@ -16,13 +16,17 @@ public class SlyDeal extends ActionCard {
         super(instanceId, name, description, type, 3);
     }
 
+    /**
+     * Empty by design — the controller picks the target and property via UI,
+     * then calls {@link #stealProperty}.
+     */
     @Override
     public void use(Player player, GameEngine game) {
-        // The controller chooses the target and property, then calls stealProperty.
     }
 
     /**
-     * Steals one property from another player. Properties in a complete set are protected.
+     * Steals one property from another player. Properties that are part of a
+     * complete set are protected and cannot be stolen.
      */
     public boolean stealProperty(Player thief, Player target, PropertyCard property) {
         if (thief == null || target == null || property == null || thief.equals(target)) {
