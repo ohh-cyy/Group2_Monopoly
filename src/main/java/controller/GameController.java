@@ -4,10 +4,7 @@ import engine.Deck;
 import engine.DeckFactory;
 import engine.GameEngine;
 import engine.PropertyRules;
-import javafx.animation.KeyFrame;
-import javafx.animation.Timeline;
 import javafx.application.Platform;
-import javafx.util.Duration;
 import sync.*;
 import ui.CardView;
 import javafx.fxml.FXML;
@@ -80,7 +77,7 @@ public class GameController {
     private SessionMode sessionMode = SessionMode.LOCAL;
     private RoomFolder roomFolder;
     private int localSeat;
-    private Timeline syncTimeline;
+    private RoomSyncWatcher roomWatcher;
     private final List<String> roomLogLines = new ArrayList<>();
     private List<Card> viewHand = new ArrayList<>();
     private List<Card> viewBank = new ArrayList<>();
@@ -115,7 +112,8 @@ public class GameController {
         initializeGameWithPlayers(playerNames);
         RoomStorage.markStarted(folder);
         publishRoomState();
-        startSyncTimer();
+        startRoomWatch();
+        pullRemoteStateQuiet();
     }
 
     public void startRoomClient(RoomFolder folder, int seat) {
@@ -128,7 +126,7 @@ public class GameController {
         remotePublic = null;
         viewHand = new ArrayList<>();
         viewBank = new ArrayList<>();
-        startSyncTimer();
+        startRoomWatch();
         pullRemoteStateQuiet();
     }
     
@@ -1240,36 +1238,55 @@ public class GameController {
         }
     }
 
-    private void startSyncTimer() {
-        stopSync();
-        syncTimeline = new Timeline(new KeyFrame(Duration.millis(400), e -> syncTick()));
-        syncTimeline.setCycleCount(Timeline.INDEFINITE);
-        syncTimeline.play();
-    }
-
-    private void stopSync() {
-        if (syncTimeline != null) {
-            syncTimeline.stop();
-            syncTimeline = null;
-        }
-    }
-
-    private void syncTick() {
+    private void startRoomWatch() {
+        stopRoomWatch();
         if (roomFolder == null) {
             return;
         }
         try {
-            if (sessionMode == SessionMode.HOST) {
-                for (RoomCommand cmd : RoomStorage.drainCommands(roomFolder)) {
-                    handleRoomCommand(cmd);
-                }
-                publishRoomState();
-            } else if (sessionMode == SessionMode.CLIENT) {
-                pullRemoteStateQuiet();
-            }
-        } catch (Exception ex) {
-            showStatus("同步失败: " + ex.getMessage(), true);
+            roomWatcher = new RoomSyncWatcher();
+            roomWatcher.start(roomFolder, this::onRoomFilesChanged);
+        } catch (IOException e) {
+            showStatus("无法监听房间文件夹: " + e.getMessage(), true);
         }
+    }
+
+    private void stopRoomWatch() {
+        if (roomWatcher != null) {
+            roomWatcher.close();
+            roomWatcher = null;
+        }
+    }
+
+    private void onRoomFilesChanged() {
+        Platform.runLater(() -> {
+            if (roomFolder == null) {
+                return;
+            }
+            try {
+                if (sessionMode == SessionMode.HOST) {
+                    drainAndProcessCommands();
+                } else if (sessionMode == SessionMode.CLIENT) {
+                    pullRemoteStateQuiet();
+                }
+            } catch (Exception ex) {
+                showStatus("同步失败: " + ex.getMessage(), true);
+            }
+        });
+    }
+
+    private void drainAndProcessCommands() throws Exception {
+        for (RoomCommand cmd : RoomStorage.drainCommands(roomFolder)) {
+            handleRoomCommand(cmd);
+        }
+    }
+
+    private void startSyncTimer() {
+        startRoomWatch();
+    }
+
+    private void stopSync() {
+        stopRoomWatch();
     }
 
     private void publishRoomState() {
@@ -1277,7 +1294,6 @@ public class GameController {
             return;
         }
         try {
-            roomLogLines.addAll(collectNewLogLines());
             RoomPublicSnapshot pub = RoomSnapshotBuilder.buildPublic(gameEngine, roomLogLines);
             RoomStorage.writeSnapshots(roomFolder, pub, RoomSnapshotBuilder.buildAllPrivate(gameEngine));
             lastSeenVersion = pub.version;
@@ -1292,7 +1308,7 @@ public class GameController {
 
     private void pullRemoteStateQuiet() {
         try {
-            long version = RoomStorage.readVersion(roomFolder);
+            long version = RoomStorage.peekVersion(roomFolder);
             if (version <= lastSeenVersion) {
                 return;
             }
@@ -1336,7 +1352,7 @@ public class GameController {
             cmd.mode = mode;
             cmd.color = color;
             RoomStorage.submitCommand(roomFolder, cmd);
-            showStatus("已提交操作，等待同步…", false);
+            showStatus("已提交操作，等待 Host 同步…", false);
         } catch (IOException e) {
             showStatus("提交失败: " + e.getMessage(), true);
         }

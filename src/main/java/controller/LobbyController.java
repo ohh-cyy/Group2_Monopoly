@@ -11,13 +11,15 @@ import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 import sync.RoomFolder;
 import sync.RoomStorage;
+import sync.RoomSyncWatcher;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
 
 public class LobbyController {
+    @FXML
+    private TextField roomsRootField;
     @FXML
     private TextField nameField;
     @FXML
@@ -39,7 +41,7 @@ public class LobbyController {
     private RoomFolder roomFolder;
     private int localSeat = -1;
     private boolean isHost;
-    private Timer pollTimer;
+    private RoomSyncWatcher lobbyWatcher;
 
     public void setStage(Stage stage) {
         this.stage = stage;
@@ -47,7 +49,15 @@ public class LobbyController {
 
     @FXML
     public void initialize() {
-        startPollTimer();
+        roomsRootField.setText("");
+    }
+
+    private Path roomsRootPath() {
+        String text = roomsRootField.getText();
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+        return Path.of(text.trim());
     }
 
     @FXML
@@ -58,16 +68,20 @@ public class LobbyController {
             return;
         }
         try {
-            roomFolder = RoomStorage.createRoom(name);
+            Path root = roomsRootPath();
+            RoomStorage.setConfiguredRoomsRoot(root);
+            roomFolder = RoomStorage.createRoom(name, root);
             localSeat = 0;
             isHost = true;
             roomCodeField.setText(roomFolder.getRoomCode());
             roomCodeLabel.setText("房间号: " + roomFolder.getRoomCode());
-            statusLabel.setText("房间已创建。把房间号发给其他玩家，等人齐后点「开始游戏」。");
+            statusLabel.setText("房间路径:\n" + roomFolder.getRoot()
+                    + "\n\n把【共享目录】和【房间号】发给其他玩家。");
             startBtn.setDisable(false);
             hostBtn.setDisable(true);
             joinBtn.setDisable(true);
             refreshPlayers();
+            startLobbyWatch();
         } catch (IOException e) {
             statusLabel.setText("创建失败: " + e.getMessage());
         }
@@ -82,7 +96,9 @@ public class LobbyController {
             return;
         }
         try {
-            roomFolder = RoomStorage.openRoom(code);
+            Path root = roomsRootPath();
+            RoomStorage.setConfiguredRoomsRoot(root);
+            roomFolder = RoomStorage.openRoom(code, root);
             if (RoomStorage.isStarted(roomFolder)) {
                 statusLabel.setText("游戏已开始，无法加入");
                 return;
@@ -95,6 +111,7 @@ public class LobbyController {
             joinBtn.setDisable(true);
             startBtn.setDisable(true);
             refreshPlayers();
+            startLobbyWatch();
         } catch (IOException e) {
             statusLabel.setText("加入失败: " + e.getMessage());
         }
@@ -119,7 +136,7 @@ public class LobbyController {
 
     @FXML
     private void onLocalGameClick() {
-        stopPollTimer();
+        stopLobbyWatch();
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/ui/game-view.fxml"));
             loader.load();
@@ -134,7 +151,7 @@ public class LobbyController {
     }
 
     private void openGame(boolean host, List<String> playerNames) throws Exception {
-        stopPollTimer();
+        stopLobbyWatch();
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/ui/game-view.fxml"));
         loader.load();
         GameController controller = loader.getController();
@@ -160,33 +177,30 @@ public class LobbyController {
             }
             if (!isHost && RoomStorage.isStarted(roomFolder)) {
                 statusLabel.setText("游戏已开始，正在进入…");
-                try {
-                    openGame(false, names);
-                } catch (Exception ex) {
-                    statusLabel.setText("进入游戏失败: " + ex.getMessage());
-                }
+                openGame(false, names);
             }
         } catch (Exception e) {
             statusLabel.setText("刷新失败: " + e.getMessage());
         }
     }
 
-    private void startPollTimer() {
-        pollTimer = new Timer("lobby-poll", true);
-        pollTimer.scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run() {
-                if (roomFolder != null) {
-                    Platform.runLater(LobbyController.this::refreshPlayers);
-                }
-            }
-        }, 500, 500);
+    private void startLobbyWatch() {
+        stopLobbyWatch();
+        if (roomFolder == null) {
+            return;
+        }
+        try {
+            lobbyWatcher = new RoomSyncWatcher();
+            lobbyWatcher.start(roomFolder, () -> Platform.runLater(this::refreshPlayers));
+        } catch (IOException e) {
+            statusLabel.setText("无法监听房间: " + e.getMessage());
+        }
     }
 
-    private void stopPollTimer() {
-        if (pollTimer != null) {
-            pollTimer.cancel();
-            pollTimer = null;
+    private void stopLobbyWatch() {
+        if (lobbyWatcher != null) {
+            lobbyWatcher.close();
+            lobbyWatcher = null;
         }
     }
 }

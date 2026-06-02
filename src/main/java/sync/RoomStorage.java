@@ -6,12 +6,36 @@ import java.util.*;
 
 public final class RoomStorage {
 
+    private static Path configuredRoomsRoot;
+
     private RoomStorage() {
     }
 
-    public static RoomFolder createRoom(String hostName) throws IOException {
+    /** 设置全局房间根目录（多台电脑必须填同一个共享文件夹路径） */
+    public static void setConfiguredRoomsRoot(Path roomsRoot) {
+        if (roomsRoot == null || roomsRoot.toString().isBlank()) {
+            configuredRoomsRoot = null;
+        } else {
+            configuredRoomsRoot = Path.of(roomsRoot.toString().trim());
+        }
+    }
+
+    public static Path resolveRoomsRoot(Path override) {
+        if (override != null && !override.toString().isBlank()) {
+            return Path.of(override.toString().trim());
+        }
+        if (configuredRoomsRoot != null) {
+            return configuredRoomsRoot;
+        }
+        return RoomFolder.defaultRoomsRoot();
+    }
+
+    public static RoomFolder createRoom(String hostName, Path roomsRoot) throws IOException {
+        Path base = resolveRoomsRoot(roomsRoot);
+        Files.createDirectories(base);
+
         String code = generateRoomCode();
-        Path root = RoomFolder.defaultRoomsRoot().resolve(code);
+        Path root = base.resolve(code);
         RoomFolder folder = new RoomFolder(root, code);
         folder.ensureExists();
 
@@ -19,20 +43,31 @@ public final class RoomStorage {
         props.setProperty("started", "false");
         props.setProperty("host", hostName);
         props.setProperty("version", "0");
+        props.setProperty("rooms.root", base.toAbsolutePath().toString());
         folder.saveRoomProperties(props);
 
         registerPlayer(folder, 0, hostName);
         return folder;
     }
 
-    public static RoomFolder openRoom(String roomCode) throws IOException {
-        Path root = RoomFolder.defaultRoomsRoot().resolve(roomCode.trim().toUpperCase());
+    public static RoomFolder createRoom(String hostName) throws IOException {
+        return createRoom(hostName, null);
+    }
+
+    public static RoomFolder openRoom(String roomCode, Path roomsRoot) throws IOException {
+        Path base = resolveRoomsRoot(roomsRoot);
+        Path root = base.resolve(roomCode.trim().toUpperCase());
         if (!Files.isDirectory(root)) {
-            throw new IOException("房间不存在: " + roomCode);
+            throw new IOException("房间不存在: " + roomCode
+                    + "\n请确认共享目录与 Host 一致:\n" + base.toAbsolutePath());
         }
         RoomFolder folder = new RoomFolder(root, roomCode.trim().toUpperCase());
         folder.ensureExists();
         return folder;
+    }
+
+    public static RoomFolder openRoom(String roomCode) throws IOException {
+        return openRoom(roomCode, null);
     }
 
     public static int registerPlayer(RoomFolder folder, int seat, String name) throws IOException {
@@ -86,6 +121,15 @@ public final class RoomStorage {
         Properties props = folder.loadRoomProperties();
         props.setProperty("version", String.valueOf(pub.version));
         folder.saveRoomProperties(props);
+    }
+
+    /** 仅读取 version 字段，用于判断是否有新操作（轻量） */
+    public static long peekVersion(RoomFolder folder) {
+        try {
+            return readVersion(folder);
+        } catch (IOException e) {
+            return -1;
+        }
     }
 
     public static long readVersion(RoomFolder folder) throws IOException {

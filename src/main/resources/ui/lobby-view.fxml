@@ -17,6 +17,13 @@
                    style="-fx-font-size: 13px; -fx-text-fill: #555;"/>
 
             <VBox spacing="8" style="-fx-background-color: white; -fx-padding: 16; -fx-background-radius: 8;">
+                <Label text="共享目录（多台电脑必须相同）" style="-fx-font-weight: bold;"/>
+                <TextField fx:id="roomsRootField"
+                           promptText="本机双开可留空；局域网填共享路径，如 \\192.168.1.5\MonopolyDealRooms"/>
+                <Label text="本机默认: 用户目录/MonopolyDealRooms。Host 需先共享该文件夹。"
+                       wrapText="true"
+                       style="-fx-font-size: 11px; -fx-text-fill: #666;"/>
+
                 <Label text="你的昵称" style="-fx-font-weight: bold;"/>
                 <TextField fx:id="nameField" promptText="玩家昵称"/>
 
