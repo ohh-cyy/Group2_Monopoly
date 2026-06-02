@@ -996,16 +996,16 @@ public class GameController {
         if (cardCount <= 0) {
             return CardView.HAND;
         }
-        double available = 750;
+        double available = 600;
         if (playerHandScroll != null && playerHandScroll.getViewportBounds().getWidth() > 0) {
-            available = playerHandScroll.getViewportBounds().getWidth() - 20;
+            available = playerHandScroll.getViewportBounds().getWidth() - 40;
         }
-        double gap = 6;
+        double gap = 10;
         double total = cardCount * CardView.HAND.slotW() + (cardCount - 1) * gap;
         if (total <= available) {
             return CardView.HAND;
         }
-        double factor = Math.max(0.42, available / total);
+        double factor = Math.max(0.6, available / total);
         return CardView.HAND.scaled(factor);
     }
     

@@ -47,7 +47,7 @@
     <!-- 中间：上半公开区（全员地产 + 当前回合资金） / 下半私有区（自己手牌+银行） -->
     <center>
         <VBox spacing="8" style="-fx-padding: 10;" VBox.vgrow="ALWAYS">
-            <VBox spacing="6" VBox.vgrow="ALWAYS" minHeight="280"
+            <VBox spacing="6" VBox.vgrow="SOMETIMES" minHeight="180" maxHeight="220"
                   style="-fx-background-color: #f4f6f7; -fx-background-radius: 8; -fx-padding: 8;">
                 <HBox spacing="12" alignment="CENTER_LEFT">
                     <Label text="全员地产（公开）"
@@ -65,17 +65,19 @@
                 </ScrollPane>
             </VBox>
 
-            <HBox spacing="8" VBox.vgrow="ALWAYS" minHeight="280">
+            <HBox spacing="10" VBox.vgrow="ALWAYS" minHeight="350">
                 <VBox spacing="6" HBox.hgrow="ALWAYS"
                       style="-fx-background-color: white; -fx-background-radius: 6; -fx-padding: 8;">
                     <Label text="我的手牌（仅自己可见）"
                            style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #074001;"/>
                     <ScrollPane fx:id="playerHandScroll" fitToWidth="true"
-                                hbarPolicy="AS_NEEDED" vbarPolicy="NEVER" VBox.vgrow="ALWAYS">
-                        <HBox fx:id="playerHand" spacing="6" alignment="CENTER_LEFT" style="-fx-padding: 4;"/>
+                                hbarPolicy="AS_NEEDED" vbarPolicy="NEVER"
+                                VBox.vgrow="ALWAYS" pannable="true">
+                        <HBox fx:id="playerHand" spacing="10" alignment="CENTER_LEFT"
+                              style="-fx-padding: 8;"/>
                     </ScrollPane>
                 </VBox>
-                <VBox spacing="6" HBox.hgrow="ALWAYS"
+                <VBox spacing="6" prefWidth="380" maxWidth="420" minWidth="320"
                       style="-fx-background-color: white; -fx-background-radius: 6; -fx-padding: 8;">
                     <HBox spacing="8" alignment="CENTER_LEFT">
                         <Label text="我的银行（仅自己可见）"
@@ -83,8 +85,8 @@
                         <Label fx:id="bankTotalLabel" text="0M"
                                style="-fx-font-weight: bold; -fx-font-size: 13px;"/>
                     </HBox>
-                    <ScrollPane fitToWidth="true" hbarPolicy="AS_NEEDED" vbarPolicy="NEVER" VBox.vgrow="ALWAYS">
-                        <FlowPane fx:id="playerBank" hgap="6" vgap="6" prefWrapLength="2000"
+                    <ScrollPane fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED" VBox.vgrow="ALWAYS">
+                        <FlowPane fx:id="playerBank" hgap="6" vgap="6" prefWrapLength="350"
                                   alignment="CENTER_LEFT" style="-fx-padding: 4;"/>
                     </ScrollPane>
                 </VBox>
