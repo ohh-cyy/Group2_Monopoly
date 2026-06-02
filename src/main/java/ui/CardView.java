@@ -17,8 +17,9 @@ import model.enums.Color;
  */
 public class CardView extends StackPane {
 
-    public static final CardMetrics HAND = new CardMetrics(78, 110, 120, 168);
-    public static final CardMetrics COMPACT = new CardMetrics(52, 72, 88, 122);
+    public static final CardMetrics HAND = new CardMetrics(82, 116, 126, 176);
+    public static final CardMetrics PUBLIC = new CardMetrics(82, 116, 132, 184);
+    public static final CardMetrics COMPACT = new CardMetrics(56, 78, 92, 128);
 
     private final Card card;
     private final boolean clickable;

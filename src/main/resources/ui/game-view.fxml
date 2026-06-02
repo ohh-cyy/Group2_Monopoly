@@ -7,136 +7,184 @@
 
 <BorderPane xmlns:fx="http://javafx.com/fxml"
             fx:controller="controller.GameController"
-            prefWidth="1200"
-            prefHeight="800">
-    
-    <!-- 顶部：标题和当前玩家信息 -->
+            prefWidth="1360"
+            prefHeight="900"
+            stylesheets="@game-theme.css"
+            styleClass="app-root">
+
     <top>
-        <VBox spacing="10" style="-fx-background-color: #074001; -fx-padding: 15;">
-            <Label text="Monopoly Deal Card Game" 
-                   style="-fx-text-fill: white; -fx-font-size: 24px; -fx-font-weight: bold;">
-                <font>
-                    <Font name="System Bold" size="24"/>
-                </font>
-            </Label>
-            <HBox spacing="20" alignment="CENTER_LEFT">
-                <Label fx:id="currentPlayerLabel" 
-                       text="Current Player: Player 1" 
-                       style="-fx-text-fill: white; -fx-font-size: 16px;"/>
-                <Label fx:id="gameStatusText" 
-                       text="Game in Progress" 
-                       style="-fx-text-fill: #ecf0f1; -fx-font-size: 14px;"/>
+        <VBox spacing="8" styleClass="top-bar">
+            <HBox alignment="CENTER_LEFT" spacing="12">
+                <Label text="Monopoly Deal" styleClass="game-title">
+                    <font>
+                        <Font name="System Bold" size="27"/>
+                    </font>
+                </Label>
+                <Label text="Board First Layout" styleClass="top-pill"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="gameStatusText"
+                       text="Draw pile: --  |  Discard pile: --"
+                       styleClass="top-meta-label"/>
+            </HBox>
+            <HBox spacing="14" alignment="CENTER_LEFT">
+                <Label fx:id="currentPlayerLabel"
+                       text="Current Player: Player 1"
+                       styleClass="top-meta-label"/>
             </HBox>
         </VBox>
     </top>
-    
-    <!-- 左侧：玩家列表和信息 -->
-    <left>
-        <VBox spacing="10" style="-fx-background-color: #ecf0f1; -fx-padding: 10;" 
-              prefWidth="250">
-            <Label text="Players" 
-                   style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #074001;"/>
-            <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS">
-                <VBox fx:id="playersList" spacing="10">
-                    <!-- 玩家信息将动态添加到这里 -->
-                </VBox>
-            </ScrollPane>
-        </VBox>
-    </left>
-    
-    <!-- 中间：上半公开区（全员地产 + 当前回合资金） / 下半私有区（自己手牌+银行） -->
+
     <center>
-        <VBox spacing="8" style="-fx-padding: 10;" VBox.vgrow="ALWAYS">
-            <VBox spacing="6" VBox.vgrow="SOMETIMES" minHeight="180" maxHeight="220"
-                  style="-fx-background-color: #f4f6f7; -fx-background-radius: 8; -fx-padding: 8;">
-                <HBox spacing="12" alignment="CENTER_LEFT">
-                    <Label text="全员地产（公开）"
-                           style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #074001;"/>
+        <StackPane styleClass="table-area">
+            <BorderPane fx:id="boardLayout" maxWidth="Infinity" maxHeight="Infinity" styleClass="board-layout">
+                <left>
+                    <VBox fx:id="leftSidebar" spacing="10" prefWidth="230" minWidth="230" maxWidth="230" styleClass="side-panel side-panel-left">
+                        <HBox alignment="CENTER_LEFT" spacing="8">
+                            <Label text="Players" styleClass="drawer-title"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Button fx:id="leftSidebarToggle" text="‹" styleClass="drawer-toggle"/>
+                        </HBox>
+                        <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS" hbarPolicy="NEVER" styleClass="transparent-scroll">
+                            <VBox fx:id="playersList" spacing="10" style="-fx-padding: 3;"/>
+                        </ScrollPane>
+                    </VBox>
+                </left>
+
+                <center>
+                    <VBox spacing="10" maxWidth="Infinity" maxHeight="Infinity" styleClass="panel-card public-panel main-public-board">
+                        <BorderPane.margin>
+                            <Insets top="14" right="14" bottom="68" left="14"/>
+                        </BorderPane.margin>
+                        <HBox spacing="12" alignment="CENTER_LEFT">
+                            <VBox spacing="2">
+                                <Label text="全员地产 / Public Board" styleClass="section-title section-title-large"/>
+                                <Label text="左右信息栏收起后，剩余空间全部交给公开牌桌。" styleClass="section-subtitle"/>
+                            </VBox>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <VBox alignment="CENTER_RIGHT" spacing="2" styleClass="bank-pill">
+                                <Label text="当前回合玩家资金" styleClass="bank-pill-label"/>
+                                <Label fx:id="turnBankLabel" text="0M" styleClass="bank-pill-value"/>
+                            </VBox>
+                        </HBox>
+                        <ScrollPane fitToWidth="true"
+                                    VBox.vgrow="ALWAYS"
+                                    hbarPolicy="NEVER"
+                                    vbarPolicy="AS_NEEDED"
+                                    pannable="true"
+                                    styleClass="transparent-scroll">
+                            <TilePane fx:id="allPlayersPropertiesPanel"
+                                      hgap="14"
+                                      vgap="14"
+                                      prefColumns="2"
+                                      tileAlignment="TOP_LEFT"
+                                      style="-fx-padding: 6 8 12 6;"/>
+                        </ScrollPane>
+                    </VBox>
+                </center>
+
+                <right>
+                    <VBox fx:id="rightSidebar" spacing="10" prefWidth="300" minWidth="300" maxWidth="300" styleClass="side-panel side-panel-right">
+                        <HBox alignment="CENTER_LEFT" spacing="8">
+                            <Button fx:id="rightSidebarToggle" text="›" styleClass="drawer-toggle"/>
+                            <Label text="Game Controls" styleClass="drawer-title"/>
+                        </HBox>
+                        <VBox spacing="10" styleClass="control-panel">
+                            <Button fx:id="drawCardBtn" id="drawCardBtn"
+                                    text="Draw Cards (2)"
+                                    maxWidth="Infinity"
+                                    styleClass="control-button"/>
+                            <Button fx:id="playCardBtn" id="playCardBtn"
+                                    text="Play Selected Card"
+                                    maxWidth="Infinity"
+                                    styleClass="control-button"/>
+                            <Button fx:id="endTurnBtn" id="endTurnBtn"
+                                    text="End Turn"
+                                    maxWidth="Infinity"
+                                    styleClass="control-button"/>
+                            <Button fx:id="newGameBtn" id="newGameBtn"
+                                    text="New Game"
+                                    maxWidth="Infinity"
+                                    styleClass="control-button"/>
+                        </VBox>
+
+                        <Label text="Game Log" styleClass="drawer-title drawer-subtitle"/>
+                        <TextArea fx:id="gameLog"
+                                  editable="false"
+                                  wrapText="true"
+                                  VBox.vgrow="ALWAYS"
+                                  styleClass="game-log"/>
+                    </VBox>
+                </right>
+            </BorderPane>
+
+            <Button fx:id="leftSidebarHandle"
+                    text="Players ›"
+                    styleClass="drawer-handle drawer-handle-left"
+                    StackPane.alignment="CENTER_LEFT"/>
+
+            <Button fx:id="rightSidebarHandle"
+                    text="‹ Controls / Log"
+                    styleClass="drawer-handle drawer-handle-right"
+                    StackPane.alignment="CENTER_RIGHT"/>
+
+            <VBox fx:id="handDock"
+                  spacing="8"
+                  maxWidth="Infinity"
+                  prefHeight="266"
+                  minHeight="266"
+                  maxHeight="266"
+                  styleClass="hand-dock panel-card"
+                  StackPane.alignment="BOTTOM_CENTER">
+                <HBox alignment="CENTER_LEFT" spacing="10" styleClass="hand-dock-header">
+                    <Label text="我的手牌" styleClass="section-title"/>
+                    <Label fx:id="handDockHint" text="Hover here to expand · 双击可直接出牌" styleClass="section-subtitle"/>
                     <Region HBox.hgrow="ALWAYS"/>
-                    <VBox alignment="CENTER_RIGHT" spacing="2"
-                          style="-fx-background-color: white; -fx-padding: 6 12; -fx-background-radius: 6;">
-                        <Label text="当前回合玩家资金" style="-fx-font-size: 11px; -fx-text-fill: #666;"/>
-                        <Label fx:id="turnBankLabel" text="0M"
-                               style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #074001;"/>
+                    <Label text="我的银行" styleClass="section-title bank-mini-title"/>
+                    <Label fx:id="bankTotalLabel" text="0M" styleClass="bank-mini-value"/>
+                </HBox>
+                <HBox spacing="14" VBox.vgrow="ALWAYS">
+                    <VBox spacing="6" HBox.hgrow="ALWAYS" styleClass="hand-area">
+                        <ScrollPane fx:id="playerHandScroll"
+                                    fitToHeight="true"
+                                    hbarPolicy="AS_NEEDED"
+                                    vbarPolicy="NEVER"
+                                    VBox.vgrow="ALWAYS"
+                                    pannable="true"
+                                    styleClass="transparent-scroll hand-scroll">
+                            <HBox fx:id="playerHand"
+                                  spacing="10"
+                                  alignment="CENTER_LEFT"
+                                  style="-fx-padding: 12 14 18 14;"/>
+                        </ScrollPane>
+                    </VBox>
+                    <VBox spacing="6"
+                          prefWidth="285"
+                          minWidth="250"
+                          maxWidth="320"
+                          styleClass="bank-dock-area">
+                        <ScrollPane fitToWidth="true"
+                                    hbarPolicy="NEVER"
+                                    vbarPolicy="AS_NEEDED"
+                                    VBox.vgrow="ALWAYS"
+                                    pannable="true"
+                                    styleClass="transparent-scroll">
+                            <FlowPane fx:id="playerBank"
+                                      hgap="7"
+                                      vgap="7"
+                                      prefWrapLength="250"
+                                      alignment="CENTER_LEFT"
+                                      style="-fx-padding: 4;"/>
+                        </ScrollPane>
                     </VBox>
                 </HBox>
-                <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS" hbarPolicy="AS_NEEDED" vbarPolicy="AS_NEEDED">
-                    <VBox fx:id="allPlayersPropertiesPanel" spacing="10" style="-fx-padding: 4;"/>
-                </ScrollPane>
             </VBox>
-
-            <HBox spacing="10" VBox.vgrow="ALWAYS" minHeight="350">
-                <VBox spacing="6" HBox.hgrow="ALWAYS"
-                      style="-fx-background-color: white; -fx-background-radius: 6; -fx-padding: 8;">
-                    <Label text="我的手牌（仅自己可见）"
-                           style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #074001;"/>
-                    <ScrollPane fx:id="playerHandScroll" fitToWidth="true"
-                                hbarPolicy="AS_NEEDED" vbarPolicy="NEVER"
-                                VBox.vgrow="ALWAYS" pannable="true">
-                        <HBox fx:id="playerHand" spacing="10" alignment="CENTER_LEFT"
-                              style="-fx-padding: 8;"/>
-                    </ScrollPane>
-                </VBox>
-                <VBox spacing="6" prefWidth="380" maxWidth="420" minWidth="320"
-                      style="-fx-background-color: white; -fx-background-radius: 6; -fx-padding: 8;">
-                    <HBox spacing="8" alignment="CENTER_LEFT">
-                        <Label text="我的银行（仅自己可见）"
-                               style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #074001;"/>
-                        <Label fx:id="bankTotalLabel" text="0M"
-                               style="-fx-font-weight: bold; -fx-font-size: 13px;"/>
-                    </HBox>
-                    <ScrollPane fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED" VBox.vgrow="ALWAYS">
-                        <FlowPane fx:id="playerBank" hgap="6" vgap="6" prefWrapLength="350"
-                                  alignment="CENTER_LEFT" style="-fx-padding: 4;"/>
-                    </ScrollPane>
-                </VBox>
-            </HBox>
-        </VBox>
+        </StackPane>
     </center>
-    
-    <!-- 右侧：游戏控制和日志 -->
-    <right>
-        <VBox spacing="10" style="-fx-background-color: #ecf0f1; -fx-padding: 10;" 
-              prefWidth="300">
-            
-            <!-- 游戏控制按钮 -->
-            <VBox spacing="10" style="-fx-background-color: white; -fx-padding: 10; -fx-background-radius: 5;">
-                <Label text="Game Controls" 
-                       style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
-                <Button fx:id="drawCardBtn" 
-                        text="Draw Cards (2)" 
-                        maxWidth="Infinity"
-                        style="-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 10;"/>
-                <Button fx:id="playCardBtn" 
-                        text="Play Selected Card" 
-                        maxWidth="Infinity"
-                        style="-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 10;"/>
-                <Button fx:id="endTurnBtn" 
-                        text="End Turn" 
-                        maxWidth="Infinity"
-                        style="-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 10;"/>
-                <Button fx:id="newGameBtn" 
-                        text="New Game" 
-                        maxWidth="Infinity"
-                        style="-fx-background-color: #9b59b6; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 10;"/>
-            </VBox>
-            
-            <!-- 游戏日志 -->
-            <Label text="Game Log" 
-                   style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
-            <TextArea fx:id="gameLog" 
-                      editable="false" 
-                      wrapText="true"
-                      VBox.vgrow="ALWAYS"
-                      style="-fx-font-size: 12px;"/>
-        </VBox>
-    </right>
-    
-    <!-- 底部：状态栏 -->
+
     <bottom>
-        <HBox spacing="20" style="-fx-background-color: #074001; -fx-padding: 10;">
-            <Label fx:id="statusMessage" 
-                   text="Welcome to Monopoly Deal!" 
+        <HBox spacing="20" styleClass="status-bar">
+            <Label fx:id="statusMessage"
+                   text="Welcome to Monopoly Deal!"
                    style="-fx-text-fill: #ffffff; -fx-font-size: 14px;"/>
         </HBox>
     </bottom>

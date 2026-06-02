@@ -5,12 +5,17 @@ import engine.DeckFactory;
 import engine.GameEngine;
 import engine.PropertyRules;
 import javafx.application.Platform;
+import javafx.animation.TranslateTransition;
 import sync.*;
 import ui.CardView;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.shape.Circle;
 import model.card.*;
 import model.card.actionCard.*;
 import model.enums.CardType;
@@ -19,6 +24,8 @@ import model.player.Player;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.function.Function;
+import javafx.util.Duration;
 
 public class GameController {
     @FXML
@@ -32,9 +39,33 @@ public class GameController {
     
     @FXML
     private VBox playersList;
+
+    @FXML
+    private VBox leftSidebar;
+
+    @FXML
+    private VBox rightSidebar;
+
+    @FXML
+    private Button leftSidebarToggle;
+
+    @FXML
+    private Button rightSidebarToggle;
+
+    @FXML
+    private Button leftSidebarHandle;
+
+    @FXML
+    private Button rightSidebarHandle;
+
+    @FXML
+    private VBox handDock;
+
+    @FXML
+    private Label handDockHint;
     
     @FXML
-    private VBox allPlayersPropertiesPanel;
+    private TilePane allPlayersPropertiesPanel;
 
     @FXML
     private Label turnBankLabel;
@@ -83,10 +114,16 @@ public class GameController {
     private List<Card> viewBank = new ArrayList<>();
     private RoomPublicSnapshot remotePublic;
     private long lastSeenVersion = -1;
+    private static final double HAND_DOCK_HEIGHT = 266;
+    private static final double HAND_DOCK_PEEK = 54;
+    private boolean handDockExpanded = false;
+    private Image avatarImage;
+    private final Set<String> unlockedAchievements = new HashSet<>();
     
     @FXML
     public void initialize() {
         random = new Random();
+        loadAvatarImage();
         if (playerHandScroll != null) {
             playerHandScroll.widthProperty().addListener((obs, oldW, newW) -> {
                 if (!viewHand.isEmpty() || currentPlayer != null) {
@@ -95,6 +132,9 @@ public class GameController {
             });
         }
         setupButtonActions();
+        setupCollapsibleSidebars();
+        setupHandDockInteractions();
+        setupPublicBoardSizing();
     }
 
     public void startLocalGame() {
@@ -144,6 +184,84 @@ public class GameController {
             newGameBtn.setOnAction(e -> onNewGameClick());
         }
     }
+
+private void setupCollapsibleSidebars() {
+        setLeftSidebarOpen(false);
+        setRightSidebarOpen(false);
+
+        if (leftSidebarToggle != null) {
+            leftSidebarToggle.setOnAction(e -> setLeftSidebarOpen(false));
+        }
+        if (leftSidebarHandle != null) {
+            leftSidebarHandle.setOnAction(e -> setLeftSidebarOpen(true));
+        }
+        if (rightSidebarToggle != null) {
+            rightSidebarToggle.setOnAction(e -> setRightSidebarOpen(false));
+        }
+        if (rightSidebarHandle != null) {
+            rightSidebarHandle.setOnAction(e -> setRightSidebarOpen(true));
+        }
+    }
+
+private void setLeftSidebarOpen(boolean open) {
+        setNodeLayoutVisible(leftSidebar, open);
+        setNodeLayoutVisible(leftSidebarHandle, !open);
+    }
+
+private void setRightSidebarOpen(boolean open) {
+        setNodeLayoutVisible(rightSidebar, open);
+        setNodeLayoutVisible(rightSidebarHandle, !open);
+    }
+
+private void setNodeLayoutVisible(javafx.scene.Node node, boolean visible) {
+        if (node == null) {
+            return;
+        }
+        node.setVisible(visible);
+        node.setManaged(visible);
+    }
+
+private void setupHandDockInteractions() {
+        if (handDock == null) {
+            return;
+        }
+        setHandDockExpanded(false, false);
+        handDock.setOnMouseEntered(e -> setHandDockExpanded(true, true));
+        handDock.setOnMouseExited(e -> setHandDockExpanded(false, true));
+    }
+
+private void setHandDockExpanded(boolean expanded, boolean animate) {
+        if (handDock == null || handDockExpanded == expanded && animate) {
+            return;
+        }
+        handDockExpanded = expanded;
+        double collapsedY = HAND_DOCK_HEIGHT - HAND_DOCK_PEEK;
+        double targetY = expanded ? 0 : collapsedY;
+        if (handDockHint != null) {
+            handDockHint.setText(expanded
+                    ? "Mouse out to tuck hand back · 双击可直接出牌"
+                    : "Hover here to expand · 双击可直接出牌");
+        }
+        if (!animate) {
+            handDock.setTranslateY(targetY);
+            return;
+        }
+        TranslateTransition transition = new TranslateTransition(Duration.millis(170), handDock);
+        transition.setToY(targetY);
+        transition.play();
+    }
+
+private void setupPublicBoardSizing() {
+        if (allPlayersPropertiesPanel == null) {
+            return;
+        }
+        allPlayersPropertiesPanel.widthProperty().addListener((obs, oldW, newW) -> {
+            double width = newW.doubleValue();
+            int columns = width > 1060 ? 2 : 1;
+            allPlayersPropertiesPanel.setPrefColumns(columns);
+            allPlayersPropertiesPanel.setPrefTileWidth(Math.max(420, (width - 32) / columns));
+        });
+    }
     
     private void initializeGame() {
         initializeGameWithPlayers(List.of("Player 1", "Player 2", "Player 3", "Player 4"));
@@ -161,6 +279,7 @@ public class GameController {
         gameEngine.startGame();
         currentPlayer = gameEngine.getCurrentPlayer();
         roomLogLines.clear();
+        resetAchievements();
         logMessage("Players: " + String.join(", ", names));
         updateUI();
     }
@@ -191,6 +310,7 @@ public class GameController {
         }
 
         logMessage(player.getName() + " 抽了 2 张牌");
+        unlockAchievement("first-draw", "First Draw", "第一次成功抽牌：你已经启动了本局的成就系统测试。");
         showStatus("已抽 2 张牌（本回合不能再抽）。剩余可出牌次数: "
                 + gameEngine.getRemainingPlays(), false);
         afterStateChange();
@@ -317,17 +437,15 @@ public class GameController {
         SUCCESS, FAILED, CANCELLED
     }
 
-    private Optional<ActionPlayChoice> promptActionCardChoice(ActionCard card) {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("行动牌");
-        alert.setHeaderText(card.getName() + " — 银行面值 " + card.getBankValueM() + "M");
-        alert.setContentText(card.getDescription() + "\n\n选择「使用效果」或「存入银行」？");
+        private Optional<ActionPlayChoice> promptActionCardChoice(ActionCard card) {
         ButtonType useBtn = new ButtonType("使用效果");
         ButtonType bankBtn = new ButtonType("存入银行 (" + card.getBankValueM() + "M)");
         ButtonType cancelBtn = new ButtonType("取消", ButtonBar.ButtonData.CANCEL_CLOSE);
-        alert.getButtonTypes().setAll(useBtn, bankBtn, cancelBtn);
-
-        Optional<ButtonType> result = alert.showAndWait();
+        Optional<ButtonType> result = showStyledButtonDialog(
+                "行动牌",
+                card.getName() + " — 银行面值 " + card.getBankValueM() + "M",
+                card.getDescription() + "\n\n选择「使用效果」或「存入银行」？",
+                useBtn, bankBtn, cancelBtn);
         if (result.isEmpty()) {
             return Optional.empty();
         }
@@ -529,26 +647,21 @@ public class GameController {
     /**
      * 若防守方手牌有 Just Say No 且选择打出，则取消本次行动效果。
      */
-    private boolean tryRespondWithJustSayNo(Player defender, Player attacker, String actionName) {
+        private boolean tryRespondWithJustSayNo(Player defender, Player attacker, String actionName) {
         JustSayNo justSayNo = findJustSayNoInHand(defender);
         if (justSayNo == null) {
             return false;
         }
 
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Just Say No");
-        alert.setHeaderText(defender.getName() + "：是否拒绝 " + attacker.getName() + " 的行动？");
-        alert.setContentText(actionName + "\n\n选择「拒绝」将打出 Just Say No 并取消该效果。");
         ButtonType noBtn = new ButtonType("拒绝 (Just Say No)");
         ButtonType allowBtn = new ButtonType("允许生效");
         ButtonType cancelBtn = new ButtonType("取消", ButtonBar.ButtonData.CANCEL_CLOSE);
-        alert.getButtonTypes().setAll(noBtn, allowBtn, cancelBtn);
-
-        Optional<ButtonType> choice = alert.showAndWait();
-        if (choice.isEmpty() || choice.get() == cancelBtn) {
-            return false;
-        }
-        if (choice.get() == allowBtn) {
+        Optional<ButtonType> choice = showStyledButtonDialog(
+                "Just Say No",
+                defender.getName() + "：是否拒绝 " + attacker.getName() + " 的行动？",
+                actionName + "\n\n选择「拒绝」将打出 Just Say No 并取消该效果。",
+                noBtn, allowBtn, cancelBtn);
+        if (choice.isEmpty() || choice.get() == cancelBtn || choice.get() == allowBtn) {
             return false;
         }
 
@@ -568,49 +681,25 @@ public class GameController {
         return null;
     }
 
-    private Optional<PropertyCard> promptSelectProperty(List<PropertyCard> properties,
+        private Optional<PropertyCard> promptSelectProperty(List<PropertyCard> properties,
                                                           String title, String header) {
-        if (properties.isEmpty()) {
-            return Optional.empty();
-        }
-        List<String> labels = new ArrayList<>();
-        for (PropertyCard p : properties) {
-            labels.add(p.getName() + " (" + p.getColor() + ", " + p.getPrice() + "M)");
-        }
-        ChoiceDialog<String> dialog = new ChoiceDialog<>(labels.get(0), labels);
-        dialog.setTitle(title);
-        dialog.setHeaderText(header);
-        dialog.setContentText("选择一张地产：");
-        Optional<String> result = dialog.showAndWait();
-        if (result.isEmpty()) {
-            return Optional.empty();
-        }
-        int idx = labels.indexOf(result.get());
-        return Optional.of(properties.get(idx));
+        return showStyledChoiceDialog(title, header, "选择一张地产：", properties,
+                p -> p.getName() + " (" + p.getColor() + ", " + p.getPrice() + "M)",
+                p -> "-fx-border-color: " + cssColorFor(p.getColor() == null ? Color.BROWN : p.getColor()) + ";");
     }
 
-    private Optional<Color> promptSelectRentColor(Player player, RentCard rentCard, List<Color> options) {
-        List<String> labels = new ArrayList<>();
+        private Optional<Color> promptSelectRentColor(Player player, RentCard rentCard, List<Color> options) {
         List<Color> colors = new ArrayList<>();
         for (Color color : options) {
-            int count = rentCard.countProperties(player, color);
-            int rent = rentCard.calculateRent(player, color);
-            labels.add(color + " (" + count + " 张 → " + rent + "M)");
             colors.add(color);
         }
         if (colors.isEmpty()) {
             return Optional.empty();
         }
-        ChoiceDialog<String> dialog = new ChoiceDialog<>(labels.get(0), labels);
-        dialog.setTitle("选择收租颜色");
-        dialog.setHeaderText("选择要按哪套地产收租");
-        dialog.setContentText("颜色（张数 → 租金）:");
-        Optional<String> result = dialog.showAndWait();
-        if (result.isEmpty()) {
-            return Optional.empty();
-        }
-        int index = labels.indexOf(result.get());
-        return Optional.of(colors.get(index));
+        return showStyledChoiceDialog("选择收租颜色", "选择要按哪套地产收租", "颜色（张数 → 租金）:", colors,
+                color -> color + "  ·  " + rentCard.countProperties(player, color) + " 张 → "
+                        + rentCard.calculateRent(player, color) + "M",
+                color -> "-fx-background-color: " + cssColorFor(color) + "; -fx-text-fill: " + textColorFor(color) + ";");
     }
 
     private ActionEffectResult resolveDealBreaker(Player player, DealBreaker dealBreaker) {
@@ -635,21 +724,15 @@ public class GameController {
         return ActionEffectResult.SUCCESS;
     }
 
-    private Optional<Player> promptSelectOpponentWithCompleteSets(Player current) {
+        private Optional<Player> promptSelectOpponentWithCompleteSets(Player current) {
         List<Player> valid = new ArrayList<>();
         for (Player p : gameEngine.getPlayers()) {
             if (!p.equals(current) && hasAnyCompleteSet(p)) {
                 valid.add(p);
             }
         }
-        if (valid.isEmpty()) {
-            return Optional.empty();
-        }
-        ChoiceDialog<Player> dialog = new ChoiceDialog<>(valid.get(0), valid);
-        dialog.setTitle("Deal Breaker");
-        dialog.setHeaderText("选择要偷取完整套组的玩家");
-        dialog.setContentText("仅显示拥有完整套组的玩家:");
-        return dialog.showAndWait();
+        return showStyledChoiceDialog("Deal Breaker", "选择要偷取完整套组的玩家", "仅显示拥有完整套组的玩家:", valid,
+                Player::getName, p -> null);
     }
 
     private void playWildPropertyCard(Player player, WildpropertyCard wild) {
@@ -686,16 +769,15 @@ public class GameController {
         completePlayStep(player, wild, false);
     }
 
-    private Optional<ActionPlayChoice> promptWildPropertyChoice(WildpropertyCard wild) {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("万能地产卡");
-        alert.setHeaderText(wild.getName() + " — 可存银行 " + wild.getBankValueM() + "M");
-        alert.setContentText("选择作为地产打出（并选颜色），或存入银行？");
+        private Optional<ActionPlayChoice> promptWildPropertyChoice(WildpropertyCard wild) {
         ButtonType useBtn = new ButtonType("作为地产打出");
         ButtonType bankBtn = new ButtonType("存入银行 (" + wild.getBankValueM() + "M)");
         ButtonType cancelBtn = new ButtonType("取消", ButtonBar.ButtonData.CANCEL_CLOSE);
-        alert.getButtonTypes().setAll(useBtn, bankBtn, cancelBtn);
-        Optional<ButtonType> result = alert.showAndWait();
+        Optional<ButtonType> result = showStyledButtonDialog(
+                "万能地产卡",
+                wild.getName() + " — 可存银行 " + wild.getBankValueM() + "M",
+                "选择作为地产打出（并选颜色），或存入银行？",
+                useBtn, bankBtn, cancelBtn);
         if (result.isEmpty()) {
             return Optional.empty();
         }
@@ -708,16 +790,12 @@ public class GameController {
         return Optional.empty();
     }
 
-    private Optional<Color> promptSelectWildColor(WildpropertyCard wild) {
+        private Optional<Color> promptSelectWildColor(WildpropertyCard wild) {
         List<Color> options = wild.getAvailableColors();
         if (options.isEmpty()) {
             return Optional.empty();
         }
-        ChoiceDialog<Color> dialog = new ChoiceDialog<>(options.get(0), options);
-        dialog.setTitle("万能地产颜色");
-        dialog.setHeaderText(wild.getName());
-        dialog.setContentText("选择要当作哪种颜色的地产：");
-        return dialog.showAndWait();
+        return showColorChoiceDialog("万能地产颜色", wild.getName(), "选择要当作哪种颜色的地产：", options);
     }
 
     private boolean hasAnyCompleteSet(Player player) {
@@ -729,59 +807,203 @@ public class GameController {
         return false;
     }
 
-    private Optional<Player> promptSelectOpponent(Player current, String title) {
+        private Optional<Player> promptSelectOpponent(Player current, String title) {
         List<Player> opponents = new ArrayList<>();
         for (Player p : gameEngine.getPlayers()) {
             if (!p.equals(current)) {
                 opponents.add(p);
             }
         }
-        if (opponents.isEmpty()) {
-            return Optional.empty();
-        }
-        ChoiceDialog<Player> dialog = new ChoiceDialog<>(opponents.get(0), opponents);
-        dialog.setTitle(title);
-        dialog.setHeaderText(title);
-        dialog.setContentText("选择玩家:");
-        return dialog.showAndWait();
+        return showStyledChoiceDialog(title, title, "选择玩家:", opponents, Player::getName, p -> null);
     }
 
-    private Optional<Color> promptSelectCompleteSetOnPlayer(Player target) {
+        private Optional<Color> promptSelectCompleteSetOnPlayer(Player target) {
         List<Color> options = new ArrayList<>();
         for (Color color : Color.values()) {
             if (target.hasCompleteSet(color)) {
                 options.add(color);
             }
         }
-        if (options.isEmpty()) {
-            return Optional.empty();
-        }
-        ChoiceDialog<Color> dialog = new ChoiceDialog<>(options.get(0), options);
-        dialog.setTitle("选择套组");
-        dialog.setHeaderText(target.getName() + " 的完整套组");
-        dialog.setContentText("要偷取哪种颜色？");
-        return dialog.showAndWait();
+        return showColorChoiceDialog("选择套组", target.getName() + " 的完整套组", "要偷取哪种颜色？", options);
     }
 
-    private Optional<Color> promptSelectOwnCompleteSet(Player player, String title) {
+        private Optional<Color> promptSelectOwnCompleteSet(Player player, String title) {
         List<Color> options = new ArrayList<>();
         for (Color color : Color.values()) {
             if (player.hasCompleteSet(color)) {
                 options.add(color);
             }
         }
-        if (options.isEmpty()) {
-            return Optional.empty();
-        }
-        ChoiceDialog<Color> dialog = new ChoiceDialog<>(options.get(0), options);
-        dialog.setTitle(title);
-        dialog.setHeaderText(title);
-        dialog.setContentText("选择颜色套组:");
-        return dialog.showAndWait();
+        return showColorChoiceDialog(title, title, "选择颜色套组:", options);
     }
 
     /** 出满 3 张牌后强制切换到下一名玩家 */
-    private void forceEndTurn() {
+    
+    private void loadAvatarImage() {
+        try {
+            avatarImage = new Image(Objects.requireNonNull(
+                    getClass().getResourceAsStream("/ui/avatar.png")));
+        } catch (Exception ex) {
+            avatarImage = null;
+        }
+    }
+
+    private ImageView createAvatarView(double size) {
+        ImageView view = new ImageView();
+        if (avatarImage != null) {
+            view.setImage(avatarImage);
+        }
+        view.setFitWidth(size);
+        view.setFitHeight(size);
+        view.setPreserveRatio(true);
+        Circle clip = new Circle(size / 2, size / 2, size / 2);
+        view.setClip(clip);
+        view.getStyleClass().add("player-avatar");
+        return view;
+    }
+
+    private void styleDialog(Dialog<?> dialog) {
+        DialogPane pane = dialog.getDialogPane();
+        try {
+            String css = Objects.requireNonNull(getClass().getResource("/ui/game-theme.css")).toExternalForm();
+            if (!pane.getStylesheets().contains(css)) {
+                pane.getStylesheets().add(css);
+            }
+        } catch (Exception ignored) {
+        }
+        pane.getStyleClass().add("game-dialog");
+        if (statusMessage != null && statusMessage.getScene() != null) {
+            dialog.initOwner(statusMessage.getScene().getWindow());
+        }
+    }
+
+    private Optional<ButtonType> showStyledButtonDialog(String title, String header, String content, ButtonType... buttons) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle(title);
+        DialogPane pane = dialog.getDialogPane();
+        pane.getButtonTypes().setAll(buttons);
+        VBox body = new VBox(10);
+        body.getStyleClass().add("dialog-body");
+        Label headerLabel = new Label(header);
+        headerLabel.getStyleClass().add("dialog-header-label");
+        Label contentLabel = new Label(content == null ? "" : content);
+        contentLabel.setWrapText(true);
+        contentLabel.getStyleClass().add("dialog-content-label");
+        body.getChildren().addAll(headerLabel, contentLabel);
+        pane.setContent(body);
+        dialog.setResultConverter(button -> button);
+        styleDialog(dialog);
+        return dialog.showAndWait();
+    }
+
+    private <T> Optional<T> showStyledChoiceDialog(String title, String header, String prompt,
+                                                    List<T> options, Function<T, String> labeler,
+                                                    Function<T, String> colorStyleProvider) {
+        if (options == null || options.isEmpty()) {
+            return Optional.empty();
+        }
+        Dialog<T> dialog = new Dialog<>();
+        dialog.setTitle(title);
+        ButtonType cancel = new ButtonType("取消", ButtonBar.ButtonData.CANCEL_CLOSE);
+        DialogPane pane = dialog.getDialogPane();
+        pane.getButtonTypes().add(cancel);
+        dialog.setResultConverter(button -> null);
+
+        VBox body = new VBox(12);
+        body.getStyleClass().add("dialog-body");
+        Label headerLabel = new Label(header);
+        headerLabel.getStyleClass().add("dialog-header-label");
+        Label promptLabel = new Label(prompt == null ? "" : prompt);
+        promptLabel.setWrapText(true);
+        promptLabel.getStyleClass().add("dialog-content-label");
+        VBox choices = new VBox(8);
+        choices.getStyleClass().add("dialog-choice-list");
+        for (T option : options) {
+            Button button = new Button(labeler.apply(option));
+            button.setMaxWidth(Double.MAX_VALUE);
+            button.getStyleClass().add("dialog-choice-button");
+            String extraStyle = colorStyleProvider == null ? null : colorStyleProvider.apply(option);
+            if (extraStyle != null && !extraStyle.isBlank()) {
+                button.setStyle(extraStyle);
+            }
+            button.setOnAction(e -> {
+                dialog.setResult(option);
+                dialog.close();
+            });
+            choices.getChildren().add(button);
+        }
+        body.getChildren().addAll(headerLabel, promptLabel, choices);
+        pane.setContent(body);
+        styleDialog(dialog);
+        return dialog.showAndWait();
+    }
+
+    private Optional<Color> showColorChoiceDialog(String title, String header, String prompt, List<Color> colors) {
+        return showStyledChoiceDialog(title, header, prompt, colors,
+                color -> color + "  ·  " + color.getSetSize() + " 张成套",
+                color -> "-fx-background-color: " + cssColorFor(color) + ";"
+                        + "-fx-text-fill: " + textColorFor(color) + ";"
+                        + "-fx-border-color: rgba(255,255,255,0.55);");
+    }
+
+    private String cssColorFor(Color color) {
+        return switch (color) {
+            case BROWN -> "#8B5A2B";
+            case DARK_BLUE -> "#174EA6";
+            case GREEN -> "#1B7F43";
+            case ORANGE -> "#F2994A";
+            case RED -> "#D64545";
+            case YELLOW -> "#F2C94C";
+            case BLACK -> "#2D3436";
+            case LIGHT_BLUE -> "#7EC8E3";
+            case LIGHT_GREEN -> "#6FCF97";
+            case PINK -> "#E84393";
+        };
+    }
+
+    private String textColorFor(Color color) {
+        return switch (color) {
+            case YELLOW, LIGHT_BLUE, LIGHT_GREEN, ORANGE -> "#1F2A2E";
+            default -> "white";
+        };
+    }
+
+    private void resetAchievements() {
+        unlockedAchievements.clear();
+    }
+
+    private void unlockAchievement(String id, String title, String description) {
+        if (!unlockedAchievements.add(id)) {
+            return;
+        }
+        logMessage("🏆 Achievement unlocked: " + title);
+        showAchievementDialog(title, description);
+    }
+
+    private void showAchievementDialog(String title, String description) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Achievement Unlocked");
+        ButtonType ok = new ButtonType("Nice!", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().setAll(ok);
+        HBox body = new HBox(14);
+        body.setAlignment(Pos.CENTER_LEFT);
+        body.getStyleClass().add("achievement-dialog-body");
+        Label icon = new Label("🏆");
+        icon.getStyleClass().add("achievement-icon");
+        VBox textBox = new VBox(6);
+        Label titleLabel = new Label(title);
+        titleLabel.getStyleClass().add("achievement-title");
+        Label descLabel = new Label(description);
+        descLabel.setWrapText(true);
+        descLabel.getStyleClass().add("achievement-description");
+        textBox.getChildren().addAll(titleLabel, descLabel);
+        body.getChildren().addAll(icon, textBox);
+        dialog.getDialogPane().setContent(body);
+        styleDialog(dialog);
+        dialog.showAndWait();
+    }
+
+private void forceEndTurn() {
         Player ending = gameEngine.getCurrentPlayer();
         gameEngine.nextTurn();
         currentPlayer = gameEngine.getCurrentPlayer();
@@ -812,16 +1034,15 @@ public class GameController {
         showStatus("轮到 " + currentPlayer.getName() + "，请先抽 2 张牌", false);
         afterStateChange();
     }
-    
-    @FXML
     private void onNewGameClick() {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("New Game");
-        alert.setHeaderText("Start a new game?");
-        alert.setContentText("This will reset the current game.");
-        
-        Optional<ButtonType> result = alert.showAndWait();
-        if (result.isPresent() && result.get() == ButtonType.OK) {
+        ButtonType start = new ButtonType("开始新游戏");
+        ButtonType cancel = new ButtonType("取消", ButtonBar.ButtonData.CANCEL_CLOSE);
+        Optional<ButtonType> result = showStyledButtonDialog(
+                "New Game",
+                "Start a new game?",
+                "This will reset the current game.",
+                start, cancel);
+        if (result.isPresent() && result.get() == start) {
             initializeGame();
         }
     }
@@ -883,14 +1104,19 @@ public class GameController {
         }
     }
     
-    private VBox createPlayerInfoBox(Player player, boolean isCurrent) {
-        VBox box = new VBox(5);
-        String borderColor = isCurrent ? "#f39c12" : "#bdc3c7";
-        box.setStyle("-fx-background-color: white; -fx-padding: 10; -fx-background-radius: 5;"
-                + " -fx-border-color: " + borderColor + "; -fx-border-width: " + (isCurrent ? "2" : "1") + ";");
+        private VBox createPlayerInfoBox(Player player, boolean isCurrent) {
+        VBox box = new VBox(7);
+        box.getStyleClass().add("player-info-card");
+        if (isCurrent) {
+            box.getStyleClass().add("player-info-current");
+        }
 
+        HBox header = new HBox(9);
+        header.setAlignment(Pos.CENTER_LEFT);
+        ImageView avatar = createAvatarView(42);
         Label nameLabel = new Label(player.getName());
         nameLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+        header.getChildren().addAll(avatar, nameLabel);
 
         int handSize = sessionMode == SessionMode.CLIENT && remotePublic != null
                 ? handSizeFor(player.getName()) : player.getHand().size();
@@ -899,7 +1125,7 @@ public class GameController {
         Label propertyCountLabel = new Label("Properties: " + propertyCountFor(player));
         Label bankLabel = new Label("Bank: " + bankTotalFor(player) + "M");
 
-        box.getChildren().addAll(nameLabel, handCountLabel, propertyCountLabel, bankLabel);
+        box.getChildren().addAll(header, handCountLabel, propertyCountLabel, bankLabel);
         return box;
     }
 
@@ -966,7 +1192,7 @@ public class GameController {
         }
         playerHand.getChildren().clear();
 
-        if (currentPlayer == null) {
+        if (currentPlayer == null && sessionMode != SessionMode.CLIENT) {
             return;
         }
 
@@ -1051,13 +1277,16 @@ public class GameController {
             bankTotalLabel.setText(total + "M");
         }
 
-        for (Card card : getBankCardsForView()) {
-            playerBank.getChildren().add(CardView.wrapInSlot(card, false, CardView.COMPACT));
+        List<Card> bankCards = getBankCardsForView();
+        for (Card card : bankCards) {
+            StackPane slot = CardView.wrapInSlot(card, false, CardView.COMPACT);
+            slot.getStyleClass().add("bank-card-slot");
+            playerBank.getChildren().add(slot);
         }
 
         if (playerBank.getChildren().isEmpty()) {
-            Label hint = new Label("（打出金钱牌会放入银行）");
-            hint.setStyle("-fx-text-fill: #7f8c8d; -fx-font-size: 12px;");
+            Label hint = new Label("（打出金钱牌 / 行动牌，或收租收到的牌会放入银行）");
+            hint.setStyle("-fx-text-fill: #476272; -fx-font-size: 12px; -fx-wrap-text: true;");
             playerBank.getChildren().add(hint);
         }
     }
@@ -1081,17 +1310,24 @@ public class GameController {
         }
 
         for (PlayerPublicSnapshot view : views) {
-            VBox playerBlock = new VBox(6);
+            VBox playerBlock = new VBox(8);
+            playerBlock.setMaxWidth(Double.MAX_VALUE);
             boolean isTurn = isTurnSeat(view.seat);
-            playerBlock.setStyle("-fx-background-color: white; -fx-padding: 8; -fx-background-radius: 6;"
-                    + " -fx-border-color: " + (isTurn ? "#f39c12" : "#dcdde1") + "; -fx-border-width: "
-                    + (isTurn ? "2" : "1") + ";");
+            playerBlock.getStyleClass().add("player-public-block");
+            if (isTurn) {
+                playerBlock.getStyleClass().add("player-public-block-current");
+            }
 
-            Label title = new Label(view.name + "  |  手牌 " + view.handSize + " 张");
-            title.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
+            HBox titleRow = new HBox(9);
+            titleRow.setAlignment(Pos.CENTER_LEFT);
+            ImageView avatar = createAvatarView(38);
+            Label title = new Label((isTurn ? "▶ " : "") + view.name + "  |  手牌 " + view.handSize + " 张  |  银行 " + view.bankTotal + "M");
+            title.setStyle("-fx-font-weight: 900; -fx-font-size: 15px; -fx-text-fill: #103c2a;");
+            titleRow.getChildren().addAll(avatar, title);
 
-            FlowPane props = new FlowPane(8, 8);
-            props.setPrefWrapLength(900);
+            FlowPane props = new FlowPane(13, 13);
+            props.setPrefWrapLength(640);
+            props.setMaxWidth(Double.MAX_VALUE);
             if (view.properties.isEmpty()) {
                 props.getChildren().add(new Label("（无地产）"));
             } else {
@@ -1102,7 +1338,7 @@ public class GameController {
                     props.getChildren().add(set);
                 }
             }
-            playerBlock.getChildren().addAll(title, props);
+            playerBlock.getChildren().addAll(titleRow, props);
             allPlayersPropertiesPanel.getChildren().add(playerBlock);
         }
     }
@@ -1128,15 +1364,18 @@ public class GameController {
     }
 
     private HBox buildPropertyColorSet(Color color, List<Card> cards) {
-        HBox colorSet = new HBox(5);
+        HBox colorSet = new HBox(10);
         colorSet.setAlignment(Pos.CENTER_LEFT);
-        colorSet.setStyle("-fx-background-color: rgba(255,255,255,0.9); -fx-background-radius: 4; -fx-padding: 4 6;");
+        colorSet.getStyleClass().add("property-set");
+        if (cards.size() >= color.getSetSize()) {
+            colorSet.getStyleClass().add("property-set-complete");
+        }
         Label groupLabel = new Label(color + "\n" + cards.size() + "/" + color.getSetSize());
-        groupLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 10px;");
-        groupLabel.setMinWidth(48);
-        HBox row = new HBox(4);
+        groupLabel.setStyle("-fx-font-weight: 900; -fx-font-size: 12px; -fx-text-fill: #25342d;");
+        groupLabel.setMinWidth(64);
+        HBox row = new HBox(8);
         for (Card card : cards) {
-            row.getChildren().add(CardView.wrapInSlot(card, false, CardView.COMPACT));
+            row.getChildren().add(CardView.wrapInSlot(card, false, CardView.PUBLIC));
         }
         colorSet.getChildren().addAll(groupLabel, row);
         return colorSet;
@@ -1213,18 +1452,12 @@ public class GameController {
         });
     }
     
-    private void showGameOver(Player winner) {
+        private void showGameOver(Player winner) {
         Platform.runLater(() -> {
-            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-            alert.setTitle("Game Over");
-            alert.setHeaderText("Congratulations!");
-            alert.setContentText(winner.getName() + " wins the game!");
-            alert.showAndWait();
-            
+            showStyledButtonDialog("Game Over", "Congratulations!", winner.getName() + " wins the game!",
+                    new ButtonType("OK", ButtonBar.ButtonData.OK_DONE));
             gameStatusText.setText("Game Over - " + winner.getName() + " Wins!");
             logMessage("=== GAME OVER === " + winner.getName() + " wins!");
-            
-            // 禁用所有按钮
             drawCardBtn.setDisable(true);
             playCardBtn.setDisable(true);
             endTurnBtn.setDisable(true);
@@ -1412,18 +1645,16 @@ public class GameController {
         }
     }
 
-    private void playSelectedCardAsClient() {
+        private void playSelectedCardAsClient() {
         Card card = selectedCard;
         selectedCard = null;
         if (card instanceof WildpropertyCard wild) {
             if (wild.isBankable()) {
-                Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-                alert.setHeaderText(wild.getName());
                 ButtonType asProp = new ButtonType("作为地产");
                 ButtonType asBank = new ButtonType("存银行");
                 ButtonType cancel = new ButtonType("取消", ButtonBar.ButtonData.CANCEL_CLOSE);
-                alert.getButtonTypes().setAll(asProp, asBank, cancel);
-                Optional<ButtonType> r = alert.showAndWait();
+                Optional<ButtonType> r = showStyledButtonDialog("万能地产卡", wild.getName(),
+                        "选择作为地产打出，或存入银行。", asProp, asBank, cancel);
                 if (r.isEmpty() || r.get() == cancel) {
                     selectedCard = wild;
                     return;
@@ -1435,8 +1666,8 @@ public class GameController {
             }
             List<Color> colors = wild.getAvailableColors();
             if (!colors.isEmpty()) {
-                ChoiceDialog<Color> d = new ChoiceDialog<>(colors.get(0), colors);
-                Optional<Color> c = d.showAndWait();
+                Optional<Color> c = showColorChoiceDialog("万能地产颜色", wild.getName(),
+                        "选择要当作哪种颜色的地产：", colors);
                 if (c.isPresent()) {
                     submitRoomCommand("PLAY", wild.getInstanceId(), "PROPERTY", c.get().name());
                 } else {
@@ -1446,13 +1677,10 @@ public class GameController {
             return;
         }
         if (card instanceof ActionCard || card instanceof RentCard) {
-            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-            alert.setHeaderText(card.getName());
-            alert.setContentText("伪联机：行动/租金牌请先存入银行");
             ButtonType bank = new ButtonType("存银行");
             ButtonType cancel = new ButtonType("取消", ButtonBar.ButtonData.CANCEL_CLOSE);
-            alert.getButtonTypes().setAll(bank, cancel);
-            Optional<ButtonType> r = alert.showAndWait();
+            Optional<ButtonType> r = showStyledButtonDialog("行动 / 租金牌", card.getName(),
+                    "伪联机：行动/租金牌请先存入银行", bank, cancel);
             if (r.isPresent() && r.get() == bank) {
                 submitRoomCommand("PLAY", card.getInstanceId(), "BANK", null);
             } else {
