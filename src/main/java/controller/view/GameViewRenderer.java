@@ -9,6 +9,7 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.TilePane;
 import javafx.scene.layout.VBox;
@@ -304,12 +305,31 @@ public class GameViewRenderer {
         Label groupLabel = new Label(color + "\n" + cards.size() + "/" + color.getSetSize());
         groupLabel.setStyle("-fx-font-weight: 900; -fx-font-size: 12px; -fx-text-fill: #25342d;");
         groupLabel.setMinWidth(64);
-        HBox row = new HBox(8);
-        for (Card card : cards) {
-            row.getChildren().add(CardView.wrapInSlot(card, false, CardView.PUBLIC));
-        }
+        Pane row = createOverlappedPropertyRow(cards);
         colorSet.getChildren().addAll(groupLabel, row);
         return colorSet;
+    }
+
+    private Pane createOverlappedPropertyRow(List<Card> cards) {
+        Pane row = new Pane();
+        double offset = 30;
+        double fanDrop = 5;
+        double width = CardView.PUBLIC.slotW() + Math.max(0, cards.size() - 1) * offset + 18;
+        double height = CardView.PUBLIC.slotH() + fanDrop + 14;
+        row.setMinSize(width, height);
+        row.setPrefSize(width, height);
+        row.setMaxSize(width, height);
+
+        double middle = (cards.size() - 1) / 2.0;
+        for (int i = 0; i < cards.size(); i++) {
+            StackPane slot = CardView.wrapInSlot(cards.get(i), false, CardView.PUBLIC);
+            slot.setLayoutX(i * offset);
+            slot.setLayoutY(i % 2 == 0 ? 0 : fanDrop);
+            slot.setRotate((i - middle) * 3.5);
+            slot.addEventHandler(javafx.scene.input.MouseEvent.MOUSE_ENTERED, e -> slot.toFront());
+            row.getChildren().add(slot);
+        }
+        return row;
     }
 
     private Map<Color, List<Card>> groupPropertiesByColor(List<Card> properties) {

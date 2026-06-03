@@ -1,6 +1,7 @@
 package ui;
 
 import javafx.geometry.Pos;
+import javafx.scene.control.Tooltip;
 import javafx.scene.Cursor;
 import javafx.scene.control.Label;
 import javafx.scene.effect.DropShadow;
@@ -11,6 +12,9 @@ import javafx.scene.layout.VBox;
 import model.card.*;
 import model.card.actionCard.ActionCard;
 import model.enums.Color;
+import javafx.util.Duration;
+
+import java.util.stream.Collectors;
 
 /**
  * Shared card UI. Cards stay small by default and enlarge on hover.
@@ -75,6 +79,7 @@ public class CardView extends StackPane {
         setMinSize(metrics.normalW(), metrics.normalH());
         setMaxSize(metrics.normalW(), metrics.normalH());
         setCursor(clickable ? Cursor.HAND : Cursor.DEFAULT);
+        Tooltip.install(this, createInfoTooltip());
 
         String imagePath = CardImageLoader.resolvePath(card);
         if (imagePath != null) {
@@ -185,12 +190,70 @@ public class CardView extends StackPane {
     }
 
     private String getTypeDisplayName() {
+        if (card instanceof WildpropertyCard) {
+            return "Wild Property";
+        }
+        if (card instanceof RentCard) {
+            return "Rent / Action";
+        }
         return switch (card.getType()) {
             case PROPERTY -> "Property";
             case MONEY -> "Money";
             case ACTION -> "Action";
             default -> "Card";
         };
+    }
+
+    private Tooltip createInfoTooltip() {
+        Tooltip tooltip = new Tooltip(buildInfoText());
+        tooltip.setWrapText(true);
+        tooltip.setMaxWidth(285);
+        tooltip.setShowDelay(Duration.millis(80));
+        tooltip.setHideDelay(Duration.millis(80));
+        tooltip.setShowDuration(Duration.seconds(20));
+        tooltip.setStyle(
+                "-fx-background-color: rgba(8, 42, 29, 0.96);" +
+                "-fx-text-fill: white;" +
+                "-fx-font-size: 13px;" +
+                "-fx-font-weight: 700;" +
+                "-fx-padding: 10 12;" +
+                "-fx-background-radius: 10;"
+        );
+        return tooltip;
+    }
+
+    private String buildInfoText() {
+        return "名称：" + card.getName()
+                + "\n类型：" + getTypeDisplayName()
+                + "\n效果：" + buildEffectText();
+    }
+
+    private String buildEffectText() {
+        String description = card.getDescription() == null || card.getDescription().isBlank()
+                ? "No description"
+                : card.getDescription();
+
+        if (card instanceof WildpropertyCard wild) {
+            String colors = wild.getAvailableColors().stream()
+                    .map(Enum::name)
+                    .collect(Collectors.joining(" / "));
+            String bankText = wild.isBankable() ? "; can bank for " + wild.getBankValueM() + "M" : "; cannot bank";
+            return description + " — choose " + colors + " as its color" + bankText + ".";
+        }
+        if (card instanceof PropertyCard propertyCard) {
+            return description + " — place into property area; color " + propertyCard.getColor()
+                    + "; value " + propertyCard.getPrice() + "M; rent " + propertyCard.getRentDisplay() + ".";
+        }
+        if (card instanceof MoneyCard moneyCard) {
+            return description + " — deposit into bank; value " + moneyCard.getMoney() + "M.";
+        }
+        if (card instanceof RentCard rentCard) {
+            return description + " — bank value " + rentCard.getBankValueM() + "M.";
+        }
+        if (card instanceof ActionCard actionCard) {
+            return description + " — bank value " + actionCard.getBankValueM() + "M.";
+        }
+        return description;
     }
 
     private void updateCardStyle() {

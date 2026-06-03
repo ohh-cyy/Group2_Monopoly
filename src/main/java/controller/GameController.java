@@ -5,16 +5,26 @@ import engine.DeckFactory;
 import engine.GameEngine;
 import engine.PropertyRules;
 import javafx.application.Platform;
+import javafx.animation.FadeTransition;
+import javafx.animation.Interpolator;
+import javafx.animation.ParallelTransition;
+import javafx.animation.RotateTransition;
+import javafx.animation.ScaleTransition;
 import javafx.animation.TranslateTransition;
 import sync.*;
 import ui.CardView;
 import javafx.fxml.FXML;
+import javafx.geometry.Bounds;
+import javafx.geometry.Point2D;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
+import javafx.scene.Parent;
+import javafx.scene.SnapshotParameters;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.image.WritableImage;
 import javafx.scene.shape.Circle;
 import model.card.*;
 import model.card.actionCard.*;
@@ -102,6 +112,8 @@ public class GameController {
     private List<Player> players;
     private Player currentPlayer;
     private Card selectedCard;
+    private CardView selectedCardView;
+    private CardView pendingPlayedCardView;
     private Random random;
 
     private enum SessionMode { LOCAL, HOST, CLIENT }
@@ -361,6 +373,7 @@ private void setupPublicBoardSizing() {
         try {
             Player player = gameEngine.getCurrentPlayer();
             Card played = selectedCard;
+            pendingPlayedCardView = selectedCardView;
             selectedCard = null;
 
             if (played instanceof ActionCard actionCard) {
@@ -387,6 +400,7 @@ private void setupPublicBoardSizing() {
         Optional<ActionPlayChoice> choice = promptActionCardChoice(actionCard);
         if (choice.isEmpty()) {
             selectedCard = actionCard;
+            pendingPlayedCardView = null;
             return;
         }
 
@@ -403,6 +417,7 @@ private void setupPublicBoardSizing() {
         ActionEffectResult result = resolveActionCardEffect(player, actionCard);
         if (result == ActionEffectResult.CANCELLED) {
             selectedCard = actionCard;
+            pendingPlayedCardView = null;
             showStatus("The card has been cancelled, the action card is kept in hand", false);
             updateUI();
             return;
@@ -423,6 +438,10 @@ private void setupPublicBoardSizing() {
     private void completePlayStep(Player player, Card played, boolean depositedToBank) {
         gameEngine.recordCardPlayed();
 
+        runAfterPlayAnimation(played, depositedToBank, () -> finishPlayStep(player, played, depositedToBank));
+    }
+
+    private void finishPlayStep(Player player, Card played, boolean depositedToBank) {
         if (gameEngine.checkWin(player)) {
             gameEngine.setGameOver(true);
             showGameOver(player);
@@ -441,6 +460,91 @@ private void setupPublicBoardSizing() {
             showStatus("Already deposited into the bank. This turn can still be played " + gameEngine.getRemainingPlays() + " cards", false);
         }
         afterStateChange();
+    }
+
+    private void runAfterPlayAnimation(Card played, boolean depositedToBank, Runnable onFinished) {
+        CardView source = pendingPlayedCardView;
+        pendingPlayedCardView = null;
+        selectedCardView = null;
+
+        if (source == null || source.getScene() == null || handDock == null) {
+            onFinished.run();
+            return;
+        }
+
+        Parent parent = handDock.getParent();
+        if (!(parent instanceof Pane overlay)) {
+            onFinished.run();
+            return;
+        }
+
+        Node target = targetNodeForPlayedCard(played, depositedToBank);
+        if (target == null || target.getScene() == null) {
+            onFinished.run();
+            return;
+        }
+
+        Bounds sourceBounds = source.localToScene(source.getBoundsInLocal());
+        Bounds targetBounds = target.localToScene(target.getBoundsInLocal());
+        Point2D start = overlay.sceneToLocal(sourceBounds.getMinX(), sourceBounds.getMinY());
+        Point2D targetPoint = overlay.sceneToLocal(
+                targetBounds.getMinX() + targetBounds.getWidth() / 2,
+                targetBounds.getMinY() + targetBounds.getHeight() / 2
+        );
+
+        SnapshotParameters params = new SnapshotParameters();
+        params.setFill(javafx.scene.paint.Color.TRANSPARENT);
+        WritableImage snapshot = source.snapshot(params, null);
+        ImageView ghost = new ImageView(snapshot);
+        ghost.setFitWidth(sourceBounds.getWidth());
+        ghost.setFitHeight(sourceBounds.getHeight());
+        ghost.setPreserveRatio(false);
+        ghost.setMouseTransparent(true);
+        ghost.setManaged(false);
+        ghost.setLayoutX(start.getX());
+        ghost.setLayoutY(start.getY());
+
+        source.setVisible(false);
+        overlay.getChildren().add(ghost);
+        ghost.toFront();
+
+        double targetX = targetPoint.getX() - start.getX() - sourceBounds.getWidth() / 2;
+        double targetY = targetPoint.getY() - start.getY() - sourceBounds.getHeight() / 2;
+
+        TranslateTransition move = new TranslateTransition(Duration.millis(420), ghost);
+        move.setByX(targetX);
+        move.setByY(targetY);
+        move.setInterpolator(Interpolator.EASE_BOTH);
+
+        ScaleTransition scale = new ScaleTransition(Duration.millis(420), ghost);
+        scale.setToX(depositedToBank ? 0.45 : 0.65);
+        scale.setToY(depositedToBank ? 0.45 : 0.65);
+        scale.setInterpolator(Interpolator.EASE_BOTH);
+
+        RotateTransition rotate = new RotateTransition(Duration.millis(420), ghost);
+        rotate.setByAngle(depositedToBank ? -10 : 12);
+        rotate.setInterpolator(Interpolator.EASE_BOTH);
+
+        FadeTransition fade = new FadeTransition(Duration.millis(420), ghost);
+        fade.setFromValue(0.98);
+        fade.setToValue(0.12);
+
+        ParallelTransition fly = new ParallelTransition(move, scale, rotate, fade);
+        fly.setOnFinished(e -> {
+            overlay.getChildren().remove(ghost);
+            onFinished.run();
+        });
+        fly.play();
+    }
+
+    private Node targetNodeForPlayedCard(Card played, boolean depositedToBank) {
+        if (depositedToBank) {
+            return playerBank != null ? playerBank : bankTotalLabel;
+        }
+        if (played instanceof PropertyCard) {
+            return allPlayersPropertiesPanel != null ? allPlayersPropertiesPanel : gameStatusText;
+        }
+        return gameStatusText != null ? gameStatusText : allPlayersPropertiesPanel;
     }
 
     private enum ActionPlayChoice {
@@ -753,6 +857,7 @@ private void setupPublicBoardSizing() {
             Optional<ActionPlayChoice> choice = promptWildPropertyChoice(wild);
             if (choice.isEmpty()) {
                 selectedCard = wild;
+                pendingPlayedCardView = null;
                 return;
             }
             if (choice.get() == ActionPlayChoice.DEPOSIT_BANK) {
@@ -769,6 +874,7 @@ private void setupPublicBoardSizing() {
         Optional<Color> color = promptSelectWildColor(wild);
         if (color.isEmpty()) {
             selectedCard = wild;
+            pendingPlayedCardView = null;
             showStatus("Cancelled, wild card kept in hand", false);
             updateUI();
             return;
@@ -1228,6 +1334,10 @@ private void forceEndTurn() {
         for (Card card : hand) {
             StackPane slot = CardView.wrapInSlot(card, handClickable, metrics);
             CardView cardView = CardView.getCardView(slot);
+            if (selectedCard != null && selectedCard.equals(card) && cardView != null) {
+                cardView.setSelected(true);
+                selectedCardView = cardView;
+            }
             if (handClickable && cardView != null) {
                 slot.setOnMouseClicked(event -> {
                     if (event.getClickCount() == 2) {
@@ -1269,6 +1379,7 @@ private void forceEndTurn() {
         }
 
         selectedCard = card;
+        selectedCardView = cardView;
         cardView.setSelected(true);
 
         if (card instanceof WildpropertyCard wild) {
@@ -1399,17 +1510,31 @@ private void forceEndTurn() {
         groupLabel.setStyle("-fx-font-weight: 900; -fx-font-size: 12px; -fx-text-fill: #25342d;");
         groupLabel.setMinWidth(64);
 
-        // Use FlowPane instead of HBox to allow cards to wrap when space is limited
-        FlowPane row = new FlowPane(8, 8);
-        row.setPrefWrapLength(400);
-        row.setMaxWidth(Double.MAX_VALUE);
-        row.setAlignment(Pos.CENTER_LEFT);
-
-        for (Card card : cards) {
-            row.getChildren().add(CardView.wrapInSlot(card, false, CardView.PUBLIC));
-        }
+        Pane row = createOverlappedPropertyRow(cards);
         colorSet.getChildren().addAll(groupLabel, row);
         return colorSet;
+    }
+
+    private Pane createOverlappedPropertyRow(List<Card> cards) {
+        Pane row = new Pane();
+        double offset = 30;
+        double fanDrop = 5;
+        double width = CardView.PUBLIC.slotW() + Math.max(0, cards.size() - 1) * offset + 18;
+        double height = CardView.PUBLIC.slotH() + fanDrop + 14;
+        row.setMinSize(width, height);
+        row.setPrefSize(width, height);
+        row.setMaxSize(width, height);
+
+        double middle = (cards.size() - 1) / 2.0;
+        for (int i = 0; i < cards.size(); i++) {
+            StackPane slot = CardView.wrapInSlot(cards.get(i), false, CardView.PUBLIC);
+            slot.setLayoutX(i * offset);
+            slot.setLayoutY(i % 2 == 0 ? 0 : fanDrop);
+            slot.setRotate((i - middle) * 3.5);
+            slot.addEventHandler(javafx.scene.input.MouseEvent.MOUSE_ENTERED, e -> slot.toFront());
+            row.getChildren().add(slot);
+        }
+        return row;
     }
 
     private Map<Color, List<Card>> groupPropertiesByColor(List<Card> properties) {
