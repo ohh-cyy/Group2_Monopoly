@@ -252,15 +252,29 @@ private void setHandDockExpanded(boolean expanded, boolean animate) {
     }
 
 private void setupPublicBoardSizing() {
-        if (allPlayersPropertiesPanel == null) {
-            return;
-        }
-        allPlayersPropertiesPanel.widthProperty().addListener((obs, oldW, newW) -> {
-            double width = newW.doubleValue();
-            int columns = width > 1060 ? 2 : 1;
-            allPlayersPropertiesPanel.setPrefColumns(columns);
-            allPlayersPropertiesPanel.setPrefTileWidth(Math.max(420, (width - 32) / columns));
-        });
+    if (allPlayersPropertiesPanel == null) {
+        return;
+    }
+
+    // Get the parent ScrollPane and configure it
+    javafx.scene.Parent parent = allPlayersPropertiesPanel.getParent();
+    if (parent instanceof javafx.scene.control.ScrollPane scrollPane) {
+        scrollPane.setFitToWidth(true);
+        scrollPane.setPannable(true);
+        scrollPane.setHbarPolicy(javafx.scene.control.ScrollPane.ScrollBarPolicy.NEVER);
+        scrollPane.setVbarPolicy(javafx.scene.control.ScrollPane.ScrollBarPolicy.AS_NEEDED);
+    }
+
+    allPlayersPropertiesPanel.widthProperty().addListener((obs, oldW, newW) -> {
+        double width = newW.doubleValue();
+        int columns = width > 1060 ? 2 : 1;
+        allPlayersPropertiesPanel.setPrefColumns(columns);
+        allPlayersPropertiesPanel.setPrefTileWidth(Math.max(420, (width - 32) / columns));
+    });
+
+    allPlayersPropertiesPanel.setTileAlignment(javafx.geometry.Pos.TOP_LEFT);
+    allPlayersPropertiesPanel.setSnapToPixel(true);
+
     }
     
     private void initializeGame() {
@@ -1384,7 +1398,13 @@ private void forceEndTurn() {
         Label groupLabel = new Label(color + "\n" + cards.size() + "/" + color.getSetSize());
         groupLabel.setStyle("-fx-font-weight: 900; -fx-font-size: 12px; -fx-text-fill: #25342d;");
         groupLabel.setMinWidth(64);
-        HBox row = new HBox(8);
+
+        // Use FlowPane instead of HBox to allow cards to wrap when space is limited
+        FlowPane row = new FlowPane(8, 8);
+        row.setPrefWrapLength(400);
+        row.setMaxWidth(Double.MAX_VALUE);
+        row.setAlignment(Pos.CENTER_LEFT);
+
         for (Card card : cards) {
             row.getChildren().add(CardView.wrapInSlot(card, false, CardView.PUBLIC));
         }

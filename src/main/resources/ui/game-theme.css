@@ -110,6 +110,7 @@
     -fx-border-radius: 12;
     -fx-border-color: rgba(0,0,0,0.06);
     -fx-padding: 9 10;
+    -fx-max-width: infinity;
 }
 
 .property-set-complete {

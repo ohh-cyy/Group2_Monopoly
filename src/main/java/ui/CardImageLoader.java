@@ -24,6 +24,17 @@ public final class CardImageLoader {
         if (card == null) {
             return null;
         }
+        
+        // Check for improvement cards first (House/Hotel added to property sets)
+        if (card instanceof PropertyCard && card.getName() != null) {
+            if (card.getName().startsWith("House+")) {
+                return BASE + "actioncard/house.png";
+            }
+            if (card.getName().startsWith("Hotel+")) {
+                return BASE + "actioncard/hotel.png";
+            }
+        }
+        
         if (card instanceof WildpropertyCard wild) {
             return resolveWildPath(wild);
         }
