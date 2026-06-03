@@ -64,7 +64,7 @@ public class LobbyController {
     private void onHostClick() {
         String name = nameField.getText().trim();
         if (name.isEmpty()) {
-            statusLabel.setText("请输入昵称");
+            statusLabel.setText("Please enter a name.");
             return;
         }
         try {
@@ -74,16 +74,16 @@ public class LobbyController {
             localSeat = 0;
             isHost = true;
             roomCodeField.setText(roomFolder.getRoomCode());
-            roomCodeLabel.setText("房间号: " + roomFolder.getRoomCode());
-            statusLabel.setText("房间路径:\n" + roomFolder.getRoot()
-                    + "\n\n把【共享目录】和【房间号】发给其他玩家。");
+            roomCodeLabel.setText("Room code: " + roomFolder.getRoomCode());
+            statusLabel.setText("Room path:\n" + roomFolder.getRoot()
+                    + "\n\nShare the folder and room code with other players.");
             startBtn.setDisable(false);
             hostBtn.setDisable(true);
             joinBtn.setDisable(true);
             refreshPlayers();
             startLobbyWatch();
         } catch (IOException e) {
-            statusLabel.setText("创建失败: " + e.getMessage());
+            statusLabel.setText("Create failed: " + e.getMessage());
         }
     }
 
@@ -92,7 +92,7 @@ public class LobbyController {
         String name = nameField.getText().trim();
         String code = roomCodeField.getText().trim();
         if (name.isEmpty() || code.isEmpty()) {
-            statusLabel.setText("请输入昵称和房间号");
+            statusLabel.setText("Please enter a name and room code.");
             return;
         }
         try {
@@ -100,20 +100,20 @@ public class LobbyController {
             RoomStorage.setConfiguredRoomsRoot(root);
             roomFolder = RoomStorage.openRoom(code, root);
             if (RoomStorage.isStarted(roomFolder)) {
-                statusLabel.setText("游戏已开始，无法加入");
+                statusLabel.setText("The game has already started.");
                 return;
             }
             localSeat = RoomStorage.joinNextSeat(roomFolder, name);
             isHost = false;
-            roomCodeLabel.setText("已加入房间: " + roomFolder.getRoomCode());
-            statusLabel.setText("已加入，等待 Host 开始游戏…");
+            roomCodeLabel.setText("Joined room: " + roomFolder.getRoomCode());
+            statusLabel.setText("Joined. Waiting for the host to start...");
             hostBtn.setDisable(true);
             joinBtn.setDisable(true);
             startBtn.setDisable(true);
             refreshPlayers();
             startLobbyWatch();
         } catch (IOException e) {
-            statusLabel.setText("加入失败: " + e.getMessage());
+            statusLabel.setText("Join failed: " + e.getMessage());
         }
     }
 
@@ -125,12 +125,12 @@ public class LobbyController {
         try {
             List<String> names = RoomStorage.listPlayerNames(roomFolder);
             if (names.size() < RoomFolder.MIN_PLAYERS_TO_START) {
-                statusLabel.setText("至少需要 " + RoomFolder.MIN_PLAYERS_TO_START + " 名玩家");
+                statusLabel.setText("At least " + RoomFolder.MIN_PLAYERS_TO_START + " players are required.");
                 return;
             }
             openGame(true, names);
         } catch (Exception e) {
-            statusLabel.setText("开始失败: " + e.getMessage());
+            statusLabel.setText("Start failed: " + e.getMessage());
         }
     }
 
@@ -143,10 +143,10 @@ public class LobbyController {
             GameController controller = loader.getController();
             Scene scene = new Scene(loader.getRoot(), 1200, 800);
             controller.startLocalGame();
-            stage.setTitle("Monopoly Deal - 单机");
+            stage.setTitle("Monopoly Deal - Local");
             stage.setScene(scene);
         } catch (IOException e) {
-            statusLabel.setText("无法打开: " + e.getMessage());
+            statusLabel.setText("Unable to open: " + e.getMessage());
         }
     }
 
@@ -161,7 +161,7 @@ public class LobbyController {
         } else {
             controller.startRoomClient(roomFolder, localSeat);
         }
-        stage.setTitle("Monopoly Deal - 房间 " + roomFolder.getRoomCode());
+        stage.setTitle("Monopoly Deal - Room " + roomFolder.getRoomCode());
         stage.setScene(scene);
     }
 
@@ -176,11 +176,11 @@ public class LobbyController {
                 startBtn.setDisable(names.size() < RoomFolder.MIN_PLAYERS_TO_START);
             }
             if (!isHost && RoomStorage.isStarted(roomFolder)) {
-                statusLabel.setText("游戏已开始，正在进入…");
+                statusLabel.setText("Game started. Entering...");
                 openGame(false, names);
             }
         } catch (Exception e) {
-            statusLabel.setText("刷新失败: " + e.getMessage());
+            statusLabel.setText("Refresh failed: " + e.getMessage());
         }
     }
 
@@ -193,7 +193,7 @@ public class LobbyController {
             lobbyWatcher = new RoomSyncWatcher();
             lobbyWatcher.start(roomFolder, () -> Platform.runLater(this::refreshPlayers));
         } catch (IOException e) {
-            statusLabel.setText("无法监听房间: " + e.getMessage());
+            statusLabel.setText("Unable to watch room: " + e.getMessage());
         }
     }
 
