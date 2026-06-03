@@ -31,7 +31,7 @@ public class PropertyCard extends Card {
         return price;
     }
 
-    /** 牌面展示的租金阶梯，如 "1M / 2M / 3M" */
+    /** Rent tiers shown on the card, such as "1M / 2M / 3M". */
     public String getRentDisplay() {
         return RentTable.formatRentTiers(color);
     }

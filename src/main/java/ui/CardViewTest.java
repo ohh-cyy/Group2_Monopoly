@@ -13,8 +13,7 @@ import model.card.actionCard.SimpleActionCard;
 import model.enums.Color;
 
 /**
- * 卡牌UI展示测试类
- * 用于展示所有类型的卡牌效果
+ * Small JavaFX window for checking card UI rendering.
  */
 public class CardViewTest extends Application {
     
@@ -24,16 +23,16 @@ public class CardViewTest extends Application {
         root.setPadding(new Insets(20));
         root.setAlignment(Pos.CENTER);
         
-        // 标题
-        Label titleLabel = new Label("Monopoly Deal - 卡牌UI展示");
+        // Title
+        Label titleLabel = new Label("Monopoly Deal - Card UI Preview");
         titleLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: bold;");
         
-        // 地产卡展示
+        // Property cards
         VBox propertySection = createSection("Property Cards");
         FlowPane propertyCards = new FlowPane(10, 10);
         propertyCards.setPrefWrapLength(800);
         
-        // 添加各种颜色的地产卡
+        // Add property cards in different colors.
         propertyCards.getChildren().add(new CardView(new PropertyCard("Old Kent Road", "Brown property", Color.BROWN, 1), true));
         propertyCards.getChildren().add(new CardView(new PropertyCard("The Angel Islington", "Light Blue property", Color.LIGHT_BLUE, 1), true));
         propertyCards.getChildren().add(new CardView(new PropertyCard("Pall Mall", "Pink property", Color.PINK, 2), true));
@@ -49,7 +48,7 @@ public class CardViewTest extends Application {
 
         propertySection.getChildren().add(propertyCards);
         
-        // 金钱卡展示
+        // Money cards
         VBox moneySection = createSection("Money Cards");
         FlowPane moneyCards = new FlowPane(10, 10);
         moneyCards.setPrefWrapLength(800);
@@ -60,12 +59,12 @@ public class CardViewTest extends Application {
         
         moneySection.getChildren().add(moneyCards);
         
-        // 行动卡展示
+        // Action cards
         VBox actionSection = createSection("Action Cards");
         FlowPane actionCards = new FlowPane(10, 10);
         actionCards.setPrefWrapLength(800);
         
-        // 使用 SimpleActionCard 创建行动卡牌实例
+        // Use SimpleActionCard for quick preview instances.
         actionCards.getChildren().add(new CardView(new SimpleActionCard("Pass Go", "Draw 2 extra cards", 1), true));
         actionCards.getChildren().add(new CardView(new SimpleActionCard("Deal Breaker", "Steal a complete property set", 5), true));
         actionCards.getChildren().add(new CardView(new SimpleActionCard("Just Say No", "Cancel any action card", 4), true));

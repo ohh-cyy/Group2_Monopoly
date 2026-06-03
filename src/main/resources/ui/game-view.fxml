@@ -57,12 +57,12 @@
                         </BorderPane.margin>
                         <HBox spacing="12" alignment="CENTER_LEFT">
                             <VBox spacing="2">
-                                <Label text="全员地产 / Public Board" styleClass="section-title section-title-large"/>
-                                <Label text="左右信息栏收起后，剩余空间全部交给公开牌桌。" styleClass="section-subtitle"/>
+                                <Label text="Public Board" styleClass="section-title section-title-large"/>
+                                <Label text="Collapse sidebars to give the public board more space." styleClass="section-subtitle"/>
                             </VBox>
                             <Region HBox.hgrow="ALWAYS"/>
                             <VBox alignment="CENTER_RIGHT" spacing="2" styleClass="bank-pill">
-                                <Label text="当前回合玩家资金" styleClass="bank-pill-label"/>
+                                <Label text="Current Player Bank" styleClass="bank-pill-label"/>
                                 <Label fx:id="turnBankLabel" text="0M" styleClass="bank-pill-value"/>
                             </VBox>
                         </HBox>
@@ -136,10 +136,10 @@
                   styleClass="hand-dock panel-card"
                   StackPane.alignment="BOTTOM_CENTER">
                 <HBox alignment="CENTER_LEFT" spacing="10" styleClass="hand-dock-header">
-                    <Label text="我的手牌" styleClass="section-title"/>
-                    <Label fx:id="handDockHint" text="Hover here to expand · 双击可直接出牌" styleClass="section-subtitle"/>
+                    <Label text="My Hand" styleClass="section-title"/>
+                    <Label fx:id="handDockHint" text="Hover here to expand - double-click to play" styleClass="section-subtitle"/>
                     <Region HBox.hgrow="ALWAYS"/>
-                    <Label text="我的银行" styleClass="section-title bank-mini-title"/>
+                    <Label text="My Bank" styleClass="section-title bank-mini-title"/>
                     <Label fx:id="bankTotalLabel" text="0M" styleClass="bank-mini-value"/>
                 </HBox>
                 <HBox spacing="14" VBox.vgrow="ALWAYS">

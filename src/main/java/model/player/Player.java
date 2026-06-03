@@ -107,7 +107,7 @@ public class Player {
         }
     }
 
-    /** 该颜色地产是否已凑齐完整套组 */
+    /** Checks whether this color has a complete property set. */
     public boolean hasCompleteSet(Color color) {
         if (color == null) {
             return false;

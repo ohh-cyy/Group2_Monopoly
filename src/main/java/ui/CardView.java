@@ -13,7 +13,7 @@ import model.card.actionCard.ActionCard;
 import model.enums.Color;
 
 /**
- * 统一卡牌 UI：默认较小，鼠标悬停放大；尺寸由 {@link CardMetrics} 控制。
+ * Shared card UI. Cards stay small by default and enlarge on hover.
  */
 public class CardView extends StackPane {
 
@@ -255,7 +255,7 @@ public class CardView extends StackPane {
         return card;
     }
 
-    /** 手牌/银行/地产区的卡牌尺寸配置 */
+    /** Card size settings for hand, bank, and public property areas. */
     public record CardMetrics(double normalW, double normalH, double slotW, double slotH) {
         public CardMetrics(double normalW, double normalH, double slotW, double slotH) {
             this.normalW = normalW;

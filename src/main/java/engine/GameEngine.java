@@ -67,12 +67,12 @@ public class GameEngine {
         return rentDoubled;
     }
 
-    /** 本回合是否还能抽牌（仅允许抽一次，共 2 张） */
+    /** Checks if the current player can draw once this turn. */
     public boolean canDrawCards() {
         return !gameOver && !hasDrawnThisTurn;
     }
 
-    /** 本回合是否还能出牌（最多 3 张） */
+    /** Checks if the current player still has a play left this turn. */
     public boolean canPlayCard() {
         return !gameOver && playsThisTurn < MAX_PLAYS_PER_TURN;
     }
@@ -102,8 +102,8 @@ public class GameEngine {
     }
 
     /**
-     * 当前玩家抽牌：每回合仅可调用一次，一次抽 2 张。
-     * @return 是否成功抽牌
+     * Draws two cards for the current player once per turn.
+     * @return true if the draw action was accepted
      */
     public boolean drawCardsForCurrentPlayer() {
         if (!canDrawCards()) {
@@ -125,7 +125,7 @@ public class GameEngine {
         return true;
     }
 
-    /** 记录打出一张牌；满 3 张后 {@link #isTurnOver()} 为 true */
+    /** Records one played card and ends the turn after three plays. */
     public void recordCardPlayed() {
         if (playsThisTurn < MAX_PLAYS_PER_TURN) {
             playsThisTurn++;

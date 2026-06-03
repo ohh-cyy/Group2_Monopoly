@@ -12,39 +12,39 @@
         <VBox spacing="14" alignment="CENTER" maxWidth="460">
             <Label text="Monopoly Deal"
                    style="-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: #074001;"/>
-            <Label text="伪联机：共享房间文件夹同步（无需 TCP）"
+            <Label text="Room mode: shared folder sync without TCP"
                    wrapText="true"
                    style="-fx-font-size: 13px; -fx-text-fill: #555;"/>
 
             <VBox spacing="8" style="-fx-background-color: white; -fx-padding: 16; -fx-background-radius: 8;">
-                <Label text="共享目录（多台电脑必须相同）" style="-fx-font-weight: bold;"/>
+                <Label text="Shared folder (must match on all computers)" style="-fx-font-weight: bold;"/>
                 <TextField fx:id="roomsRootField"
-                           promptText="本机双开可留空；局域网填共享路径，如 \\192.168.1.5\MonopolyDealRooms"/>
-                <Label text="本机默认: 用户目录/MonopolyDealRooms。Host 需先共享该文件夹。"
+                           promptText="Leave blank for same-computer testing, or enter a LAN share path such as \\192.168.1.5\MonopolyDealRooms"/>
+                <Label text="Default: user folder/MonopolyDealRooms. The host should share this folder first."
                        wrapText="true"
                        style="-fx-font-size: 11px; -fx-text-fill: #666;"/>
 
-                <Label text="你的昵称" style="-fx-font-weight: bold;"/>
-                <TextField fx:id="nameField" promptText="玩家昵称"/>
+                <Label text="Your name" style="-fx-font-weight: bold;"/>
+                <TextField fx:id="nameField" promptText="Player name"/>
 
                 <HBox spacing="8">
-                    <Button fx:id="hostBtn" text="创建房间（Host）"
+                    <Button fx:id="hostBtn" text="Create Room (Host)"
                             onAction="#onHostClick"
                             HBox.hgrow="ALWAYS"
                             maxWidth="Infinity"
                             style="-fx-background-color: #3498db; -fx-text-fill: white; -fx-padding: 10;"/>
-                    <Button fx:id="joinBtn" text="加入房间"
+                    <Button fx:id="joinBtn" text="Join Room"
                             onAction="#onJoinClick"
                             HBox.hgrow="ALWAYS"
                             maxWidth="Infinity"
                             style="-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-padding: 10;"/>
                 </HBox>
 
-                <Label text="房间号（加入时填写）" style="-fx-font-weight: bold;"/>
-                <TextField fx:id="roomCodeField" promptText="例如 1234"/>
+                <Label text="Room code (required to join)" style="-fx-font-weight: bold;"/>
+                <TextField fx:id="roomCodeField" promptText="Example: 1234"/>
             </VBox>
 
-            <Label fx:id="statusLabel" text="Host 创建房间后会显示房间号，发给其他玩家加入"
+            <Label fx:id="statusLabel" text="The host creates a room, then shares the room code with other players."
                    wrapText="true"/>
 
             <Label fx:id="roomCodeLabel" text=""
@@ -52,13 +52,13 @@
 
             <ListView fx:id="playerList" prefHeight="100"/>
 
-            <Button fx:id="startBtn" text="开始游戏（至少 2 人，仅 Host）"
+            <Button fx:id="startBtn" text="Start Game (2+ players, host only)"
                     onAction="#onStartClick"
                     disable="true"
                     maxWidth="Infinity"
                     style="-fx-background-color: #e67e22; -fx-text-fill: white; -fx-padding: 10;"/>
 
-            <Button text="单机热座（本机 4 人）"
+            <Button text="Local Hot Seat (4 players)"
                     onAction="#onLocalGameClick"
                     maxWidth="Infinity"
                     style="-fx-background-color: #9b59b6; -fx-text-fill: white; -fx-padding: 10;"/>

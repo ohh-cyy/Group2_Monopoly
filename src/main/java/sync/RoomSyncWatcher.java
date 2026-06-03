@@ -5,7 +5,7 @@ import java.nio.file.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * 监听房间文件夹变化；有玩家操作写入文件时才触发回调（带防抖），避免定时轮询刷 UI。
+ * Watches room files and debounces callbacks when players write new actions.
  */
 public final class RoomSyncWatcher implements AutoCloseable {
 

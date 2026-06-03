@@ -5,7 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Properties;
 
-/** 一个房间在磁盘上的目录结构 */
+/** Directory layout for one room on disk. */
 public class RoomFolder {
     public static final int MAX_PLAYERS = 4;
     public static final int MIN_PLAYERS_TO_START = 2;

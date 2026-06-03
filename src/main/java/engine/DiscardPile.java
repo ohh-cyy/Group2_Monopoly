@@ -12,12 +12,12 @@ public class DiscardPile {
         cards = new ArrayList<>();
     }
 
-    // 添加到弃牌堆
+    // Adds one card to the discard pile.
     public void addCard(Card card) {
         cards.add(card);
     }
 
-    // 查看最上面的牌
+    // Returns the top card without removing it.
     public Card peekTop() {
 
         if (cards.isEmpty()) {
@@ -27,27 +27,27 @@ public class DiscardPile {
         return cards.get(cards.size() - 1);
     }
 
-    // 判断是否为空
+    // Checks whether the discard pile is empty.
     public boolean isEmpty() {
         return cards.isEmpty();
     }
 
-    // 获取数量
+    // Returns the number of discarded cards.
     public int size() {
         return cards.size();
     }
 
-    // 显示弃牌堆
+    // Prints the discard pile for simple debugging.
     public void showDiscardPile() {
 
-        System.out.println("===== 弃牌堆 =====");
+        System.out.println("===== Discard Pile =====");
 
         for (Card card : cards) {
             System.out.println(card.getName());
         }
     }
 
-    // 获取所有牌（后面可能洗回牌库）
+    // Returns all discarded cards, usually before shuffling them into the deck.
     public List<Card> getCards() {
         return new ArrayList<>(cards);
     }

@@ -28,7 +28,7 @@ public abstract class Card {
         return instanceId;
     }
 
-    // 引擎&玩家卡牌信息获取
+    // Basic card information used by the engine and players.
     public String getName() { return name; }
     public String getDescription() { return description; }
     public CardType getType() { return type; }

@@ -12,16 +12,17 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
- * 从玩家银行/地产中收款（租金、债务、生日等）。
+ * Collects payments from a player's bank or properties.
  */
 public final class RentPayment {
     private RentPayment() {
     }
 
     /**
-     * 尽量从 debtor 收取 amountM：先付银行牌，不足再用地产（地产进入 collector 的地产区）。
+     * Collects up to amountM from the debtor.
+     * Bank cards are paid first, then properties if needed.
      *
-     * @return 实际收到金额
+     * @return the actual amount collected
      */
     public static int collectUpTo(Player collector, Player debtor, int amountM) {
         if (amountM <= 0 || debtor == null || collector == null || debtor.equals(collector)) {
@@ -55,7 +56,7 @@ public final class RentPayment {
         return paid;
     }
 
-    /** @deprecated 使用 {@link #collectUpTo} */
+    /** @deprecated Use {@link #collectUpTo}. */
     public static int collect(Player collector, Player debtor, int amountM) {
         return collectUpTo(collector, debtor, amountM);
     }

@@ -11,7 +11,7 @@ public final class RoomStorage {
     private RoomStorage() {
     }
 
-    /** 设置全局房间根目录（多台电脑必须填同一个共享文件夹路径） */
+    /** Sets the shared room root used by all computers in room mode. */
     public static void setConfiguredRoomsRoot(Path roomsRoot) {
         if (roomsRoot == null || roomsRoot.toString().isBlank()) {
             configuredRoomsRoot = null;
@@ -58,8 +58,8 @@ public final class RoomStorage {
         Path base = resolveRoomsRoot(roomsRoot);
         Path root = base.resolve(roomCode.trim().toUpperCase());
         if (!Files.isDirectory(root)) {
-            throw new IOException("房间不存在: " + roomCode
-                    + "\n请确认共享目录与 Host 一致:\n" + base.toAbsolutePath());
+            throw new IOException("Room does not exist: " + roomCode
+                    + "\nPlease make sure the shared folder matches the host:\n" + base.toAbsolutePath());
         }
         RoomFolder folder = new RoomFolder(root, roomCode.trim().toUpperCase());
         folder.ensureExists();
@@ -86,7 +86,7 @@ public final class RoomStorage {
                 return i;
             }
         }
-        throw new IOException("房间已满");
+        throw new IOException("Room is full");
     }
 
     public static List<String> listPlayerNames(RoomFolder folder) throws IOException {
@@ -123,7 +123,7 @@ public final class RoomStorage {
         folder.saveRoomProperties(props);
     }
 
-    /** 仅读取 version 字段，用于判断是否有新操作（轻量） */
+    /** Reads only the version field to check for new actions quickly. */
     public static long peekVersion(RoomFolder folder) {
         try {
             return readVersion(folder);

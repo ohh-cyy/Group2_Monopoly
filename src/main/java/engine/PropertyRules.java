@@ -7,12 +7,12 @@ import model.player.Player;
 import java.util.ArrayList;
 import java.util.List;
 
-/** 地产套组相关规则（偷牌、交换等）。 */
+/** Rules for property sets, stealing, and swapping. */
 public final class PropertyRules {
     private PropertyRules() {
     }
 
-    /** 该颜色的地产是否已凑成完整套组 */
+    /** Checks whether this color has a complete property set. */
     public static boolean isCompleteSet(Player player, Color color) {
         if (color == null) {
             return false;
@@ -21,7 +21,8 @@ public final class PropertyRules {
     }
 
     /**
-     * 可被偷取/用于强制交换的地产：不属于已凑齐的完整套组。
+     * Returns properties that can be stolen or swapped.
+     * Cards in complete sets are protected.
      */
     public static List<PropertyCard> getPropertiesOutsideCompleteSets(Player player) {
         List<PropertyCard> result = new ArrayList<>();

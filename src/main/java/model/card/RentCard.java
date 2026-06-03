@@ -15,7 +15,7 @@ public class RentCard extends ActionCard {
     private final Color[] applicableColors;
     private final boolean allColors;
 
-    /** 全色租金卡，存银行 3M */
+    /** All-color rent card with 3M bank value. */
     public static RentCard allColors() {
         return new RentCard(
                 "Rent (All)",
@@ -37,7 +37,7 @@ public class RentCard extends ActionCard {
         );
     }
 
-    /** 双色租金卡，存银行 1M */
+    /** Two-color rent card with 1M bank value. */
     public static RentCard dual(Color c1, Color c2) {
         String label = c1.name() + " / " + c2.name();
         return new RentCard(
@@ -82,7 +82,7 @@ public class RentCard extends ActionCard {
         return allColors;
     }
 
-    /** 双色卡：出牌者至少拥有一张适用颜色的地产 */
+    /** Two-color cards need at least one matching property owned by the player. */
     public boolean canPlay(Player player) {
         if (allColors) {
             return true;
@@ -95,7 +95,7 @@ public class RentCard extends ActionCard {
         return false;
     }
 
-    /** 该颜色下可用于计算租金的地产张数 */
+    /** Counts properties used to calculate rent for this color. */
     public int countProperties(Player player, Color color) {
         return player.getPropertiesByColor(color).size();
     }
@@ -106,9 +106,9 @@ public class RentCard extends ActionCard {
     }
 
     /**
-     * 向除出牌者外的所有玩家收租。
+     * Collects rent from every player except the collector.
      *
-     * @return 各玩家实付总额
+     * @return total amount actually paid
      */
     public int collectFromAll(Player collector, GameEngine game, Color chargeColor, int rentPerPlayer) {
         if (rentPerPlayer <= 0) {
@@ -130,7 +130,7 @@ public class RentCard extends ActionCard {
         return totalCollected;
     }
 
-    /** 出牌者可选择收租的颜色（至少 1 张地产，全色卡任意颜色） */
+    /** Colors the player can charge rent on. */
     public List<Color> getChargeableColors(Player player) {
         if (allColors) {
             return Arrays.stream(Color.values())

@@ -6,8 +6,8 @@ import java.util.EnumMap;
 import java.util.Map;
 
 /**
- * 各颜色地产按持有张数计算的租金（百万 M）。
- * 索引 0 = 1 张，1 = 2 张，以此类推。
+ * Rent values by property color and owned card count.
+ * Index 0 means 1 card, index 1 means 2 cards, and so on.
  */
 public final class RentTable {
     private static final Map<Color, int[]> RENT_BY_COUNT = new EnumMap<>(Color.class);
@@ -40,7 +40,7 @@ public final class RentTable {
         return tiers[index];
     }
 
-    /** 用于地产卡牌面展示，如 "1M / 2M" */
+    /** Formats rent values for card display, such as "1M / 2M". */
     public static String formatRentTiers(Color color) {
         int[] tiers = RENT_BY_COUNT.get(color);
         if (tiers == null || tiers.length == 0) {

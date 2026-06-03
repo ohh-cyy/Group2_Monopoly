@@ -903,7 +903,7 @@ private void setupPublicBoardSizing() {
         }
         Dialog<T> dialog = new Dialog<>();
         dialog.setTitle(title);
-        ButtonType cancel = new ButtonType("取消", ButtonBar.ButtonData.CANCEL_CLOSE);
+        ButtonType cancel = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
         DialogPane pane = dialog.getDialogPane();
         pane.getButtonTypes().add(cancel);
         dialog.setResultConverter(button -> null);
@@ -939,7 +939,7 @@ private void setupPublicBoardSizing() {
 
     private Optional<Color> showColorChoiceDialog(String title, String header, String prompt, List<Color> colors) {
         return showStyledChoiceDialog(title, header, prompt, colors,
-                color -> color + "  ·  " + color.getSetSize() + " 张成套",
+                color -> color + "  -  " + color.getSetSize() + " cards to complete",
                 color -> "-fx-background-color: " + cssColorFor(color) + ";"
                         + "-fx-text-fill: " + textColorFor(color) + ";"
                         + "-fx-border-color: rgba(255,255,255,0.55);");
