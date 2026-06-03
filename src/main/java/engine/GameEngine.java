@@ -11,6 +11,7 @@ public class GameEngine {
     public static final int START_HAND_SIZE = 5;
     public static final int CARDS_DRAWN_PER_TURN = 2;
     public static final int MAX_PLAYS_PER_TURN = 3;
+    public static final int MAX_HAND_SIZE = 7;
 
     private final List<Player> players;
     private final Deck deck;
@@ -196,5 +197,15 @@ public class GameEngine {
 
     public Deck getDeck() {
         return deck;
+    }
+    public List<Card> enforceHandSizeLimit(Player player) {
+        List<Card> discardedCards = new ArrayList<>();
+        while (player.getHandSize() > MAX_HAND_SIZE) {
+            Card cardToDiscard = player.getHand().get(player.getHandSize() - 1);
+            player.removeFromHand(cardToDiscard);
+            discardPile.addCard(cardToDiscard);
+            discardedCards.add(cardToDiscard);
+        }
+        return discardedCards;
     }
 }

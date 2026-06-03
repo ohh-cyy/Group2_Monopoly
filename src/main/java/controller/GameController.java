@@ -239,8 +239,8 @@ private void setHandDockExpanded(boolean expanded, boolean animate) {
         double targetY = expanded ? 0 : collapsedY;
         if (handDockHint != null) {
             handDockHint.setText(expanded
-                    ? "Mouse out to tuck hand back · 双击可直接出牌"
-                    : "Hover here to expand · 双击可直接出牌");
+                    ? "Mouse out to tuck hand back · Double-click to play"
+                    : "Hover here to expand · Double-click to play");
         }
         if (!animate) {
             handDock.setTranslateY(targetY);
@@ -287,7 +287,7 @@ private void setupPublicBoardSizing() {
     @FXML
     private void onDrawCardsClick() {
         if (!isMyActionTurn()) {
-            showStatus("还没轮到你", true);
+            showStatus("It's not your turn", true);
             return;
         }
         if (sessionMode == SessionMode.CLIENT) {
@@ -299,19 +299,19 @@ private void setupPublicBoardSizing() {
     
     private void drawCardsFromPile() {
         if (!gameEngine.canDrawCards()) {
-            showStatus("本回合已经抽过牌了，不能再抽！", true);
+            showStatus("You have already drawn 2 cards this turn", true);
             return;
         }
 
         Player player = gameEngine.getCurrentPlayer();
         if (!gameEngine.drawCardsForCurrentPlayer()) {
-            showStatus("抽牌失败", true);
+            showStatus("Fail to draw cards!", true);
             return;
         }
 
-        logMessage(player.getName() + " 抽了 2 张牌");
-        unlockAchievement("first-draw", "First Draw", "第一次成功抽牌：你已经启动了本局的成就系统测试。");
-        showStatus("已抽 2 张牌（本回合不能再抽）。剩余可出牌次数: "
+        logMessage(player.getName() + "drew 2 cards");
+        unlockAchievement("first-draw", "First Draw", "First successful draw: You have initiated the achievement system test for this game!");
+        showStatus("Two cards have already been drawn (cannot be drawn again in this round). Remaining number of available card games: "
                 + gameEngine.getRemainingPlays(), false);
         afterStateChange();
     }
@@ -319,11 +319,11 @@ private void setupPublicBoardSizing() {
     @FXML
     private void onPlayCardClick() {
         if (!isMyActionTurn()) {
-            showStatus("还没轮到你", true);
+            showStatus("It's not your turn", true);
             return;
         }
         if (selectedCard == null) {
-            showStatus("请先点击手牌选中一张牌，再点「出牌」", true);
+            showStatus("Please first click on the hand to select a card, then click on「Play」", true);
             return;
         }
         if (sessionMode == SessionMode.CLIENT) {
@@ -335,12 +335,12 @@ private void setupPublicBoardSizing() {
     
     private void playSelectedCard() {
         if (!gameEngine.canPlayCard()) {
-            showStatus("本回合已打出 3 张牌，不能再出牌！", true);
+            showStatus("Three cards have been played in this round, no more cards can be played!", true);
             return;
         }
 
         if (selectedCard == null) {
-            showStatus("请先点击手牌选中一张牌，再点「出牌」", true);
+            showStatus("Please first click on the hand to select a card, then click on「Play」", true);
             return;
         }
 
@@ -379,9 +379,9 @@ private void setupPublicBoardSizing() {
         if (choice.get() == ActionPlayChoice.DEPOSIT_BANK) {
             player.removeFromHand(actionCard);
             actionCard.depositToBank(player);
-            logMessage(player.getName() + " 将「" + actionCard.getName()
-                    + "」存入银行（" + actionCard.getBankValueM() + "M）");
-            showStatus("已存入银行 " + actionCard.getBankValueM() + "M", false);
+            logMessage(player.getName() + " deposit「" + actionCard.getName()
+                    + "」into the bank（" + actionCard.getBankValueM() + "M）");
+            showStatus("Already deposited in the bank " + actionCard.getBankValueM() + "M", false);
             completePlayStep(player, actionCard, true);
             return;
         }
@@ -389,7 +389,7 @@ private void setupPublicBoardSizing() {
         ActionEffectResult result = resolveActionCardEffect(player, actionCard);
         if (result == ActionEffectResult.CANCELLED) {
             selectedCard = actionCard;
-            showStatus("已取消出牌，行动牌保留在手牌", false);
+            showStatus("The card has been cancelled, the action card is kept in hand", false);
             updateUI();
             return;
         }
@@ -397,11 +397,11 @@ private void setupPublicBoardSizing() {
         player.removeFromHand(actionCard);
         gameEngine.getDiscardPile().addCard(actionCard);
         if (result == ActionEffectResult.SUCCESS) {
-            logMessage(player.getName() + " 使用「" + actionCard.getName() + "」效果");
-            showStatus("已使用效果: " + actionCard.getName(), false);
+            logMessage(player.getName() + " use「" + actionCard.getName() + "」effect");
+            showStatus("Effect has been successfully used: " + actionCard.getName(), false);
         } else {
-            logMessage(player.getName() + " 使用「" + actionCard.getName() + "」失败，牌进入弃牌堆");
-            showStatus("效果未能生效（目标无效等）", true);
+            logMessage(player.getName() + " Fail to use「" + actionCard.getName() + "」,the cards enter the discard pile");
+            showStatus("The effect did not take effect (invalid target, etc.)", true);
         }
         completePlayStep(player, actionCard, false);
     }
@@ -416,15 +416,15 @@ private void setupPublicBoardSizing() {
         }
 
         if (gameEngine.isTurnOver()) {
-            logMessage(player.getName() + " 已打出 3 张牌，回合结束");
+            logMessage(player.getName() + " Three cards have been played in this turn, turn end");
             forceEndTurn();
             return;
         }
 
         if (!depositedToBank) {
-            showStatus("已打出。本回合还可出 " + gameEngine.getRemainingPlays() + " 张牌", false);
+            showStatus("Already typed. This turn can still be played " + gameEngine.getRemainingPlays() + " cards", false);
         } else {
-            showStatus("已存入银行。本回合还可出 " + gameEngine.getRemainingPlays() + " 张牌", false);
+            showStatus("Already deposited into the bank. This turn can still be played " + gameEngine.getRemainingPlays() + " cards", false);
         }
         afterStateChange();
     }
@@ -438,13 +438,13 @@ private void setupPublicBoardSizing() {
     }
 
         private Optional<ActionPlayChoice> promptActionCardChoice(ActionCard card) {
-        ButtonType useBtn = new ButtonType("使用效果");
-        ButtonType bankBtn = new ButtonType("存入银行 (" + card.getBankValueM() + "M)");
-        ButtonType cancelBtn = new ButtonType("取消", ButtonBar.ButtonData.CANCEL_CLOSE);
+        ButtonType useBtn = new ButtonType("Use Effect");
+        ButtonType bankBtn = new ButtonType("Deposit to Bank (" + card.getBankValueM() + "M)");
+        ButtonType cancelBtn = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
         Optional<ButtonType> result = showStyledButtonDialog(
-                "行动牌",
-                card.getName() + " — 银行面值 " + card.getBankValueM() + "M",
-                card.getDescription() + "\n\n选择「使用效果」或「存入银行」？",
+                "Action Card",
+                card.getName() + " — Bank value " + card.getBankValueM() + "M",
+                card.getDescription() + "\n\nChoose 'Use Effect' or 'Deposit to Bank'?",
                 useBtn, bankBtn, cancelBtn);
         if (result.isEmpty()) {
             return Optional.empty();
@@ -460,7 +460,7 @@ private void setupPublicBoardSizing() {
 
     private ActionEffectResult resolveActionCardEffect(Player player, ActionCard actionCard) {
         if (actionCard instanceof JustSayNo) {
-            showStatus("Just Say No 只能在对手对你打出行动牌时响应使用", true);
+            showStatus("Just Say No can only be used when opponent plays an action card against you", true);
             return ActionEffectResult.CANCELLED;
         }
         if (actionCard instanceof DealBreaker dealBreaker) {
@@ -482,7 +482,7 @@ private void setupPublicBoardSizing() {
             return resolveForcedDeal(player, forcedDeal);
         }
         if (actionCard instanceof House house) {
-            Optional<Color> color = promptSelectOwnCompleteSet(player, "选择要加盖 House 的完整套组");
+            Optional<Color> color = promptSelectOwnCompleteSet(player, "Select a complete set to add House");
             if (color.isEmpty()) {
                 return hasAnyCompleteSet(player)
                         ? ActionEffectResult.CANCELLED
@@ -493,7 +493,7 @@ private void setupPublicBoardSizing() {
                     : ActionEffectResult.FAILED;
         }
         if (actionCard instanceof Hotel hotel) {
-            Optional<Color> color = promptSelectOwnCompleteSet(player, "选择要加盖 Hotel 的完整套组");
+            Optional<Color> color = promptSelectOwnCompleteSet(player, "Select a complete set to add Hotel");
             if (color.isEmpty()) {
                 return hasAnyCompleteSet(player)
                         ? ActionEffectResult.CANCELLED
@@ -513,7 +513,7 @@ private void setupPublicBoardSizing() {
 
     private ActionEffectResult resolveRentCard(Player player, RentCard rentCard) {
         if (!rentCard.canPlay(player)) {
-            showStatus("你没有适用颜色的地产，无法使用此租金卡", true);
+            showStatus("You don't have properties of applicable colors, cannot use this rent card", true);
             return ActionEffectResult.FAILED;
         }
 
@@ -537,107 +537,107 @@ private void setupPublicBoardSizing() {
 
         int rent = rentCard.calculateRent(player, chargeColor);
         if (rent <= 0) {
-            showStatus("该颜色下没有地产，租金为 0", true);
+            showStatus("No properties of this color, rent is 0", true);
             return ActionEffectResult.FAILED;
         }
 
         boolean doubled = gameEngine.isRentDoubled();
         int total = rentCard.collectFromAll(player, gameEngine, chargeColor, rent);
 
-        String rentNote = doubled ? "（双倍租金）" : "";
-        logMessage(player.getName() + " 使用「" + rentCard.getName() + "」对 " + chargeColor
-                + " 收租 " + (doubled ? rent * 2 : rent) + "M/人" + rentNote + "，共收到 " + total + "M");
-        showStatus("已向所有玩家收取 " + chargeColor + " 租金" + rentNote + "（合计 " + total + "M）", false);
+        String rentNote = doubled ? "(double rent)" : "";
+        logMessage(player.getName() + " used [" + rentCard.getName() + "] to collect " + chargeColor
+                + " rent " + (doubled ? rent * 2 : rent) + "M/player" + rentNote + ", total " + total + "M");
+        showStatus("Collected " + chargeColor + " rent" + rentNote + " from all players (total " + total + "M)", false);
         return ActionEffectResult.SUCCESS;
     }
 
     private ActionEffectResult resolveDebtCollector(Player player, DebtCollector debtCollector) {
-        Optional<Player> target = promptSelectOpponent(player, "Debt Collector：选择要收取 5M 的玩家");
+        Optional<Player> target = promptSelectOpponent(player, "Debt Collector: Select player to collect 5M from");
         if (target.isEmpty()) {
             return ActionEffectResult.CANCELLED;
         }
-        if (tryRespondWithJustSayNo(target.get(), player, "Debt Collector（收取 5M）")) {
+        if (tryRespondWithJustSayNo(target.get(), player, "Debt Collector (collect 5M)")) {
             return ActionEffectResult.CANCELLED;
         }
         int paid = debtCollector.collectFrom(player, target.get());
-        logMessage(player.getName() + " 从 " + target.get().getName() + " 收到 " + paid + "M");
+        logMessage(player.getName() + " received " + paid + "M from " + target.get().getName());
         return paid > 0 ? ActionEffectResult.SUCCESS : ActionEffectResult.FAILED;
     }
 
     private ActionEffectResult resolveMyBirthday(Player player, MyBirthday myBirthday) {
         int total = myBirthday.collectFromEveryone(player, gameEngine);
-        logMessage(player.getName() + " 过生日，共收到 " + total + "M（每人应付 "
-                + MyBirthday.GIFT_AMOUNT + "M，不足可用地产抵）");
-        showStatus("所有玩家共支付 " + total + "M", false);
+        logMessage(player.getName() + " celebrates birthday, received " + total + "M total (each pays "
+                + MyBirthday.GIFT_AMOUNT + "M, can use properties if insufficient)");
+        showStatus("All players paid " + total + "M total", false);
         return total > 0 ? ActionEffectResult.SUCCESS : ActionEffectResult.FAILED;
     }
 
     private ActionEffectResult resolveDoubleTheRent(DoubleTheRent doubleRent) {
         if (!doubleRent.activateForNextRent(gameEngine)) {
-            showStatus("本回合已激活双倍租金，请先打出一张 Rent 牌", true);
+            showStatus("Double rent already activated this round, please play a Rent card first", true);
             return ActionEffectResult.FAILED;
         }
-        showStatus("已激活双倍租金：请在本回合再打出一张 Rent 牌", false);
-        logMessage("双倍租金已激活，下一张 Rent 将双倍收租");
+        showStatus("Double rent activated: play a Rent card this round", false);
+        logMessage("Double rent activated, next Rent will be doubled");
         return ActionEffectResult.SUCCESS;
     }
 
     private ActionEffectResult resolveSlyDeal(Player player, SlyDeal slyDeal) {
-        Optional<Player> target = promptSelectOpponent(player, "Sly Deal：选择要偷取地产的玩家");
+        Optional<Player> target = promptSelectOpponent(player, "Sly Deal: Select player to steal property from");
         if (target.isEmpty()) {
             return ActionEffectResult.CANCELLED;
         }
-        if (tryRespondWithJustSayNo(target.get(), player, "Sly Deal（偷取一张地产）")) {
+        if (tryRespondWithJustSayNo(target.get(), player, "Sly Deal (steal one property)")) {
             return ActionEffectResult.CANCELLED;
         }
         List<PropertyCard> stealable = PropertyRules.getPropertiesOutsideCompleteSets(target.get());
         if (stealable.isEmpty()) {
-            showStatus(target.get().getName() + " 没有可偷的地产（完整套组中的牌不能偷）", true);
+            showStatus(target.get().getName() + " has no stealable properties (complete sets cannot be stolen)", true);
             return ActionEffectResult.FAILED;
         }
         Optional<PropertyCard> property = promptSelectProperty(stealable,
-                "选择要偷的地产", target.get().getName() + " 的可偷地产（非完整套组）");
+                "Select property to steal", target.get().getName() + "'s stealable properties (not in complete sets)");
         if (property.isEmpty()) {
             return ActionEffectResult.CANCELLED;
         }
         if (slyDeal.stealProperty(player, target.get(), property.get())) {
-            logMessage(player.getName() + " 从 " + target.get().getName()
-                    + " 偷走 " + property.get().getName());
+            logMessage(player.getName() + " stole " + property.get().getName()
+                    + " from " + target.get().getName());
             return ActionEffectResult.SUCCESS;
         }
         return ActionEffectResult.FAILED;
     }
 
     private ActionEffectResult resolveForcedDeal(Player player, ForcedDeal forcedDeal) {
-        Optional<Player> target = promptSelectOpponent(player, "Forced Deal：选择交换地产的玩家");
+        Optional<Player> target = promptSelectOpponent(player, "Forced Deal: Select player to exchange properties with");
         if (target.isEmpty()) {
             return ActionEffectResult.CANCELLED;
         }
-        if (tryRespondWithJustSayNo(target.get(), player, "Forced Deal（交换地产）")) {
+        if (tryRespondWithJustSayNo(target.get(), player, "Forced Deal (exchange properties)")) {
             return ActionEffectResult.CANCELLED;
         }
         List<PropertyCard> myProps = player.getAllProperties();
         if (myProps.isEmpty()) {
-            showStatus("你没有地产可交换", true);
+            showStatus("You have no properties to exchange", true);
             return ActionEffectResult.FAILED;
         }
         List<PropertyCard> theirSwappable = PropertyRules.getPropertiesOutsideCompleteSets(target.get());
         if (theirSwappable.isEmpty()) {
-            showStatus(target.get().getName() + " 没有可交换的地产（完整套组中的不能换）", true);
+            showStatus(target.get().getName() + " has no exchangeable properties (complete sets cannot be exchanged)", true);
             return ActionEffectResult.FAILED;
         }
         Optional<PropertyCard> mine = promptSelectProperty(myProps,
-                "选择你交出的地产", "你的地产");
+                "Select your property to exchange", "Your properties");
         if (mine.isEmpty()) {
             return ActionEffectResult.CANCELLED;
         }
         Optional<PropertyCard> theirs = promptSelectProperty(theirSwappable,
-                "选择对方交出的地产", target.get().getName() + " 可交换的地产（不能是完整套组里的牌）");
+                "Select opponent's property to exchange", target.get().getName() + "'s exchangeable properties (cannot be from complete sets)");
         if (theirs.isEmpty()) {
             return ActionEffectResult.CANCELLED;
         }
         if (forcedDeal.swapProperties(player, mine.get(), target.get(), theirs.get())) {
-            logMessage(player.getName() + " 与 " + target.get().getName() + " 交换地产："
+            logMessage(player.getName() + " exchanged properties with " + target.get().getName() + ": "
                     + mine.get().getName() + " ↔ " + theirs.get().getName());
             return ActionEffectResult.SUCCESS;
         }
@@ -645,21 +645,20 @@ private void setupPublicBoardSizing() {
     }
 
     /**
-     * 若防守方手牌有 Just Say No 且选择打出，则取消本次行动效果。
+     * If the defending hand has a Just Say No and chooses to play, the effect of this action will be cancelled.
      */
         private boolean tryRespondWithJustSayNo(Player defender, Player attacker, String actionName) {
         JustSayNo justSayNo = findJustSayNoInHand(defender);
         if (justSayNo == null) {
             return false;
         }
-
-        ButtonType noBtn = new ButtonType("拒绝 (Just Say No)");
-        ButtonType allowBtn = new ButtonType("允许生效");
-        ButtonType cancelBtn = new ButtonType("取消", ButtonBar.ButtonData.CANCEL_CLOSE);
+        ButtonType noBtn = new ButtonType("Reject (Just Say No)");
+        ButtonType allowBtn = new ButtonType("Allow");
+        ButtonType cancelBtn = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
         Optional<ButtonType> choice = showStyledButtonDialog(
                 "Just Say No",
-                defender.getName() + "：是否拒绝 " + attacker.getName() + " 的行动？",
-                actionName + "\n\n选择「拒绝」将打出 Just Say No 并取消该效果。",
+                defender.getName() + ": Do you want to reject " + attacker.getName() + "'s action?",
+                actionName + "\n\nSelect 'Reject' to play Just Say No and cancel this effect.",
                 noBtn, allowBtn, cancelBtn);
         if (choice.isEmpty() || choice.get() == cancelBtn || choice.get() == allowBtn) {
             return false;
@@ -667,8 +666,8 @@ private void setupPublicBoardSizing() {
 
         defender.removeFromHand(justSayNo);
         gameEngine.getDiscardPile().addCard(justSayNo);
-        logMessage(defender.getName() + " 打出 Just Say No，取消 " + attacker.getName() + " 的「" + actionName + "」");
-        showStatus(defender.getName() + " 使用 Just Say No 拒绝了该行动", false);
+        logMessage(defender.getName() + " played Just Say No, cancelling " + attacker.getName() + "'s [" + actionName + "]");
+        showStatus(defender.getName() + " used Just Say No to reject this action", false);
         return true;
     }
 
@@ -683,7 +682,7 @@ private void setupPublicBoardSizing() {
 
         private Optional<PropertyCard> promptSelectProperty(List<PropertyCard> properties,
                                                           String title, String header) {
-        return showStyledChoiceDialog(title, header, "选择一张地产：", properties,
+        return showStyledChoiceDialog(title, header, "Select a property:", properties,
                 p -> p.getName() + " (" + p.getColor() + ", " + p.getPrice() + "M)",
                 p -> "-fx-border-color: " + cssColorFor(p.getColor() == null ? Color.BROWN : p.getColor()) + ";");
     }
@@ -696,8 +695,8 @@ private void setupPublicBoardSizing() {
         if (colors.isEmpty()) {
             return Optional.empty();
         }
-        return showStyledChoiceDialog("选择收租颜色", "选择要按哪套地产收租", "颜色（张数 → 租金）:", colors,
-                color -> color + "  ·  " + rentCard.countProperties(player, color) + " 张 → "
+        return showStyledChoiceDialog("Select Rent Color", "Select which property set to collect rent from", "Color (count → rent):", colors,
+                color -> color + "  ·  " + rentCard.countProperties(player, color) + " cards → "
                         + rentCard.calculateRent(player, color) + "M",
                 color -> "-fx-background-color: " + cssColorFor(color) + "; -fx-text-fill: " + textColorFor(color) + ";");
     }
@@ -705,7 +704,7 @@ private void setupPublicBoardSizing() {
     private ActionEffectResult resolveDealBreaker(Player player, DealBreaker dealBreaker) {
         Optional<Player> target = promptSelectOpponentWithCompleteSets(player);
         if (target.isEmpty()) {
-            showStatus("当前没有玩家拥有可偷的完整地产套组", true);
+            showStatus("No player currently has a complete property set to steal", true);
             return ActionEffectResult.CANCELLED;
         }
         Player opponent = target.get();
@@ -713,14 +712,14 @@ private void setupPublicBoardSizing() {
         if (color.isEmpty()) {
             return ActionEffectResult.CANCELLED;
         }
-        if (tryRespondWithJustSayNo(opponent, player, "Deal Breaker（偷取完整套组）")) {
+        if (tryRespondWithJustSayNo(opponent, player, "Deal Breaker(steal complete set)")) {
             return ActionEffectResult.CANCELLED;
         }
         if (!dealBreaker.useOnTarget(player, opponent, color.get())) {
-            showStatus("偷取失败", true);
+            showStatus("Steal failed", true);
             return ActionEffectResult.FAILED;
         }
-        logMessage(player.getName() + " 从 " + opponent.getName() + " 偷走整套 " + color.get());
+        logMessage(player.getName() + " stole complete " + color.get() + " set from " + color.get());
         return ActionEffectResult.SUCCESS;
     }
 
@@ -731,7 +730,7 @@ private void setupPublicBoardSizing() {
                 valid.add(p);
             }
         }
-        return showStyledChoiceDialog("Deal Breaker", "选择要偷取完整套组的玩家", "仅显示拥有完整套组的玩家:", valid,
+        return showStyledChoiceDialog("Deal Breaker", "Select player to steal complete set from", "Only showing players with complete sets:", valid,
                 Player::getName, p -> null);
     }
 
@@ -745,9 +744,9 @@ private void setupPublicBoardSizing() {
             if (choice.get() == ActionPlayChoice.DEPOSIT_BANK) {
                 player.removeFromHand(wild);
                 wild.depositToBank(player);
-                logMessage(player.getName() + " 将万能地产「" + wild.getName()
-                        + "」存入银行（" + wild.getBankValueM() + "M）");
-                showStatus("万能卡已存入银行 " + wild.getBankValueM() + "M", false);
+                logMessage(player.getName() + " deposited wild property [" + wild.getName()
+                        + "] into bank (" + wild.getBankValueM() + "M)");
+                showStatus("Wild card deposited to bank: " + wild.getBankValueM() + "M", false);
                 completePlayStep(player, wild, true);
                 return;
             }
@@ -756,7 +755,7 @@ private void setupPublicBoardSizing() {
         Optional<Color> color = promptSelectWildColor(wild);
         if (color.isEmpty()) {
             selectedCard = wild;
-            showStatus("已取消，万能卡保留在手牌", false);
+            showStatus("Cancelled, wild card kept in hand", false);
             updateUI();
             return;
         }
@@ -764,19 +763,19 @@ private void setupPublicBoardSizing() {
         wild.setChosenColor(color.get());
         player.removeFromHand(wild);
         wild.use(player, gameEngine);
-        logMessage(player.getName() + " 打出万能地产「" + wild.getName() + "」作为 " + color.get());
-        showStatus("万能地产已作为 " + color.get() + " 放入地产区", false);
+        logMessage(player.getName() + " played wild property [" + wild.getName() + "] as " + color.get());
+        showStatus("Wild property placed as " + color.get() + " in property area", false);
         completePlayStep(player, wild, false);
     }
 
         private Optional<ActionPlayChoice> promptWildPropertyChoice(WildpropertyCard wild) {
-        ButtonType useBtn = new ButtonType("作为地产打出");
-        ButtonType bankBtn = new ButtonType("存入银行 (" + wild.getBankValueM() + "M)");
-        ButtonType cancelBtn = new ButtonType("取消", ButtonBar.ButtonData.CANCEL_CLOSE);
+        ButtonType useBtn = new ButtonType("Play as Property");
+        ButtonType bankBtn = new ButtonType("Deposit to Bank (" + wild.getBankValueM() + "M)");
+        ButtonType cancelBtn = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
         Optional<ButtonType> result = showStyledButtonDialog(
-                "万能地产卡",
-                wild.getName() + " — 可存银行 " + wild.getBankValueM() + "M",
-                "选择作为地产打出（并选颜色），或存入银行？",
+                "Wild Property Card",
+                wild.getName() + " — Can deposit to bank for " + wild.getBankValueM() + "M",
+                "Play as property (select color), or deposit to bank?",
                 useBtn, bankBtn, cancelBtn);
         if (result.isEmpty()) {
             return Optional.empty();
@@ -795,7 +794,7 @@ private void setupPublicBoardSizing() {
         if (options.isEmpty()) {
             return Optional.empty();
         }
-        return showColorChoiceDialog("万能地产颜色", wild.getName(), "选择要当作哪种颜色的地产：", options);
+        return showColorChoiceDialog("Wild Property Color", wild.getName(), "Select color for property:", options);
     }
 
     private boolean hasAnyCompleteSet(Player player) {
@@ -814,7 +813,7 @@ private void setupPublicBoardSizing() {
                 opponents.add(p);
             }
         }
-        return showStyledChoiceDialog(title, title, "选择玩家:", opponents, Player::getName, p -> null);
+        return showStyledChoiceDialog(title, title, "Select player:", opponents, Player::getName, p -> null);
     }
 
         private Optional<Color> promptSelectCompleteSetOnPlayer(Player target) {
@@ -824,7 +823,7 @@ private void setupPublicBoardSizing() {
                 options.add(color);
             }
         }
-        return showColorChoiceDialog("选择套组", target.getName() + " 的完整套组", "要偷取哪种颜色？", options);
+        return showColorChoiceDialog("Select Set", target.getName() + "'s complete sets", "Which color to steal?", options);
     }
 
         private Optional<Color> promptSelectOwnCompleteSet(Player player, String title) {
@@ -834,10 +833,10 @@ private void setupPublicBoardSizing() {
                 options.add(color);
             }
         }
-        return showColorChoiceDialog(title, title, "选择颜色套组:", options);
+        return showColorChoiceDialog(title, title, "Select color set:", options);
     }
 
-    /** 出满 3 张牌后强制切换到下一名玩家 */
+    /** Force switch to the next player after playing 3 cards */
     
     private void loadAvatarImage() {
         try {
@@ -1005,18 +1004,24 @@ private void setupPublicBoardSizing() {
 
 private void forceEndTurn() {
         Player ending = gameEngine.getCurrentPlayer();
+        List<Card> discarded = gameEngine.enforceHandSizeLimit(ending);
+        if (!discarded.isEmpty()) {
+            logMessage(ending.getName() + " exceeded hand limit. Discarded " + discarded.size() + " card(s) to reduce hand to " + GameEngine.MAX_HAND_SIZE + " cards");
+            showStatus(ending.getName() + " had too many cards! Automatically discarded " + discarded.size() + " card(s)", false);
+        }
+
         gameEngine.nextTurn();
         currentPlayer = gameEngine.getCurrentPlayer();
-        logMessage(ending.getName() + " 回合结束 → " + currentPlayer.getName() + " 的回合");
-        showStatus("已出 3 张牌，自动换到 " + currentPlayer.getName()
-                + "。请先抽 2 张牌再出牌", false);
+        logMessage(ending.getName() + " turn ends → " + currentPlayer.getName() + "'s turn");
+        showStatus("Played 3 cards, automatically switching to " + currentPlayer.getName()
+                + ". Please draw 2 cards before playing", false);
         afterStateChange();
     }
     
     @FXML
     private void onEndTurnClick() {
         if (!isMyActionTurn()) {
-            showStatus("还没轮到你", true);
+            showStatus("Not your turn yet", true);
             return;
         }
         if (sessionMode == SessionMode.CLIENT) {
@@ -1028,15 +1033,21 @@ private void forceEndTurn() {
     
     private void endCurrentTurn() {
         Player player = gameEngine.getCurrentPlayer();
-        logMessage(player.getName() + " 主动结束回合");
+        List<Card> discarded = gameEngine.enforceHandSizeLimit(player);
+        if (!discarded.isEmpty()) {
+            logMessage(player.getName() + " exceeded hand limit. Discarded " + discarded.size() + " card(s) to reduce hand to " + GameEngine.MAX_HAND_SIZE + " cards");
+            showStatus(player.getName() + " had too many cards! Automatically discarded " + discarded.size() + " card(s)", false);
+        }
+
+        logMessage(player.getName() + " ended turn voluntarily");
         gameEngine.nextTurn();
         currentPlayer = gameEngine.getCurrentPlayer();
-        showStatus("轮到 " + currentPlayer.getName() + "，请先抽 2 张牌", false);
+        showStatus("Now " + currentPlayer.getName() + "'s turn, please draw 2 cards first", false);
         afterStateChange();
     }
     private void onNewGameClick() {
-        ButtonType start = new ButtonType("开始新游戏");
-        ButtonType cancel = new ButtonType("取消", ButtonBar.ButtonData.CANCEL_CLOSE);
+        ButtonType start = new ButtonType("Start New Game");
+        ButtonType cancel = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
         Optional<ButtonType> result = showStyledButtonDialog(
                 "New Game",
                 "Start a new game?",
@@ -1169,20 +1180,20 @@ private void forceEndTurn() {
         }
         if (sessionMode == SessionMode.CLIENT && remotePublic != null) {
             String name = playerNameAt(remotePublic.currentPlayerIndex);
-            String drawStatus = remotePublic.hasDrawnThisTurn ? "已抽牌" : "未抽牌";
+            String drawStatus = remotePublic.hasDrawnThisTurn ? "Drew cards" : "Hasn't drawn";
             currentPlayerLabel.setText("Current Player: " + name
                     + " | " + drawStatus
-                    + " | 剩余出牌: " + remotePublic.remainingPlays + "/3"
-                    + (remotePublic.gameOver ? " | 结束" : ""));
+                    + " | Remaining plays: " + remotePublic.remainingPlays + "/3"
+                    + (remotePublic.gameOver ? " | Game Over" : ""));
             return;
         }
         if (currentPlayer == null || gameEngine == null) {
             return;
         }
-        String drawStatus = gameEngine.hasDrawnThisTurn() ? "已抽牌" : "未抽牌";
+        String drawStatus = gameEngine.hasDrawnThisTurn() ? "Drew cards" : "Hasn't drawn";
         currentPlayerLabel.setText("Current Player: " + currentPlayer.getName()
                 + " | " + drawStatus
-                + " | 剩余出牌: " + gameEngine.getRemainingPlays() + "/"
+                + " | Remaining plays: " + gameEngine.getRemainingPlays() + "/"
                 + GameEngine.MAX_PLAYS_PER_TURN);
     }
     
@@ -1217,7 +1228,7 @@ private void forceEndTurn() {
         }
     }
 
-    /** 手牌单行显示：宽度不够时按比例缩小牌面（含悬停尺寸） */
+    /** Single line display of hand: When the width is not enough, the face of the hand will be proportionally reduced (including hover size) */
     private CardView.CardMetrics computeHandMetrics(int cardCount) {
         if (cardCount <= 0) {
             return CardView.HAND;
@@ -1247,17 +1258,17 @@ private void forceEndTurn() {
         cardView.setSelected(true);
 
         if (card instanceof WildpropertyCard wild) {
-            showStatus("已选中万能地产「" + card.getName() + "」"
-                    + (wild.isBankable() ? "（可存银行 " + wild.getBankValueM() + "M）" : "（不可存银行）")
-                    + "。出牌时选择颜色或存银行", false);
+            showStatus("Selected wild property [" + card.getName() + "]"
+                    + (wild.isBankable() ? " (can deposit to bank for " + wild.getBankValueM() + "M)" : " (cannot deposit to bank)")
+                    + ". Play card to choose color or deposit to bank", false);
         } else if (card instanceof RentCard rentCard) {
-            showStatus("已选中租金卡「" + card.getName() + "」（银行 " + rentCard.getBankValueM()
-                    + "M）。出牌时可收租或存入银行", false);
+            showStatus("Selected rent card [" + card.getName() + "] (bank " + rentCard.getBankValueM()
+                    + "M). Play card to collect rent or deposit to bank", false);
         } else if (card instanceof ActionCard actionCard) {
-            showStatus("已选中行动牌「" + card.getName() + "」（银行 " + actionCard.getBankValueM()
-                    + "M）。出牌时可选择：使用效果 或 存入银行", false);
+            showStatus("Selected action card [" + card.getName() + "] (bank " + actionCard.getBankValueM()
+                    + "M). Play card to choose: use effect or deposit to bank", false);
         } else {
-            showStatus("已选中: " + card.getName() + "，可点击「出牌」或双击该牌直接打出", false);
+            showStatus("Selected: " + card.getName() + ", click 'Play' or double-click to play", false);
         }
         updateButtonStates();
     }
@@ -1285,7 +1296,7 @@ private void forceEndTurn() {
         }
 
         if (playerBank.getChildren().isEmpty()) {
-            Label hint = new Label("（打出金钱牌 / 行动牌，或收租收到的牌会放入银行）");
+            Label hint = new Label("(Money cards / action cards played, or rent collected, go into bank)");
             hint.setStyle("-fx-text-fill: #476272; -fx-font-size: 12px; -fx-wrap-text: true;");
             playerBank.getChildren().add(hint);
         }
@@ -1303,7 +1314,7 @@ private void forceEndTurn() {
 
         List<PlayerPublicSnapshot> views = getPublicPlayerViews();
         if (views.isEmpty()) {
-            Label empty = new Label("（暂无玩家地产）");
+            Label empty = new Label("(No player properties yet)");
             empty.setStyle("-fx-text-fill: #7f8c8d;");
             allPlayersPropertiesPanel.getChildren().add(empty);
             return;
@@ -1321,7 +1332,7 @@ private void forceEndTurn() {
             HBox titleRow = new HBox(9);
             titleRow.setAlignment(Pos.CENTER_LEFT);
             ImageView avatar = createAvatarView(38);
-            Label title = new Label((isTurn ? "▶ " : "") + view.name + "  |  手牌 " + view.handSize + " 张  |  银行 " + view.bankTotal + "M");
+            Label title = new Label((isTurn ? "▶ " : "") + view.name + "  |  Hand: " + view.handSize + " cards  |  Bank: " + view.bankTotal + "M");
             title.setStyle("-fx-font-weight: 900; -fx-font-size: 15px; -fx-text-fill: #103c2a;");
             titleRow.getChildren().addAll(avatar, title);
 
@@ -1329,7 +1340,7 @@ private void forceEndTurn() {
             props.setPrefWrapLength(640);
             props.setMaxWidth(Double.MAX_VALUE);
             if (view.properties.isEmpty()) {
-                props.getChildren().add(new Label("（无地产）"));
+                props.getChildren().add(new Label("(No properties)"));
             } else {
                 Map<Color, List<Card>> byColor = groupPropertiesByColor(
                         CardSnapshotMapper.fromSnapshots(view.properties));
@@ -1480,7 +1491,7 @@ private void forceEndTurn() {
             roomWatcher = new RoomSyncWatcher();
             roomWatcher.start(roomFolder, this::onRoomFilesChanged);
         } catch (IOException e) {
-            showStatus("无法监听房间文件夹: " + e.getMessage(), true);
+            showStatus("Unable to listen to room folder: " + e.getMessage(), true);
         }
     }
 
@@ -1503,7 +1514,7 @@ private void forceEndTurn() {
                     pullRemoteStateQuiet();
                 }
             } catch (Exception ex) {
-                showStatus("同步失败: " + ex.getMessage(), true);
+                showStatus("Synchronization failed: " + ex.getMessage(), true);
             }
         });
     }
@@ -1531,7 +1542,7 @@ private void forceEndTurn() {
             RoomStorage.writeSnapshots(roomFolder, pub, RoomSnapshotBuilder.buildAllPrivate(gameEngine));
             lastSeenVersion = pub.version;
         } catch (Exception ex) {
-            showStatus("保存房间状态失败: " + ex.getMessage(), true);
+            showStatus("Failed to save room status: " + ex.getMessage(), true);
         }
     }
 
@@ -1585,9 +1596,9 @@ private void forceEndTurn() {
             cmd.mode = mode;
             cmd.color = color;
             RoomStorage.submitCommand(roomFolder, cmd);
-            showStatus("已提交操作，等待 Host 同步…", false);
+            showStatus("Operation submitted, waiting for Host sync…", false);
         } catch (IOException e) {
-            showStatus("提交失败: " + e.getMessage(), true);
+            showStatus("Submission failed: " + e.getMessage(), true);
         }
     }
 
@@ -1645,16 +1656,16 @@ private void forceEndTurn() {
         }
     }
 
-        private void playSelectedCardAsClient() {
+    private void playSelectedCardAsClient() {
         Card card = selectedCard;
         selectedCard = null;
         if (card instanceof WildpropertyCard wild) {
             if (wild.isBankable()) {
-                ButtonType asProp = new ButtonType("作为地产");
-                ButtonType asBank = new ButtonType("存银行");
-                ButtonType cancel = new ButtonType("取消", ButtonBar.ButtonData.CANCEL_CLOSE);
-                Optional<ButtonType> r = showStyledButtonDialog("万能地产卡", wild.getName(),
-                        "选择作为地产打出，或存入银行。", asProp, asBank, cancel);
+                ButtonType asProp = new ButtonType("Play as Property");
+                ButtonType asBank = new ButtonType("Deposit to Bank");
+                ButtonType cancel = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
+                Optional<ButtonType> r = showStyledButtonDialog("Wild Property Card", wild.getName(),
+                        "Choose to play as property or deposit to bank.", asProp, asBank, cancel);
                 if (r.isEmpty() || r.get() == cancel) {
                     selectedCard = wild;
                     return;
@@ -1666,8 +1677,8 @@ private void forceEndTurn() {
             }
             List<Color> colors = wild.getAvailableColors();
             if (!colors.isEmpty()) {
-                Optional<Color> c = showColorChoiceDialog("万能地产颜色", wild.getName(),
-                        "选择要当作哪种颜色的地产：", colors);
+                Optional<Color> c = showColorChoiceDialog("Wild Property Color", wild.getName(),
+                        "Select color for property:", colors);
                 if (c.isPresent()) {
                     submitRoomCommand("PLAY", wild.getInstanceId(), "PROPERTY", c.get().name());
                 } else {
@@ -1677,10 +1688,10 @@ private void forceEndTurn() {
             return;
         }
         if (card instanceof ActionCard || card instanceof RentCard) {
-            ButtonType bank = new ButtonType("存银行");
-            ButtonType cancel = new ButtonType("取消", ButtonBar.ButtonData.CANCEL_CLOSE);
-            Optional<ButtonType> r = showStyledButtonDialog("行动 / 租金牌", card.getName(),
-                    "伪联机：行动/租金牌请先存入银行", bank, cancel);
+            ButtonType bank = new ButtonType("Deposit to Bank");
+            ButtonType cancel = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
+            Optional<ButtonType> r = showStyledButtonDialog("Action/Rent Card", card.getName(),
+                    "Pseudo-online: Please deposit action/rent cards to bank first", bank, cancel);
             if (r.isPresent() && r.get() == bank) {
                 submitRoomCommand("PLAY", card.getInstanceId(), "BANK", null);
             } else {
