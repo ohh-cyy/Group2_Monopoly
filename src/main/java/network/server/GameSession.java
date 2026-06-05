@@ -222,8 +222,14 @@ public class GameSession {
         return ok("Card played");
     }
 
-    private boolean playToBank(Player player, Card card) {
+    boolean playToBank(Player player, Card card) {
         if (!(card instanceof ActionCard action)) {
+            if (card instanceof WildpropertyCard wild && wild.isBankable()) {
+                player.removeFromHand(wild);
+                wild.depositToBank(player);
+                appendLog(player.getName() + " banked " + wild.getName());
+                return true;
+            }
             return false;
         }
         player.removeFromHand(action);

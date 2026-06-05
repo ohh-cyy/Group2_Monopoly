@@ -95,6 +95,7 @@ public class CardView extends StackPane {
                 imageView.setFitWidth(metrics.normalW());
                 imageView.setFitHeight(metrics.normalH());
                 imageView.setPreserveRatio(false);
+                imageView.setRotate(CardImageLoader.resolveRotationDegrees(card));
                 getChildren().add(imageView);
                 applyVisualState();
                 addHoverEffect();

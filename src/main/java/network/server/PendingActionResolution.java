@@ -79,7 +79,7 @@ public final class PendingActionResolution {
         Player attacker = engine.getPlayers().get(attackerSeat);
         if (card instanceof RentCard rentCard) {
             chargeColor = CardMapper.parseColor(playMessage.color);
-            if (chargeColor == null || !rentCard.canPlay(attacker)) {
+            if (chargeColor == null || !rentCard.getChargeableColors(attacker).contains(chargeColor)) {
                 appendLog(attacker.getName() + " failed to play " + card.getName());
                 finish(false);
                 return;

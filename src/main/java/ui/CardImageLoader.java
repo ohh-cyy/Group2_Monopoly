@@ -80,6 +80,18 @@ public final class CardImageLoader {
         return null;
     }
 
+    public static double resolveRotationDegrees(Card card) {
+        if (!(card instanceof WildpropertyCard wild)) {
+            return 0;
+        }
+        Color chosen = wild.getChosenColor();
+        Color bottomColor = bottomColorForWild(wild);
+        if (chosen == null || bottomColor == null) {
+            return 0;
+        }
+        return chosen == bottomColor ? 180 : 0;
+    }
+
     private static String propertyFileName(Color color) {
         return switch (color) {
             case BROWN -> "propertybrown.png";
@@ -122,6 +134,36 @@ public final class CardImageLoader {
             return BASE + "wildpropertycard/wildpropertyyellowred.png";
         }
         return BASE + "wildpropertycard/wildpropertyallcolor.png";
+    }
+
+    private static Color bottomColorForWild(WildpropertyCard wild) {
+        Set<Color> colors = new HashSet<>(wild.getAvailableColors());
+        if (!wild.isBankable() && colors.size() >= Color.values().length - 1) {
+            return null;
+        }
+        if (colors.containsAll(Set.of(Color.DARK_BLUE, Color.GREEN))) {
+            return Color.DARK_BLUE;
+        }
+        if (colors.containsAll(Set.of(Color.LIGHT_BLUE, Color.BROWN))) {
+            return Color.BROWN;
+        }
+        if (colors.containsAll(Set.of(Color.ORANGE, Color.PINK))) {
+            return Color.PINK;
+        }
+        if (colors.containsAll(Set.of(Color.GREEN, Color.BLACK))) {
+            return Color.BLACK;
+        }
+        if (colors.containsAll(Set.of(Color.LIGHT_BLUE, Color.BLACK))) {
+            return Color.BLACK;
+        }
+        if (colors.containsAll(Set.of(Color.LIGHT_GREEN, Color.BLACK))) {
+            return Color.BLACK;
+        }
+        if (colors.containsAll(Set.of(Color.YELLOW, Color.RED))) {
+            return Color.RED;
+        }
+        var available = wild.getAvailableColors();
+        return available.size() == 2 ? available.get(1) : null;
     }
 
     private static String resolveRentPath(RentCard rent) {

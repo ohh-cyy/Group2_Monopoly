@@ -77,7 +77,7 @@ public final class ServerPlayHandler {
     private boolean applyRent(GameEngine engine, Player player, RentCard rentCard, ClientMessage msg,
                               List<String> log) {
         Color chargeColor = CardMapper.parseColor(msg.color);
-        if (chargeColor == null || !rentCard.canPlay(player)) {
+        if (chargeColor == null || !rentCard.getChargeableColors(player).contains(chargeColor)) {
             return false;
         }
         int rent = rentCard.calculateRent(player, chargeColor);

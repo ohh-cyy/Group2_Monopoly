@@ -158,7 +158,11 @@ public final class CardMapper {
         if (value == null || value.isBlank()) {
             return null;
         }
-        return Color.valueOf(value.trim());
+        try {
+            return Color.valueOf(value.trim());
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
     }
 
     private static List<Color> parseColors(List<String> names) {
