@@ -9,25 +9,24 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
-import sync.RoomFolder;
-import sync.RoomStorage;
-import sync.RoomSyncWatcher;
+import network.client.NetworkClient;
+import network.protocol.LobbyPlayerDto;
+import network.protocol.MessageTypes;
+import network.protocol.ServerMessage;
+import network.server.GameServer;
+import network.server.GameSession;
 
 import java.io.IOException;
-import java.nio.file.Path;
-import java.util.List;
 
 public class LobbyController {
     @FXML
-    private TextField roomsRootField;
+    private TextField hostField;
+    @FXML
+    private TextField portField;
     @FXML
     private TextField nameField;
     @FXML
-    private TextField roomCodeField;
-    @FXML
     private Label statusLabel;
-    @FXML
-    private Label roomCodeLabel;
     @FXML
     private ListView<String> playerList;
     @FXML
@@ -38,10 +37,10 @@ public class LobbyController {
     private Button startBtn;
 
     private Stage stage;
-    private RoomFolder roomFolder;
+    private GameServer gameServer;
+    private NetworkClient client;
     private int localSeat = -1;
     private boolean isHost;
-    private RoomSyncWatcher lobbyWatcher;
 
     public void setStage(Stage stage) {
         this.stage = stage;
@@ -49,15 +48,8 @@ public class LobbyController {
 
     @FXML
     public void initialize() {
-        roomsRootField.setText("");
-    }
-
-    private Path roomsRootPath() {
-        String text = roomsRootField.getText();
-        if (text == null || text.isBlank()) {
-            return null;
-        }
-        return Path.of(text.trim());
+        hostField.setText("127.0.0.1");
+        portField.setText("8888");
     }
 
     @FXML
@@ -68,139 +60,155 @@ public class LobbyController {
             return;
         }
         try {
-            Path root = roomsRootPath();
-            RoomStorage.setConfiguredRoomsRoot(root);
-            roomFolder = RoomStorage.createRoom(name, root);
-            localSeat = 0;
-            isHost = true;
-            roomCodeField.setText(roomFolder.getRoomCode());
-            roomCodeLabel.setText("Room code: " + roomFolder.getRoomCode());
-            statusLabel.setText("Room path:\n" + roomFolder.getRoot()
-                    + "\n\nShare the folder and room code with other players.");
-            startBtn.setDisable(false);
+            int port = parsePort();
+            stopServer();
+            closeClient();
+            gameServer = new GameServer(port);
+            gameServer.start();
+            connectClient("127.0.0.1", port, name, true);
             hostBtn.setDisable(true);
             joinBtn.setDisable(true);
-            refreshPlayers();
-            startLobbyWatch();
-        } catch (IOException e) {
-            statusLabel.setText("Create failed: " + e.getMessage());
+            statusLabel.setText("Server running on port " + port
+                    + ". Share your IP with other players.");
+        } catch (Exception e) {
+            statusLabel.setText("Failed to start server: " + e.getMessage());
         }
     }
 
     @FXML
     private void onJoinClick() {
         String name = nameField.getText().trim();
-        String code = roomCodeField.getText().trim();
-        if (name.isEmpty() || code.isEmpty()) {
-            statusLabel.setText("Please enter a name and room code.");
+        String host = hostField.getText().trim();
+        if (name.isEmpty() || host.isEmpty()) {
+            statusLabel.setText("Please enter a name and server address.");
             return;
         }
         try {
-            Path root = roomsRootPath();
-            RoomStorage.setConfiguredRoomsRoot(root);
-            roomFolder = RoomStorage.openRoom(code, root);
-            if (RoomStorage.isStarted(roomFolder)) {
-                statusLabel.setText("The game has already started.");
-                return;
-            }
-            localSeat = RoomStorage.joinNextSeat(roomFolder, name);
-            isHost = false;
-            roomCodeLabel.setText("Joined room: " + roomFolder.getRoomCode());
-            statusLabel.setText("Joined. Waiting for the host to start...");
+            int port = parsePort();
+            closeClient();
+            connectClient(host, port, name, false);
             hostBtn.setDisable(true);
             joinBtn.setDisable(true);
-            startBtn.setDisable(true);
-            refreshPlayers();
-            startLobbyWatch();
-        } catch (IOException e) {
+            statusLabel.setText("Connecting to " + host + ":" + port + "...");
+        } catch (Exception e) {
             statusLabel.setText("Join failed: " + e.getMessage());
         }
     }
 
     @FXML
     private void onStartClick() {
-        if (!isHost || roomFolder == null) {
+        if (!isHost || client == null) {
             return;
         }
-        try {
-            List<String> names = RoomStorage.listPlayerNames(roomFolder);
-            if (names.size() < RoomFolder.MIN_PLAYERS_TO_START) {
-                statusLabel.setText("At least " + RoomFolder.MIN_PLAYERS_TO_START + " players are required.");
-                return;
-            }
-            openGame(true, names);
-        } catch (Exception e) {
-            statusLabel.setText("Start failed: " + e.getMessage());
-        }
+        client.startGame();
+        statusLabel.setText("Starting game...");
     }
 
     @FXML
     private void onLocalGameClick() {
-        stopLobbyWatch();
+        stopServer();
+        closeClient();
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/ui/game-view.fxml"));
             loader.load();
             GameController controller = loader.getController();
-            Scene scene = new Scene(loader.getRoot(), 1200, 800);
             controller.startLocalGame();
             stage.setTitle("Monopoly Deal - Local");
-            stage.setScene(scene);
+            stage.setScene(new Scene(loader.getRoot(), 1360, 900));
         } catch (IOException e) {
-            statusLabel.setText("Unable to open: " + e.getMessage());
+            statusLabel.setText("Unable to open local game: " + e.getMessage());
         }
     }
 
-    private void openGame(boolean host, List<String> playerNames) throws Exception {
-        stopLobbyWatch();
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/ui/game-view.fxml"));
-        loader.load();
-        GameController controller = loader.getController();
-        Scene scene = new Scene(loader.getRoot(), 1200, 800);
-        if (host) {
-            controller.startRoomHost(roomFolder, localSeat, playerNames);
-        } else {
-            controller.startRoomClient(roomFolder, localSeat);
-        }
-        stage.setTitle("Monopoly Deal - Room " + roomFolder.getRoomCode());
-        stage.setScene(scene);
+    private void connectClient(String host, int port, String name, boolean hostFlag) throws IOException {
+        client = new NetworkClient();
+        client.connect(host, port, this::handleServerMessage);
+        client.join(name, hostFlag);
     }
 
-    private void refreshPlayers() {
-        if (roomFolder == null) {
+    private void handleServerMessage(ServerMessage message) {
+        Platform.runLater(() -> {
+            if (message == null || message.type == null) {
+                return;
+            }
+            switch (message.type) {
+                case MessageTypes.JOINED -> {
+                    localSeat = message.seat;
+                    isHost = message.youAreHost;
+                    statusLabel.setText(message.text);
+                    if (isHost) {
+                        startBtn.setDisable(false);
+                    }
+                }
+                case MessageTypes.LOBBY -> updateLobby(message);
+                case MessageTypes.GAME_STARTED -> openNetworkGame(message);
+                case MessageTypes.ERROR -> statusLabel.setText(message.text);
+                default -> {
+                }
+            }
+        });
+    }
+
+    private void updateLobby(ServerMessage message) {
+        playerList.getItems().clear();
+        int count = 0;
+        for (LobbyPlayerDto player : message.lobbyPlayers) {
+            String tag = player.host ? " (Host)" : "";
+            playerList.getItems().add((player.seat + 1) + ". " + player.name + tag);
+            count++;
+        }
+        statusLabel.setText(message.text);
+        if (isHost) {
+            startBtn.setDisable(count < GameSession.MIN_PLAYERS || count > GameSession.MAX_PLAYERS);
+        }
+    }
+
+    private void openNetworkGame(ServerMessage message) {
+        var resource = getClass().getResource("/ui/network-game-view.fxml");
+        if (resource == null) {
+            statusLabel.setText("无法打开游戏：缺少 network-game-view.fxml，请先执行 mvn compile");
             return;
         }
         try {
-            List<String> names = RoomStorage.listPlayerNames(roomFolder);
-            playerList.getItems().setAll(names);
-            if (isHost && !RoomStorage.isStarted(roomFolder)) {
-                startBtn.setDisable(names.size() < RoomFolder.MIN_PLAYERS_TO_START);
+            FXMLLoader loader = new FXMLLoader(resource);
+            var root = loader.load();
+            NetworkGameController controller = loader.getController();
+            if (controller == null) {
+                statusLabel.setText("无法打开游戏：界面控制器未加载");
+                return;
             }
-            if (!isHost && RoomStorage.isStarted(roomFolder)) {
-                statusLabel.setText("Game started. Entering...");
-                openGame(false, names);
-            }
+            NetworkClient gameClient = client;
+            stage.setTitle("Monopoly Deal - 联机");
+            stage.setScene(new Scene((javafx.scene.Parent) root, 1360, 900));
+            stage.show();
+            controller.startOnlineGame(gameClient, localSeat, message.state);
+            client = null;
         } catch (Exception e) {
-            statusLabel.setText("Refresh failed: " + e.getMessage());
+            e.printStackTrace();
+            String detail = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+            statusLabel.setText("无法打开游戏：" + detail);
         }
     }
 
-    private void startLobbyWatch() {
-        stopLobbyWatch();
-        if (roomFolder == null) {
-            return;
-        }
+    private int parsePort() {
         try {
-            lobbyWatcher = new RoomSyncWatcher();
-            lobbyWatcher.start(roomFolder, () -> Platform.runLater(this::refreshPlayers));
-        } catch (IOException e) {
-            statusLabel.setText("Unable to watch room: " + e.getMessage());
+            return Integer.parseInt(portField.getText().trim());
+        } catch (NumberFormatException e) {
+            return 8888;
         }
     }
 
-    private void stopLobbyWatch() {
-        if (lobbyWatcher != null) {
-            lobbyWatcher.close();
-            lobbyWatcher = null;
+    private void stopServer() {
+        if (gameServer != null) {
+            gameServer.close();
+            gameServer = null;
+        }
+    }
+
+    private void closeClient() {
+        if (client != null) {
+            client.close();
+            client = null;
         }
     }
 }

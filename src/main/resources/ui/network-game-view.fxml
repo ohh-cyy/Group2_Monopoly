@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Font?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml"
+            fx:controller="controller.NetworkGameController"
+            prefWidth="1360"
+            prefHeight="900"
+            stylesheets="@game-theme.css"
+            styleClass="app-root">
+
+    <top>
+        <VBox spacing="8" styleClass="top-bar">
+            <HBox alignment="CENTER_LEFT" spacing="12">
+                <Label text="Monopoly Deal" styleClass="game-title">
+                    <font>
+                        <Font name="System Bold" size="27"/>
+                    </font>
+                </Label>
+                <Label text="Board First Layout" styleClass="top-pill"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="gameStatusText"
+                       text="Draw pile: --  |  Discard pile: --"
+                       styleClass="top-meta-label"/>
+            </HBox>
+            <HBox spacing="14" alignment="CENTER_LEFT">
+                <Label fx:id="currentPlayerLabel"
+                       text="Current Player: Player 1"
+                       styleClass="top-meta-label"/>
+            </HBox>
+        </VBox>
+    </top>
+
+    <center>
+        <StackPane styleClass="table-area">
+            <BorderPane fx:id="boardLayout" maxWidth="Infinity" maxHeight="Infinity" styleClass="board-layout">
+                <left>
+                    <VBox fx:id="leftSidebar" spacing="10" prefWidth="230" minWidth="230" maxWidth="230" styleClass="side-panel side-panel-left">
+                        <HBox alignment="CENTER_LEFT" spacing="8">
+                            <Label text="Players" styleClass="drawer-title"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Button fx:id="leftSidebarToggle" text="&#8249;" styleClass="drawer-toggle"/>
+                        </HBox>
+                        <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS" hbarPolicy="NEVER" styleClass="transparent-scroll">
+                            <VBox fx:id="playersList" spacing="10" style="-fx-padding: 3;"/>
+                        </ScrollPane>
+                    </VBox>
+                </left>
+
+                <center>
+                    <VBox spacing="10" maxWidth="Infinity" maxHeight="Infinity" styleClass="panel-card public-panel main-public-board">
+                        <BorderPane.margin>
+                            <Insets top="14" right="14" bottom="68" left="14"/>
+                        </BorderPane.margin>
+                        <HBox spacing="12" alignment="CENTER_LEFT">
+                            <VBox spacing="2">
+                                <Label text="Public Board" styleClass="section-title section-title-large"/>
+                                <Label text="Collapse sidebars to give the public board more space." styleClass="section-subtitle"/>
+                            </VBox>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <VBox alignment="CENTER_RIGHT" spacing="2" styleClass="bank-pill">
+                                <Label text="Current Player Bank" styleClass="bank-pill-label"/>
+                                <Label fx:id="turnBankLabel" text="0M" styleClass="bank-pill-value"/>
+                            </VBox>
+                        </HBox>
+                        <ScrollPane fitToWidth="true"
+                                    VBox.vgrow="ALWAYS"
+                                    hbarPolicy="NEVER"
+                                    vbarPolicy="AS_NEEDED"
+                                    pannable="true"
+                                    styleClass="transparent-scroll">
+                            <TilePane fx:id="allPlayersPropertiesPanel"
+                                      hgap="14"
+                                      vgap="14"
+                                      prefColumns="2"
+                                      tileAlignment="TOP_LEFT"
+                                      style="-fx-padding: 6 8 12 6;"/>
+                        </ScrollPane>
+                    </VBox>
+                </center>
+
+                <right>
+                    <VBox fx:id="rightSidebar" spacing="10" prefWidth="300" minWidth="300" maxWidth="300" styleClass="side-panel side-panel-right">
+                        <HBox alignment="CENTER_LEFT" spacing="8">
+                            <Button fx:id="rightSidebarToggle" text="&#8250;" styleClass="drawer-toggle"/>
+                            <Label text="Game Controls" styleClass="drawer-title"/>
+                        </HBox>
+                        <VBox spacing="10" styleClass="control-panel">
+                            <Button fx:id="drawCardBtn" id="drawCardBtn"
+                                    text="Draw Cards (2)"
+                                    maxWidth="Infinity"
+                                    styleClass="control-button"/>
+                            <Button fx:id="playCardBtn" id="playCardBtn"
+                                    text="Play Selected Card"
+                                    maxWidth="Infinity"
+                                    styleClass="control-button"/>
+                            <Button fx:id="endTurnBtn" id="endTurnBtn"
+                                    text="End Turn"
+                                    maxWidth="Infinity"
+                                    styleClass="control-button"/>
+                            <Button fx:id="newGameBtn" id="newGameBtn"
+                                    text="New Game"
+                                    maxWidth="Infinity"
+                                    styleClass="control-button"/>
+                        </VBox>
+
+                        <Label text="Game Log" styleClass="drawer-title drawer-subtitle"/>
+                        <TextArea fx:id="gameLog"
+                                  editable="false"
+                                  wrapText="true"
+                                  VBox.vgrow="ALWAYS"
+                                  styleClass="game-log"/>
+                    </VBox>
+                </right>
+            </BorderPane>
+
+            <Button fx:id="leftSidebarHandle"
+                    text="Players &#8250;"
+                    styleClass="drawer-handle drawer-handle-left"
+                    StackPane.alignment="CENTER_LEFT"/>
+
+            <Button fx:id="rightSidebarHandle"
+                    text="&#8249; Controls / Log"
+                    styleClass="drawer-handle drawer-handle-right"
+                    StackPane.alignment="CENTER_RIGHT"/>
+
+            <VBox fx:id="handDock"
+                  spacing="8"
+                  maxWidth="Infinity"
+                  prefHeight="266"
+                  minHeight="266"
+                  maxHeight="266"
+                  styleClass="hand-dock panel-card"
+                  StackPane.alignment="BOTTOM_CENTER">
+                <HBox alignment="CENTER_LEFT" spacing="10" styleClass="hand-dock-header">
+                    <Label text="My Hand" styleClass="section-title"/>
+                    <Label fx:id="handDockHint" text="Hover here to expand - double-click to play" styleClass="section-subtitle"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label text="My Bank" styleClass="section-title bank-mini-title"/>
+                    <Label fx:id="bankTotalLabel" text="0M" styleClass="bank-mini-value"/>
+                </HBox>
+                <HBox spacing="14" VBox.vgrow="ALWAYS">
+                    <VBox spacing="6" HBox.hgrow="ALWAYS" styleClass="hand-area">
+                        <ScrollPane fx:id="playerHandScroll"
+                                    fitToHeight="true"
+                                    hbarPolicy="AS_NEEDED"
+                                    vbarPolicy="NEVER"
+                                    VBox.vgrow="ALWAYS"
+                                    pannable="true"
+                                    styleClass="transparent-scroll hand-scroll">
+                            <HBox fx:id="playerHand"
+                                  spacing="10"
+                                  alignment="CENTER_LEFT"
+                                  style="-fx-padding: 12 14 18 14;"/>
+                        </ScrollPane>
+                    </VBox>
+                    <VBox spacing="6"
+                          prefWidth="285"
+                          minWidth="250"
+                          maxWidth="320"
+                          styleClass="bank-dock-area">
+                        <ScrollPane fitToWidth="true"
+                                    hbarPolicy="NEVER"
+                                    vbarPolicy="AS_NEEDED"
+                                    VBox.vgrow="ALWAYS"
+                                    pannable="true"
+                                    styleClass="transparent-scroll">
+                            <FlowPane fx:id="playerBank"
+                                      hgap="7"
+                                      vgap="7"
+                                      prefWrapLength="250"
+                                      alignment="CENTER_LEFT"
+                                      style="-fx-padding: 4;"/>
+                        </ScrollPane>
+                    </VBox>
+                </HBox>
+            </VBox>
+        </StackPane>
+    </center>
+
+    <bottom>
+        <HBox spacing="20" styleClass="status-bar">
+            <Label fx:id="statusMessage"
+                   text="Welcome to Monopoly Deal!"
+                   style="-fx-text-fill: #ffffff; -fx-font-size: 14px;"/>
+        </HBox>
+    </bottom>
+</BorderPane>

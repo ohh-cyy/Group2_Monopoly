@@ -11,7 +11,7 @@ import javafx.animation.ParallelTransition;
 import javafx.animation.RotateTransition;
 import javafx.animation.ScaleTransition;
 import javafx.animation.TranslateTransition;
-import sync.*;
+import javafx.util.Duration;
 import ui.CardView;
 import javafx.fxml.FXML;
 import javafx.geometry.Bounds;
@@ -116,16 +116,6 @@ public class GameController {
     private CardView pendingPlayedCardView;
     private Random random;
 
-    private enum SessionMode { LOCAL, HOST, CLIENT }
-    private SessionMode sessionMode = SessionMode.LOCAL;
-    private RoomFolder roomFolder;
-    private int localSeat;
-    private RoomSyncWatcher roomWatcher;
-    private final List<String> roomLogLines = new ArrayList<>();
-    private List<Card> viewHand = new ArrayList<>();
-    private List<Card> viewBank = new ArrayList<>();
-    private RoomPublicSnapshot remotePublic;
-    private long lastSeenVersion = -1;
     private static final double HAND_DOCK_HEIGHT = 266;
     private static final double HAND_DOCK_PEEK = 54;
     private boolean handDockExpanded = false;
@@ -138,7 +128,7 @@ public class GameController {
         loadAvatarImage();
         if (playerHandScroll != null) {
             playerHandScroll.widthProperty().addListener((obs, oldW, newW) -> {
-                if (!viewHand.isEmpty() || currentPlayer != null) {
+                if (currentPlayer != null) {
                     updatePlayerHand();
                 }
             });
@@ -150,36 +140,7 @@ public class GameController {
     }
 
     public void startLocalGame() {
-        stopSync();
-        sessionMode = SessionMode.LOCAL;
-        roomFolder = null;
         initializeGame();
-    }
-
-    public void startRoomHost(RoomFolder folder, int seat, List<String> playerNames) throws Exception {
-        stopSync();
-        sessionMode = SessionMode.HOST;
-        roomFolder = folder;
-        localSeat = seat;
-        initializeGameWithPlayers(playerNames);
-        RoomStorage.markStarted(folder);
-        publishRoomState();
-        startRoomWatch();
-        pullRemoteStateQuiet();
-    }
-
-    public void startRoomClient(RoomFolder folder, int seat) {
-        stopSync();
-        sessionMode = SessionMode.CLIENT;
-        roomFolder = folder;
-        localSeat = seat;
-        gameEngine = null;
-        players = new ArrayList<>();
-        remotePublic = null;
-        viewHand = new ArrayList<>();
-        viewBank = new ArrayList<>();
-        startRoomWatch();
-        pullRemoteStateQuiet();
     }
     
     private void setupButtonActions() {
@@ -304,7 +265,6 @@ private void setupPublicBoardSizing() {
         gameEngine = new GameEngine(players, deck);
         gameEngine.startGame();
         currentPlayer = gameEngine.getCurrentPlayer();
-        roomLogLines.clear();
         resetAchievements();
         logMessage("Players: " + String.join(", ", names));
         updateUI();
@@ -314,10 +274,6 @@ private void setupPublicBoardSizing() {
     private void onDrawCardsClick() {
         if (!isMyActionTurn()) {
             showStatus("It's not your turn", true);
-            return;
-        }
-        if (sessionMode == SessionMode.CLIENT) {
-            submitRoomCommand("DRAW", null, null, null);
             return;
         }
         drawCardsFromPile();
@@ -350,10 +306,6 @@ private void setupPublicBoardSizing() {
         }
         if (selectedCard == null) {
             showStatus("Please first click on the hand to select a card, then click on「Play」", true);
-            return;
-        }
-        if (sessionMode == SessionMode.CLIENT) {
-            playSelectedCardAsClient();
             return;
         }
         playSelectedCard();
@@ -1144,10 +1096,6 @@ private void forceEndTurn() {
             showStatus("Not your turn yet", true);
             return;
         }
-        if (sessionMode == SessionMode.CLIENT) {
-            submitRoomCommand("END_TURN", null, null, null);
-            return;
-        }
         endCurrentTurn();
     }
     
@@ -1179,16 +1127,6 @@ private void forceEndTurn() {
     }
     
     private boolean isMyActionTurn() {
-        if (sessionMode == SessionMode.CLIENT) {
-            return remotePublic != null
-                    && remotePublic.currentPlayerIndex == localSeat
-                    && !remotePublic.gameOver;
-        }
-        if (sessionMode == SessionMode.HOST) {
-            return gameEngine != null
-                    && gameEngine.getCurrentPlayerIndex() == localSeat
-                    && !gameEngine.isGameOver();
-        }
         return gameEngine != null && !gameEngine.isGameOver();
     }
 
@@ -1218,14 +1156,6 @@ private void forceEndTurn() {
         }
         playersList.getChildren().clear();
 
-        if (sessionMode == SessionMode.CLIENT && remotePublic != null) {
-            for (PlayerPublicSnapshot view : remotePublic.players) {
-                Player stub = new Player(view.name);
-                playersList.getChildren().add(createPlayerInfoBox(stub, isTurnSeat(view.seat)));
-            }
-            return;
-        }
-
         if (players == null) {
             return;
         }
@@ -1249,8 +1179,7 @@ private void forceEndTurn() {
         nameLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
         header.getChildren().addAll(avatar, nameLabel);
 
-        int handSize = sessionMode == SessionMode.CLIENT && remotePublic != null
-                ? handSizeFor(player.getName()) : player.getHand().size();
+        int handSize = player.getHand().size();
 
         Label handCountLabel = new Label("Hand: " + handSize + " cards");
         Label propertyCountLabel = new Label("Properties: " + propertyCountFor(player));
@@ -1260,51 +1189,16 @@ private void forceEndTurn() {
         return box;
     }
 
-    private int handSizeFor(String name) {
-        if (remotePublic == null) {
-            return 0;
-        }
-        for (PlayerPublicSnapshot p : remotePublic.players) {
-            if (p.name.equals(name)) {
-                return p.handSize;
-            }
-        }
-        return 0;
-    }
-
     private int propertyCountFor(Player player) {
-        if (sessionMode == SessionMode.CLIENT && remotePublic != null) {
-            for (PlayerPublicSnapshot p : remotePublic.players) {
-                if (p.name.equals(player.getName())) {
-                    return p.properties.size();
-                }
-            }
-        }
         return player.getAllProperties().size();
     }
 
     private int bankTotalFor(Player player) {
-        if (sessionMode == SessionMode.CLIENT && remotePublic != null) {
-            for (PlayerPublicSnapshot p : remotePublic.players) {
-                if (p.name.equals(player.getName())) {
-                    return p.bankTotal;
-                }
-            }
-        }
         return player.getBankTotalValue();
     }
     
     private void updateCurrentPlayerDisplay() {
         if (currentPlayerLabel == null) {
-            return;
-        }
-        if (sessionMode == SessionMode.CLIENT && remotePublic != null) {
-            String name = playerNameAt(remotePublic.currentPlayerIndex);
-            String drawStatus = remotePublic.hasDrawnThisTurn ? "Drew cards" : "Hasn't drawn";
-            currentPlayerLabel.setText("Current Player: " + name
-                    + " | " + drawStatus
-                    + " | Remaining plays: " + remotePublic.remainingPlays + "/3"
-                    + (remotePublic.gameOver ? " | Game Over" : ""));
             return;
         }
         if (currentPlayer == null || gameEngine == null) {
@@ -1323,7 +1217,7 @@ private void forceEndTurn() {
         }
         playerHand.getChildren().clear();
 
-        if (currentPlayer == null && sessionMode != SessionMode.CLIENT) {
+        if (currentPlayer == null) {
             return;
         }
 
@@ -1404,7 +1298,7 @@ private void forceEndTurn() {
         }
         playerBank.getChildren().clear();
 
-        if (currentPlayer == null && sessionMode != SessionMode.CLIENT) {
+        if (currentPlayer == null) {
             return;
         }
 
@@ -1437,7 +1331,7 @@ private void forceEndTurn() {
         }
         allPlayersPropertiesPanel.getChildren().clear();
 
-        List<PlayerPublicSnapshot> views = getPublicPlayerViews();
+        List<PlayerBoardView> views = getPublicPlayerViews();
         if (views.isEmpty()) {
             Label empty = new Label("(No player properties yet)");
             empty.setStyle("-fx-text-fill: #7f8c8d;");
@@ -1445,7 +1339,7 @@ private void forceEndTurn() {
             return;
         }
 
-        for (PlayerPublicSnapshot view : views) {
+        for (PlayerBoardView view : getPublicPlayerViews()) {
             VBox playerBlock = new VBox(8);
             playerBlock.setMaxWidth(Double.MAX_VALUE);
             boolean isTurn = isTurnSeat(view.seat);
@@ -1467,8 +1361,7 @@ private void forceEndTurn() {
             if (view.properties.isEmpty()) {
                 props.getChildren().add(new Label("(No properties)"));
             } else {
-                Map<Color, List<Card>> byColor = groupPropertiesByColor(
-                        CardSnapshotMapper.fromSnapshots(view.properties));
+                Map<Color, List<Card>> byColor = groupPropertiesByColor(view.properties);
                 for (Map.Entry<Color, List<Card>> entry : byColor.entrySet()) {
                     HBox set = buildPropertyColorSet(entry.getKey(), entry.getValue());
                     props.getChildren().add(set);
@@ -1486,14 +1379,7 @@ private void forceEndTurn() {
         int seat = getCurrentTurnSeat();
         int total = 0;
         String name = playerNameAt(seat);
-        if (sessionMode == SessionMode.CLIENT && remotePublic != null) {
-            for (PlayerPublicSnapshot p : remotePublic.players) {
-                if (p.seat == seat) {
-                    total = p.bankTotal;
-                    break;
-                }
-            }
-        } else if (gameEngine != null && seat >= 0 && seat < gameEngine.getPlayers().size()) {
+        if (gameEngine != null && seat >= 0 && seat < gameEngine.getPlayers().size()) {
             total = gameEngine.getPlayers().get(seat).getBankTotalValue();
         }
         turnBankLabel.setText(name + ": " + total + "M");
@@ -1550,14 +1436,6 @@ private void forceEndTurn() {
         if (gameStatusText == null) {
             return;
         }
-        if (sessionMode == SessionMode.CLIENT && remotePublic != null) {
-            gameStatusText.setText("Draw pile: " + remotePublic.drawPileSize
-                    + "  |  Discard pile: " + remotePublic.discardPileSize);
-            if (remotePublic.gameOver && remotePublic.winnerName != null) {
-                gameStatusText.setText("Winner: " + remotePublic.winnerName);
-            }
-            return;
-        }
         if (gameEngine == null || gameEngine.isGameOver()) {
             return;
         }
@@ -1569,10 +1447,7 @@ private void forceEndTurn() {
     private void updateButtonStates() {
         boolean canDraw;
         boolean canPlayCard;
-        if (sessionMode == SessionMode.CLIENT && remotePublic != null) {
-            canDraw = isMyActionTurn() && !remotePublic.hasDrawnThisTurn;
-            canPlayCard = isMyActionTurn() && remotePublic.remainingPlays > 0;
-        } else if (gameEngine != null) {
+        if (gameEngine != null) {
             canDraw = isMyActionTurn() && gameEngine.canDrawCards();
             canPlayCard = isMyActionTurn() && gameEngine.canPlayCard();
         } else {
@@ -1593,7 +1468,6 @@ private void forceEndTurn() {
             String line = "[" + timestamp + "] " + message;
             gameLog.appendText(line + "\n");
             gameLog.setScrollTop(Double.MAX_VALUE);
-            roomLogLines.add(line);
         });
     }
     
@@ -1622,308 +1496,52 @@ private void forceEndTurn() {
 
     private void afterStateChange() {
         updateUI();
-        if (sessionMode == SessionMode.HOST && roomFolder != null) {
-            publishRoomState();
-        }
     }
 
-    private void startRoomWatch() {
-        stopRoomWatch();
-        if (roomFolder == null) {
-            return;
-        }
-        try {
-            roomWatcher = new RoomSyncWatcher();
-            roomWatcher.start(roomFolder, this::onRoomFilesChanged);
-        } catch (IOException e) {
-            showStatus("Unable to listen to room folder: " + e.getMessage(), true);
-        }
-    }
-
-    private void stopRoomWatch() {
-        if (roomWatcher != null) {
-            roomWatcher.close();
-            roomWatcher = null;
-        }
-    }
-
-    private void onRoomFilesChanged() {
-        Platform.runLater(() -> {
-            if (roomFolder == null) {
-                return;
-            }
-            try {
-                if (sessionMode == SessionMode.HOST) {
-                    drainAndProcessCommands();
-                } else if (sessionMode == SessionMode.CLIENT) {
-                    pullRemoteStateQuiet();
-                }
-            } catch (Exception ex) {
-                showStatus("Synchronization failed: " + ex.getMessage(), true);
-            }
-        });
-    }
-
-    private void drainAndProcessCommands() throws Exception {
-        for (RoomCommand cmd : RoomStorage.drainCommands(roomFolder)) {
-            handleRoomCommand(cmd);
-        }
-    }
-
-    private void startSyncTimer() {
-        startRoomWatch();
-    }
-
-    private void stopSync() {
-        stopRoomWatch();
-    }
-
-    private void publishRoomState() {
-        if (gameEngine == null || roomFolder == null) {
-            return;
-        }
-        try {
-            RoomPublicSnapshot pub = RoomSnapshotBuilder.buildPublic(gameEngine, roomLogLines);
-            RoomStorage.writeSnapshots(roomFolder, pub, RoomSnapshotBuilder.buildAllPrivate(gameEngine));
-            lastSeenVersion = pub.version;
-        } catch (Exception ex) {
-            showStatus("Failed to save room status: " + ex.getMessage(), true);
-        }
-    }
-
-    private List<String> collectNewLogLines() {
-        return new ArrayList<>(roomLogLines);
-    }
-
-    private void pullRemoteStateQuiet() {
-        try {
-            long version = RoomStorage.peekVersion(roomFolder);
-            if (version <= lastSeenVersion) {
-                return;
-            }
-            RoomPublicSnapshot pub = RoomStorage.readPublic(roomFolder);
-            PlayerPrivateSnapshot priv = RoomStorage.readPrivate(roomFolder, localSeat);
-            if (pub == null || priv == null) {
-                return;
-            }
-            lastSeenVersion = version;
-            remotePublic = pub;
-            viewHand = CardSnapshotMapper.fromSnapshots(priv.hand);
-            viewBank = CardSnapshotMapper.fromSnapshots(priv.bank);
-            mergeRemoteLog(pub.logLines);
-            updateUI();
-        } catch (Exception ignored) {
-        }
-    }
-
-    private void mergeRemoteLog(List<String> lines) {
-        if (lines == null || gameLog == null) {
-            return;
-        }
-        int start = Math.min(roomLogLines.size(), lines.size());
-        for (int i = start; i < lines.size(); i++) {
-            String line = lines.get(i);
-            roomLogLines.add(line);
-            gameLog.appendText(line + "\n");
-        }
-        gameLog.setScrollTop(Double.MAX_VALUE);
-    }
-
-    private void submitRoomCommand(String action, String cardId, String mode, String color) {
-        if (roomFolder == null) {
-            return;
-        }
-        try {
-            RoomCommand cmd = new RoomCommand();
-            cmd.seat = localSeat;
-            cmd.action = action;
-            cmd.cardId = cardId;
-            cmd.mode = mode;
-            cmd.color = color;
-            RoomStorage.submitCommand(roomFolder, cmd);
-            showStatus("Operation submitted, waiting for Host sync…", false);
-        } catch (IOException e) {
-            showStatus("Submission failed: " + e.getMessage(), true);
-        }
-    }
-
-    private void handleRoomCommand(RoomCommand cmd) throws Exception {
-        if (gameEngine == null || cmd == null || cmd.seat != gameEngine.getCurrentPlayerIndex()) {
-            return;
-        }
-        switch (cmd.action) {
-            case "DRAW" -> drawCardsFromPile();
-            case "END_TURN" -> endCurrentTurn();
-            case "PLAY" -> playCardById(cmd.cardId, cmd.mode, cmd.color);
-            default -> {
-            }
-        }
-    }
-
-    private void playCardById(String cardId, String mode, String color) {
-        if (cardId == null || gameEngine == null) {
-            return;
-        }
-        Player player = gameEngine.getCurrentPlayer();
-        Card card = player.findInHandById(cardId);
-        if (card == null) {
-            return;
-        }
-        selectedCard = card;
-        if (card instanceof WildpropertyCard wild) {
-            if ("BANK".equalsIgnoreCase(mode)) {
-                if (wild.isBankable()) {
-                    player.removeFromHand(wild);
-                    wild.depositToBank(player);
-                    completePlayStep(player, wild, true);
-                }
-            } else if (color != null) {
-                Color c = CardSnapshotMapper.parseColor(color);
-                if (c != null) {
-                    wild.setChosenColor(c);
-                    player.removeFromHand(wild);
-                    wild.use(player, gameEngine);
-                    completePlayStep(player, wild, false);
-                }
-            }
-            return;
-        }
-        if (card instanceof ActionCard action && "BANK".equalsIgnoreCase(mode)) {
-            player.removeFromHand(action);
-            action.depositToBank(player);
-            completePlayStep(player, action, true);
-            return;
-        }
-        if (card instanceof MoneyCard || card instanceof PropertyCard) {
-            card.use(player, gameEngine);
-            player.removeFromHand(card);
-            completePlayStep(player, card, false);
-        }
-    }
-
-    private void playSelectedCardAsClient() {
-        Card card = selectedCard;
-        selectedCard = null;
-        if (card instanceof WildpropertyCard wild) {
-            if (wild.isBankable()) {
-                ButtonType asProp = new ButtonType("Play as Property");
-                ButtonType asBank = new ButtonType("Deposit to Bank");
-                ButtonType cancel = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
-                Optional<ButtonType> r = showStyledButtonDialog("Wild Property Card", wild.getName(),
-                        "Choose to play as property or deposit to bank.", asProp, asBank, cancel);
-                if (r.isEmpty() || r.get() == cancel) {
-                    selectedCard = wild;
-                    return;
-                }
-                if (r.get() == asBank) {
-                    submitRoomCommand("PLAY", wild.getInstanceId(), "BANK", null);
-                    return;
-                }
-            }
-            List<Color> colors = wild.getAvailableColors();
-            if (!colors.isEmpty()) {
-                Optional<Color> c = showColorChoiceDialog("Wild Property Color", wild.getName(),
-                        "Select color for property:", colors);
-                if (c.isPresent()) {
-                    submitRoomCommand("PLAY", wild.getInstanceId(), "PROPERTY", c.get().name());
-                } else {
-                    selectedCard = wild;
-                }
-            }
-            return;
-        }
-        if (card instanceof ActionCard || card instanceof RentCard) {
-            ButtonType bank = new ButtonType("Deposit to Bank");
-            ButtonType cancel = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
-            Optional<ButtonType> r = showStyledButtonDialog("Action/Rent Card", card.getName(),
-                    "Pseudo-online: Please deposit action/rent cards to bank first", bank, cancel);
-            if (r.isPresent() && r.get() == bank) {
-                submitRoomCommand("PLAY", card.getInstanceId(), "BANK", null);
-            } else {
-                selectedCard = card;
-            }
-            return;
-        }
-        submitRoomCommand("PLAY", card.getInstanceId(), "PLAY", null);
+    private static final class PlayerBoardView {
+        int seat;
+        String name;
+        int handSize;
+        int bankTotal;
+        List<Card> properties = new ArrayList<>();
     }
 
     private List<Card> getHandCardsForView() {
-        if (sessionMode == SessionMode.CLIENT) {
-            return viewHand;
-        }
-        if (sessionMode == SessionMode.HOST || sessionMode == SessionMode.LOCAL) {
-            if (sessionMode == SessionMode.LOCAL && gameEngine != null) {
-                return gameEngine.getCurrentPlayer().getHand();
-            }
-            if (sessionMode == SessionMode.HOST && gameEngine != null && localSeat >= 0) {
-                return gameEngine.getPlayers().get(localSeat).getHand();
-            }
-        }
         return currentPlayer != null ? currentPlayer.getHand() : List.of();
     }
 
     private List<Card> getBankCardsForView() {
-        if (sessionMode == SessionMode.CLIENT) {
-            return viewBank;
-        }
-        if (gameEngine != null && localSeat >= 0 && sessionMode != SessionMode.LOCAL) {
-            return gameEngine.getPlayers().get(localSeat).getBank();
-        }
         return currentPlayer != null ? currentPlayer.getBank() : List.of();
     }
 
     private int getBankTotalForView() {
-        if (sessionMode == SessionMode.CLIENT && remotePublic != null) {
-            for (PlayerPublicSnapshot p : remotePublic.players) {
-                if (p.seat == localSeat) {
-                    return p.bankTotal;
-                }
-            }
-        }
-        if (gameEngine != null && localSeat >= 0 && sessionMode != SessionMode.LOCAL) {
-            return gameEngine.getPlayers().get(localSeat).getBankTotalValue();
-        }
         return currentPlayer != null ? currentPlayer.getBankTotalValue() : 0;
     }
 
     private boolean canPlayFromView() {
-        if (sessionMode == SessionMode.CLIENT && remotePublic != null) {
-            return remotePublic.remainingPlays > 0;
-        }
         return gameEngine != null && gameEngine.canPlayCard();
     }
 
-    private List<PlayerPublicSnapshot> getPublicPlayerViews() {
-        if (sessionMode == SessionMode.CLIENT && remotePublic != null) {
-            return remotePublic.players;
-        }
+    private List<PlayerBoardView> getPublicPlayerViews() {
         if (gameEngine == null) {
             return List.of();
         }
-        List<PlayerPublicSnapshot> list = new ArrayList<>();
+        List<PlayerBoardView> list = new ArrayList<>();
         for (int i = 0; i < gameEngine.getPlayers().size(); i++) {
             Player p = gameEngine.getPlayers().get(i);
-            PlayerPublicSnapshot v = new PlayerPublicSnapshot();
+            PlayerBoardView v = new PlayerBoardView();
             v.seat = i;
             v.name = p.getName();
             v.handSize = p.getHandSize();
             v.bankTotal = p.getBankTotalValue();
-            for (PropertyCard property : p.getAllProperties()) {
-                v.properties.add(CardSnapshotMapper.toSnapshot(property));
-            }
+            v.properties.addAll(p.getAllProperties());
             list.add(v);
         }
         return list;
     }
 
     private int getCurrentTurnSeat() {
-        if (sessionMode == SessionMode.CLIENT && remotePublic != null) {
-            return remotePublic.currentPlayerIndex;
-        }
-        if (gameEngine != null) {
-            return gameEngine.getCurrentPlayerIndex();
-        }
-        return 0;
+        return gameEngine != null ? gameEngine.getCurrentPlayerIndex() : 0;
     }
 
     private boolean isTurnSeat(int seat) {
@@ -1931,13 +1549,6 @@ private void forceEndTurn() {
     }
 
     private String playerNameAt(int seat) {
-        if (sessionMode == SessionMode.CLIENT && remotePublic != null) {
-            for (PlayerPublicSnapshot p : remotePublic.players) {
-                if (p.seat == seat) {
-                    return p.name;
-                }
-            }
-        }
         if (gameEngine != null && seat >= 0 && seat < gameEngine.getPlayers().size()) {
             return gameEngine.getPlayers().get(seat).getName();
         }
