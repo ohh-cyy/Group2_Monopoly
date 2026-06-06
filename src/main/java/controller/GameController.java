@@ -12,8 +12,9 @@ import javafx.animation.RotateTransition;
 import javafx.animation.ScaleTransition;
 import javafx.animation.TranslateTransition;
 import javafx.util.Duration;
-import ui.CardView;
+import controller.dialog.HandDiscardDialogService;
 import ui.AchievementUi;
+import ui.CardView;
 import ui.PublicPropertyBoardLayout;
 import ui.PublicPropertySetView;
 import javafx.fxml.FXML;
@@ -359,11 +360,11 @@ private double computePropertyRowHeight(int playerCount) {
             return;
         }
         if (!gameEngine.hasDrawnThisTurn()) {
-            showStatus("Please click Draw Cards first", true);
+            showStatus("请先点击 Draw Cards 抽牌", true);
             return;
         }
         if (selectedCard == null) {
-            showStatus("Please select a card from your hand to discard", true);
+            showStatus("请先在手牌中选择一张要丢弃的卡牌", true);
             return;
         }
         discardSelectedCard();
@@ -376,33 +377,33 @@ private double computePropertyRowHeight(int playerCount) {
         selectedCardView = null;
         pendingPlayedCardView = null;
         gameEngine.discardFromHand(player, card);
-        logMessage(player.getName() + " discarded " + card.getName());
-        showStatus("Discarded " + card.getName() + " to the discard pile", false);
+        logMessage(player.getName() + " 丢弃 " + card.getName());
+        showStatus("已丢弃 " + card.getName(), false);
         afterStateChange();
     }
 
     private boolean ensureHandSizeWithinLimit(Player player) {
         while (player.getHandSize() > GameEngine.MAX_HAND_SIZE) {
             int excess = player.getHandSize() - GameEngine.MAX_HAND_SIZE;
-            Optional<Card> choice = promptDiscardFromHand(player, excess);
+            Optional<Card> choice = HandDiscardDialogService.promptDiscardOne(
+                    helper -> showStyledChoiceDialog(
+                            helper.title(),
+                            helper.header(),
+                            helper.prompt(),
+                            helper.hand(),
+                            Card::getName,
+                            card -> null),
+                    player.getHand(),
+                    excess,
+                    true);
             if (choice.isEmpty()) {
-                showStatus("You must discard down to " + GameEngine.MAX_HAND_SIZE + " cards to end your turn", true);
+                showStatus("结束回合前必须将手牌弃至 " + GameEngine.MAX_HAND_SIZE + " 张以内", true);
                 return false;
             }
             gameEngine.discardFromHand(player, choice.get());
-            logMessage(player.getName() + " discarded " + choice.get().getName() + " (hand limit)");
+            logMessage(player.getName() + " 丢弃 " + choice.get().getName() + "（手牌上限）");
         }
         return true;
-    }
-
-    private Optional<Card> promptDiscardFromHand(Player player, int excess) {
-        return showStyledChoiceDialog(
-                "Hand Limit",
-                "You have too many cards in hand",
-                "Choose a card to discard (" + excess + " more required before your turn can end):",
-                player.getHand(),
-                Card::getName,
-                card -> null);
     }
     
     private void playSelectedCard() {
@@ -1445,7 +1446,7 @@ private void forceEndTurn() {
             showStatus("Selected action card [" + card.getName() + "] (bank " + actionCard.getBankValueM()
                     + "M). Play card to choose: use effect or deposit to bank", false);
         } else {
-            showStatus("Selected: " + card.getName() + ", double-click to play or use Discard Selected Card", false);
+            showStatus("已选择：" + card.getName() + "，双击出牌，或点击 Discard Selected Card 丢弃", false);
         }
         updateButtonStates();
     }

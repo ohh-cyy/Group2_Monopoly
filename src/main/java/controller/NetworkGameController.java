@@ -28,8 +28,9 @@ import network.protocol.MessageTypes;
 import network.protocol.PlayerViewDto;
 import network.protocol.ServerMessage;
 import network.server.PendingActionResolution;
-import ui.CardView;
+import controller.dialog.HandDiscardDialogService;
 import ui.AchievementUi;
+import ui.CardView;
 import ui.PublicPropertyBoardLayout;
 import ui.PublicPropertySetView;
 
@@ -395,29 +396,42 @@ public class NetworkGameController {
             }
             return;
         }
-        if (state.hasDrawnThisTurn) {
-            Platform.runLater(this::promptDiscardForHandLimit);
+        if (!mustResolveHandLimitDiscard()) {
+            return;
         }
+        Platform.runLater(this::promptDiscardForHandLimit);
+    }
+
+    private boolean mustResolveHandLimitDiscard() {
+        if (!isMyTurn() || state == null || myHand.size() <= GameEngine.MAX_HAND_SIZE) {
+            return false;
+        }
+        return pendingEndTurnAfterDiscard
+                || (state.hasDrawnThisTurn && state.remainingPlays <= 0);
     }
 
     private void promptDiscardForHandLimit() {
-        if (!isMyTurn() || myHand.size() <= GameEngine.MAX_HAND_SIZE) {
-            if (pendingEndTurnAfterDiscard) {
+        if (!mustResolveHandLimitDiscard()) {
+            if (pendingEndTurnAfterDiscard && myHand.size() <= GameEngine.MAX_HAND_SIZE) {
                 pendingEndTurnAfterDiscard = false;
                 client.endTurn();
             }
             return;
         }
         int excess = myHand.size() - GameEngine.MAX_HAND_SIZE;
-        Optional<Card> choice = showStyledChoiceDialog(
-                "Hand Limit",
-                "You have too many cards in hand",
-                "Choose a card to discard (" + excess + " more required before your turn can end):",
+        Optional<Card> choice = HandDiscardDialogService.promptDiscardOne(
+                helper -> showStyledChoiceDialog(
+                        helper.title(),
+                        helper.header(),
+                        helper.prompt(),
+                        helper.hand(),
+                        Card::getName,
+                        card -> null),
                 myHand,
-                Card::getName,
-                card -> null);
+                excess,
+                pendingEndTurnAfterDiscard || state.remainingPlays <= 0);
         if (choice.isEmpty()) {
-            showStatus("You must discard down to " + GameEngine.MAX_HAND_SIZE + " cards to end your turn", true);
+            showStatus("结束回合前必须将手牌弃至 " + GameEngine.MAX_HAND_SIZE + " 张以内", true);
             return;
         }
         client.discardCard(choice.get().getInstanceId());
@@ -480,18 +494,18 @@ public class NetworkGameController {
             return;
         }
         if (state != null && !state.hasDrawnThisTurn) {
-            showStatus("Please click Draw Cards first", true);
+            showStatus("请先点击 Draw Cards 抽牌", true);
             return;
         }
         if (selectedCard == null) {
-            showStatus("Please select a card from your hand to discard", true);
+            showStatus("请先在手牌中选择一张要丢弃的卡牌", true);
             return;
         }
         Card card = selectedCard;
         selectedCard = null;
         selectedCardView = null;
         client.discardCard(card.getInstanceId());
-        showStatus("Discarded " + card.getName() + " to the discard pile", false);
+        showStatus("已丢弃 " + card.getName(), false);
     }
 
     private void playSelectedCard() {
@@ -1201,7 +1215,7 @@ public class NetworkGameController {
             showStatus("Selected action card [" + card.getName() + "] (bank " + actionCard.getBankValueM()
                     + "M). Play card to choose: use effect or deposit to bank", false);
         } else {
-            showStatus("Selected: " + card.getName() + ", double-click to play or use Discard Selected Card", false);
+            showStatus("已选择：" + card.getName() + "，双击出牌，或点击 Discard Selected Card 丢弃", false);
         }
         updateButtons();
     }
