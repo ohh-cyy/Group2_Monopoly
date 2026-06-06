@@ -2,6 +2,7 @@ package network.client;
 
 import network.JsonUtil;
 import network.protocol.ClientMessage;
+import network.protocol.MessageTypes;
 import network.protocol.ServerMessage;
 
 import java.io.*;
@@ -70,6 +71,13 @@ public class NetworkClient implements AutoCloseable {
     public void draw() {
         ClientMessage msg = new ClientMessage();
         msg.type = "DRAW";
+        send(msg);
+    }
+
+    public void discardCard(String cardId) {
+        ClientMessage msg = new ClientMessage();
+        msg.type = MessageTypes.DISCARD_CARD;
+        msg.cardId = cardId;
         send(msg);
     }
 

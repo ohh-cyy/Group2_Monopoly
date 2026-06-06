@@ -3,6 +3,7 @@ package controller;
 import engine.PaymentTransfer;
 import engine.PropertyRules;
 import engine.RentTable;
+import engine.GameEngine;
 import javafx.animation.TranslateTransition;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
@@ -12,7 +13,6 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.scene.shape.Circle;
-import javafx.scene.shape.Rectangle;
 import javafx.util.Duration;
 import model.achievement.AchievementManager;
 import model.card.*;
@@ -60,7 +60,7 @@ public class NetworkGameController {
     @FXML private Label bankTotalLabel;
     @FXML private TextArea gameLog;
     @FXML private Button drawCardBtn;
-    @FXML private Button playCardBtn;
+    @FXML private Button discardCardBtn;
     @FXML private Button endTurnBtn;
     @FXML private Button newGameBtn;
     @FXML private Button achievementBtn;
@@ -79,6 +79,7 @@ public class NetworkGameController {
     private int mergedLogSize;
     private boolean handDockExpanded = false;
     private double lastPropertyRowHeight = -1;
+    private boolean pendingEndTurnAfterDiscard = false;
     private Image avatarImage;
 
     private enum ActionPlayChoice {
@@ -119,7 +120,7 @@ public class NetworkGameController {
 
     private void setupButtons() {
         if (drawCardBtn != null) drawCardBtn.setOnAction(e -> onDraw());
-        if (playCardBtn != null) playCardBtn.setOnAction(e -> onPlay());
+        if (discardCardBtn != null) discardCardBtn.setOnAction(e -> onDiscard());
         if (endTurnBtn != null) endTurnBtn.setOnAction(e -> onEndTurn());
         if (achievementBtn != null) achievementBtn.setOnAction(e -> AchievementUi.showLibraryDialog(statusMessage));
     }
@@ -163,7 +164,6 @@ public class NetworkGameController {
         if (handDock == null) {
             return;
         }
-        clipHandDockSlot();
         setHandDockExpanded(false, false);
         if (handDockToggle != null) {
             handDockToggle.setOnAction(e -> setHandDockExpanded(!handDockExpanded, true));
@@ -185,14 +185,15 @@ public class NetworkGameController {
                     ? "Double-click a card to play"
                     : "Click Show Hand to view your cards");
         }
+        if (expanded) {
+            handDock.toFront();
+        }
         if (!animate) {
             handDock.setTranslateY(targetY);
-            refreshPropertyAreaLayout();
             return;
         }
         TranslateTransition transition = new TranslateTransition(Duration.millis(170), handDock);
         transition.setToY(targetY);
-        transition.setOnFinished(e -> refreshPropertyAreaLayout());
         transition.play();
     }
 
@@ -205,17 +206,31 @@ public class NetworkGameController {
                 updateAllPlayersProperties();
             }
         });
-        allPlayersPropertiesPanel.heightProperty().addListener((obs, oldH, newH) -> {
+        attachTableAreaHeightListener();
+    }
+
+    private void attachTableAreaHeightListener() {
+        javafx.scene.Parent node = allPlayersPropertiesPanel;
+        while (node != null && !node.getStyleClass().contains("table-area")) {
+            node = node.getParent();
+        }
+        if (!(node instanceof Region tableArea)) {
+            return;
+        }
+        tableArea.heightProperty().addListener((obs, oldH, newH) -> {
             if (newH.doubleValue() <= 0) {
                 return;
             }
-            PublicPropertyBoardLayout.applyEqualRows(allPlayersPropertiesPanel);
-            maybeRescalePropertyCards();
+            refreshPropertyAreaLayout();
         });
     }
 
     private void refreshPropertyAreaLayout() {
-        PublicPropertyBoardLayout.applyEqualRows(allPlayersPropertiesPanel);
+        if (state == null) {
+            PublicPropertyBoardLayout.applyEqualRows(allPlayersPropertiesPanel);
+            return;
+        }
+        PublicPropertyBoardLayout.applyEqualRows(allPlayersPropertiesPanel, state.players.size());
         maybeRescalePropertyCards();
     }
 
@@ -223,7 +238,7 @@ public class NetworkGameController {
         if (allPlayersPropertiesPanel == null || state == null) {
             return;
         }
-        double rowHeight = PublicPropertyBoardLayout.rowHeightFor(allPlayersPropertiesPanel);
+        double rowHeight = PublicPropertyBoardLayout.rowHeightFor(allPlayersPropertiesPanel, state.players.size());
         if (rowHeight <= 0 || Math.abs(rowHeight - lastPropertyRowHeight) <= 2) {
             return;
         }
@@ -233,16 +248,6 @@ public class NetworkGameController {
 
     private double computePropertyRowHeight(int playerCount) {
         return PublicPropertyBoardLayout.rowHeightFor(allPlayersPropertiesPanel, playerCount);
-    }
-
-    private void clipHandDockSlot() {
-        if (handDock == null || !(handDock.getParent() instanceof StackPane slot)) {
-            return;
-        }
-        Runnable updateClip = () -> slot.setClip(new Rectangle(slot.getWidth(), slot.getHeight()));
-        slot.widthProperty().addListener((obs, oldW, newW) -> updateClip.run());
-        slot.heightProperty().addListener((obs, oldH, newH) -> updateClip.run());
-        Platform.runLater(updateClip);
     }
 
     private void handleMessage(ServerMessage message) {
@@ -375,6 +380,67 @@ public class NetworkGameController {
         }
         mergeLog(newState.logLines);
         updateUi();
+        maybePromptHandLimitDiscard();
+    }
+
+    private void maybePromptHandLimitDiscard() {
+        if (!isMyTurn() || state == null) {
+            pendingEndTurnAfterDiscard = false;
+            return;
+        }
+        if (myHand.size() <= GameEngine.MAX_HAND_SIZE) {
+            if (pendingEndTurnAfterDiscard) {
+                pendingEndTurnAfterDiscard = false;
+                client.endTurn();
+            }
+            return;
+        }
+        if (state.hasDrawnThisTurn) {
+            Platform.runLater(this::promptDiscardForHandLimit);
+        }
+    }
+
+    private void promptDiscardForHandLimit() {
+        if (!isMyTurn() || myHand.size() <= GameEngine.MAX_HAND_SIZE) {
+            if (pendingEndTurnAfterDiscard) {
+                pendingEndTurnAfterDiscard = false;
+                client.endTurn();
+            }
+            return;
+        }
+        int excess = myHand.size() - GameEngine.MAX_HAND_SIZE;
+        Optional<Card> choice = showStyledChoiceDialog(
+                "Hand Limit",
+                "You have too many cards in hand",
+                "Choose a card to discard (" + excess + " more required before your turn can end):",
+                myHand,
+                Card::getName,
+                card -> null);
+        if (choice.isEmpty()) {
+            showStatus("You must discard down to " + GameEngine.MAX_HAND_SIZE + " cards to end your turn", true);
+            return;
+        }
+        client.discardCard(choice.get().getInstanceId());
+    }
+
+    private void onPlay() {
+        if (!isMyTurn()) {
+            showStatus("It's not your turn", true);
+            return;
+        }
+        if (state != null && !state.hasDrawnThisTurn) {
+            showStatus("Please click Draw Cards first before playing a card", true);
+            return;
+        }
+        if (state != null && state.remainingPlays <= 0) {
+            showStatus("No plays remaining this turn", true);
+            return;
+        }
+        if (selectedCard == null) {
+            showStatus("Select a card first", true);
+            return;
+        }
+        playSelectedCard();
     }
 
     private void mergeLog(List<String> lines) {
@@ -400,19 +466,32 @@ public class NetworkGameController {
             showStatus("Not your turn yet", true);
             return;
         }
+        if (myHand.size() > GameEngine.MAX_HAND_SIZE) {
+            pendingEndTurnAfterDiscard = true;
+            promptDiscardForHandLimit();
+            return;
+        }
         client.endTurn();
     }
 
-    private void onPlay() {
+    private void onDiscard() {
         if (!isMyTurn()) {
             showStatus("It's not your turn", true);
             return;
         }
-        if (selectedCard == null) {
-            showStatus("Select a card first", true);
+        if (state != null && !state.hasDrawnThisTurn) {
+            showStatus("Please click Draw Cards first", true);
             return;
         }
-        playSelectedCard();
+        if (selectedCard == null) {
+            showStatus("Please select a card from your hand to discard", true);
+            return;
+        }
+        Card card = selectedCard;
+        selectedCard = null;
+        selectedCardView = null;
+        client.discardCard(card.getInstanceId());
+        showStatus("Discarded " + card.getName() + " to the discard pile", false);
     }
 
     private void playSelectedCard() {
@@ -1026,7 +1105,7 @@ public class NetworkGameController {
             playerBlock.getChildren().addAll(titleRow, propsScroll);
             allPlayersPropertiesPanel.getChildren().add(playerBlock);
         }
-        PublicPropertyBoardLayout.applyEqualRows(allPlayersPropertiesPanel);
+        PublicPropertyBoardLayout.applyEqualRows(allPlayersPropertiesPanel, state.players.size());
     }
 
     private double resolvePublicBoardRowWidth() {
@@ -1055,26 +1134,25 @@ public class NetworkGameController {
     private void updateHand() {
         if (playerHand == null) return;
         playerHand.getChildren().clear();
-        boolean clickable = isMyTurn() && state.remainingPlays > 0;
+        boolean canSelect = canSelectHandCards();
+        boolean canPlay = canPlayFromHand();
         CardView.CardMetrics metrics = computeHandMetrics(myHand.size());
 
         for (Card card : myHand) {
             if (card == null) {
                 continue;
             }
-            StackPane slot = CardView.wrapInSlot(card, clickable, metrics);
+            StackPane slot = CardView.wrapInSlot(card, canSelect, metrics);
             CardView cv = CardView.getCardView(slot);
             if (selectedCard != null && selectedCard.equals(card) && cv != null) {
                 cv.setSelected(true);
                 selectedCardView = cv;
             }
-            if (clickable && cv != null) {
+            if (canSelect && cv != null) {
                 slot.setOnMouseClicked(e -> {
-                    if (e.getClickCount() == 2) {
-                        selectCard(card, cv);
+                    selectCard(card, cv);
+                    if (e.getClickCount() == 2 && canPlay) {
                         onPlay();
-                    } else {
-                        selectCard(card, cv);
                     }
                 });
             }
@@ -1123,7 +1201,7 @@ public class NetworkGameController {
             showStatus("Selected action card [" + card.getName() + "] (bank " + actionCard.getBankValueM()
                     + "M). Play card to choose: use effect or deposit to bank", false);
         } else {
-            showStatus("Selected: " + card.getName() + ", click 'Play' or double-click to play", false);
+            showStatus("Selected: " + card.getName() + ", double-click to play or use Discard Selected Card", false);
         }
         updateButtons();
     }
@@ -1196,11 +1274,23 @@ public class NetworkGameController {
         return pill;
     }
 
+    private boolean canSelectHandCards() {
+        return isMyTurn()
+                && state != null
+                && state.hasDrawnThisTurn;
+    }
+
+    private boolean canPlayFromHand() {
+        return canSelectHandCards() && state.remainingPlays > 0;
+    }
+
     private void updateButtons() {
         if (state == null) return;
         boolean myTurn = isMyTurn();
         if (drawCardBtn != null) drawCardBtn.setDisable(!myTurn || state.hasDrawnThisTurn);
-        if (playCardBtn != null) playCardBtn.setDisable(!myTurn || state.remainingPlays <= 0 || selectedCard == null);
+        if (discardCardBtn != null) {
+            discardCardBtn.setDisable(!myTurn || !state.hasDrawnThisTurn || selectedCard == null);
+        }
         if (endTurnBtn != null) endTurnBtn.setDisable(!myTurn);
     }
 

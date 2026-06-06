@@ -55,8 +55,18 @@ class GameEngineTest {
     }
 
     @Test
+    void playerCannotPlayBeforeDrawing() {
+        GameEngine game = new GameEngine(List.of(new Player("Player 1"), new Player("Player 2")), createDeck(10));
+
+        assertFalse(game.canPlayCard());
+        assertTrue(game.drawCardsForCurrentPlayer());
+        assertTrue(game.canPlayCard());
+    }
+
+    @Test
     void playerCannotPlayMoreThanThreeCardsInOneTurn() {
         GameEngine game = new GameEngine(List.of(new Player("Player 1"), new Player("Player 2")), createDeck(10));
+        game.drawCardsForCurrentPlayer();
 
         assertTrue(game.canPlayCard());
         game.recordCardPlayed();
@@ -83,6 +93,36 @@ class GameEngineTest {
         player.addProperty(new PropertyCard("Red 3", "Red", Color.RED, 3));
 
         assertTrue(game.checkWin(player));
+    }
+
+    @Test
+    void cannotEndTurnWithMoreThanSevenCards() {
+        Player player = new Player("Player 1");
+        player.draw(new MoneyCard("1M", "Money", 1));
+        player.draw(new MoneyCard("2M", "Money", 1));
+        player.draw(new MoneyCard("3M", "Money", 1));
+        player.draw(new MoneyCard("4M", "Money", 1));
+        player.draw(new MoneyCard("5M", "Money", 1));
+        player.draw(new MoneyCard("6M", "Money", 1));
+        player.draw(new MoneyCard("7M", "Money", 1));
+        player.draw(new MoneyCard("8M", "Money", 1));
+        GameEngine game = new GameEngine(List.of(player, new Player("Player 2")), createDeck(10));
+
+        assertFalse(game.canEndTurn(player));
+        assertTrue(game.discardFromHand(player, player.getHand().get(0)));
+        assertTrue(game.canEndTurn(player));
+    }
+
+    @Test
+    void discardFromHandMovesCardToDiscardPile() {
+        Player player = new Player("Player 1");
+        MoneyCard card = new MoneyCard("1M", "Money", 1);
+        player.draw(card);
+        GameEngine game = new GameEngine(List.of(player, new Player("Player 2")), createDeck(10));
+
+        assertTrue(game.discardFromHand(player, card));
+        assertEquals(0, player.getHandSize());
+        assertEquals(1, game.getDiscardPile().size());
     }
 
     private Deck createDeck(int size) {

@@ -121,6 +121,14 @@
 
 .public-properties-stack {
     -fx-padding: 0 2 2 2;
+    -fx-min-height: 0;
+}
+
+.main-public-board {
+    -fx-padding: 16;
+    -fx-background-radius: 20;
+    -fx-border-radius: 20;
+    -fx-min-height: 0;
 }
 
 .player-public-block-current {
@@ -191,7 +199,7 @@
 }
 
 #drawCardBtn { -fx-background-color: linear-gradient(to right, #2389d7, #43b7ff); }
-#playCardBtn { -fx-background-color: linear-gradient(to right, #17a765, #3ed68c); }
+#discardCardBtn { -fx-background-color: linear-gradient(to right, #8e44ad, #b07cff); }
 #endTurnBtn { -fx-background-color: linear-gradient(to right, #d94b3f, #ff7b69); }
 #newGameBtn { -fx-background-color: linear-gradient(to right, #8754c9, #b071ff); }
 #achievementBtn { -fx-background-color: linear-gradient(to right, #f2c94c, #f39c12); -fx-text-fill: #173527; }
@@ -213,12 +221,6 @@
 /* --- Layout v3 alternative: managed sidebars + bottom hover dock --- */
 .board-layout {
     -fx-background-color: transparent;
-}
-
-.main-public-board {
-    -fx-padding: 16;
-    -fx-background-radius: 20;
-    -fx-border-radius: 20;
 }
 
 .section-title-large {

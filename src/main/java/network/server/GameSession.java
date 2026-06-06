@@ -61,6 +61,7 @@ public class GameSession {
         return switch (message.type) {
             case MessageTypes.DRAW -> handleDraw(seat);
             case MessageTypes.PLAY_CARD -> handlePlayCard(seat, message);
+            case MessageTypes.DISCARD_CARD -> handleDiscardCard(seat, message);
             case MessageTypes.END_TURN -> handleEndTurn(seat);
             case MessageTypes.SYNC -> buildStateMessage(seat);
             case MessageTypes.RESPOND -> handleRespond(seat, message);
@@ -104,10 +105,19 @@ public class GameSession {
             engine.setGameOver(true);
             appendLog("=== " + player.getName() + " wins! ===");
         } else if (engine.isTurnOver()) {
-            appendLog(player.getName() + " played 3 cards, turn ending");
-            engine.nextTurn();
+            tryAdvanceTurnAfterPlay(player);
         }
         broadcastState();
+    }
+
+    private void tryAdvanceTurnAfterPlay(Player player) {
+        if (player.getHandSize() > GameEngine.MAX_HAND_SIZE) {
+            appendLog(player.getName() + " must discard down to "
+                    + GameEngine.MAX_HAND_SIZE + " cards to end turn");
+            return;
+        }
+        appendLog(player.getName() + " played 3 cards, turn ending");
+        engine.nextTurn();
     }
 
     public synchronized void broadcastState() {
@@ -168,10 +178,46 @@ public class GameSession {
             return error("Not your turn");
         }
         Player ending = engine.getCurrentPlayer();
+        if (!engine.canEndTurn(ending)) {
+            return error("Discard down to " + GameEngine.MAX_HAND_SIZE + " cards before ending turn");
+        }
         appendLog(ending.getName() + " ended turn");
         engine.nextTurn();
         broadcastState();
         return ok("Turn ended");
+    }
+
+    private ServerMessage handleDiscardCard(int seat, ClientMessage message) {
+        if (pendingResolution != null) {
+            return error("Waiting for player response");
+        }
+        if (engine == null) {
+            return error("Game not started");
+        }
+        if (seat != engine.getCurrentPlayerIndex()) {
+            return error("Not your turn");
+        }
+        if (!engine.hasDrawnThisTurn()) {
+            return error("Draw cards before discarding");
+        }
+        if (message.cardId == null || message.cardId.isBlank()) {
+            return error("Missing card id");
+        }
+        Player player = engine.getCurrentPlayer();
+        Card card = player.findInHandById(message.cardId);
+        if (card == null) {
+            return error("Card not in hand");
+        }
+        if (!engine.discardFromHand(player, card)) {
+            return error("Could not discard card");
+        }
+        appendLog(player.getName() + " discarded " + card.getName());
+        if (engine.isTurnOver() && engine.canEndTurn(player)) {
+            appendLog(player.getName() + " played 3 cards, turn ending");
+            engine.nextTurn();
+        }
+        broadcastState();
+        return ok("Card discarded");
     }
 
     private ServerMessage handlePlayCard(int seat, ClientMessage message) {
@@ -183,6 +229,9 @@ public class GameSession {
         }
         if (seat != engine.getCurrentPlayerIndex()) {
             return error("Not your turn");
+        }
+        if (!engine.hasDrawnThisTurn()) {
+            return error("Draw cards before playing");
         }
         if (!engine.canPlayCard()) {
             return error("No plays remaining this turn");
@@ -224,8 +273,7 @@ public class GameSession {
             engine.setGameOver(true);
             appendLog("=== " + player.getName() + " wins! ===");
         } else if (engine.isTurnOver()) {
-            appendLog(player.getName() + " played 3 cards, turn ending");
-            engine.nextTurn();
+            tryAdvanceTurnAfterPlay(player);
         }
         broadcastState();
         return ok("Card played");

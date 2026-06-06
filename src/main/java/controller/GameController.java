@@ -29,7 +29,6 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.image.WritableImage;
 import javafx.scene.shape.Circle;
-import javafx.scene.shape.Rectangle;
 import model.achievement.AchievementManager;
 import model.card.*;
 import model.card.actionCard.*;
@@ -113,7 +112,7 @@ public class GameController {
     private Button drawCardBtn;
     
     @FXML
-    private Button playCardBtn;
+    private Button discardCardBtn;
     
     @FXML
     private Button endTurnBtn;
@@ -164,8 +163,8 @@ public class GameController {
         if (drawCardBtn != null) {
             drawCardBtn.setOnAction(e -> onDrawCardsClick());
         }
-        if (playCardBtn != null) {
-            playCardBtn.setOnAction(e -> onPlayCardClick());
+        if (discardCardBtn != null) {
+            discardCardBtn.setOnAction(e -> onDiscardCardClick());
         }
         if (endTurnBtn != null) {
             endTurnBtn.setOnAction(e -> onEndTurnClick());
@@ -218,7 +217,6 @@ private void setupHandDockInteractions() {
         if (handDock == null) {
             return;
         }
-        clipHandDockSlot();
         setHandDockExpanded(false, false);
         if (handDockToggle != null) {
             handDockToggle.setOnAction(e -> setHandDockExpanded(!handDockExpanded, true));
@@ -240,14 +238,15 @@ private void setHandDockExpanded(boolean expanded, boolean animate) {
                     ? "Double-click a card to play"
                     : "Click Show Hand to view your cards");
         }
+        if (expanded) {
+            handDock.toFront();
+        }
         if (!animate) {
             handDock.setTranslateY(targetY);
-            refreshPropertyAreaLayout();
             return;
         }
         TranslateTransition transition = new TranslateTransition(Duration.millis(170), handDock);
         transition.setToY(targetY);
-        transition.setOnFinished(e -> refreshPropertyAreaLayout());
         transition.play();
     }
 
@@ -260,17 +259,32 @@ private void setupPublicBoardSizing() {
             updateAllPlayersProperties();
         }
     });
-    allPlayersPropertiesPanel.heightProperty().addListener((obs, oldH, newH) -> {
+    attachTableAreaHeightListener();
+}
+
+private void attachTableAreaHeightListener() {
+    Parent node = allPlayersPropertiesPanel;
+    while (node != null && !node.getStyleClass().contains("table-area")) {
+        node = node.getParent();
+    }
+    if (!(node instanceof Region tableArea)) {
+        return;
+    }
+    tableArea.heightProperty().addListener((obs, oldH, newH) -> {
         if (newH.doubleValue() <= 0) {
             return;
         }
-        PublicPropertyBoardLayout.applyEqualRows(allPlayersPropertiesPanel);
-        maybeRescalePropertyCards();
+        refreshPropertyAreaLayout();
     });
 }
 
 private void refreshPropertyAreaLayout() {
-    PublicPropertyBoardLayout.applyEqualRows(allPlayersPropertiesPanel);
+    if (gameEngine == null) {
+        PublicPropertyBoardLayout.applyEqualRows(allPlayersPropertiesPanel);
+        return;
+    }
+    PublicPropertyBoardLayout.applyEqualRows(
+            allPlayersPropertiesPanel, gameEngine.getPlayers().size());
     maybeRescalePropertyCards();
 }
 
@@ -278,7 +292,8 @@ private void maybeRescalePropertyCards() {
     if (allPlayersPropertiesPanel == null || gameEngine == null) {
         return;
     }
-    double rowHeight = PublicPropertyBoardLayout.rowHeightFor(allPlayersPropertiesPanel);
+    double rowHeight = PublicPropertyBoardLayout.rowHeightFor(
+            allPlayersPropertiesPanel, gameEngine.getPlayers().size());
     if (rowHeight <= 0 || Math.abs(rowHeight - lastPropertyRowHeight) <= 2) {
         return;
     }
@@ -288,16 +303,6 @@ private void maybeRescalePropertyCards() {
 
 private double computePropertyRowHeight(int playerCount) {
     return PublicPropertyBoardLayout.rowHeightFor(allPlayersPropertiesPanel, playerCount);
-}
-
-private void clipHandDockSlot() {
-    if (handDock == null || !(handDock.getParent() instanceof StackPane slot)) {
-        return;
-    }
-    Runnable updateClip = () -> slot.setClip(new Rectangle(slot.getWidth(), slot.getHeight()));
-    slot.widthProperty().addListener((obs, oldW, newW) -> updateClip.run());
-    slot.heightProperty().addListener((obs, oldH, newH) -> updateClip.run());
-    Platform.runLater(updateClip);
 }
     
     private void initializeGame() {
@@ -348,19 +353,63 @@ private void clipHandDockSlot() {
     }
     
     @FXML
-    private void onPlayCardClick() {
+    private void onDiscardCardClick() {
         if (!isMyActionTurn()) {
             showStatus("It's not your turn", true);
             return;
         }
-        if (selectedCard == null) {
-            showStatus("Please first click on the hand to select a card, then click on「Play」", true);
+        if (!gameEngine.hasDrawnThisTurn()) {
+            showStatus("Please click Draw Cards first", true);
             return;
         }
-        playSelectedCard();
+        if (selectedCard == null) {
+            showStatus("Please select a card from your hand to discard", true);
+            return;
+        }
+        discardSelectedCard();
+    }
+
+    private void discardSelectedCard() {
+        Player player = gameEngine.getCurrentPlayer();
+        Card card = selectedCard;
+        selectedCard = null;
+        selectedCardView = null;
+        pendingPlayedCardView = null;
+        gameEngine.discardFromHand(player, card);
+        logMessage(player.getName() + " discarded " + card.getName());
+        showStatus("Discarded " + card.getName() + " to the discard pile", false);
+        afterStateChange();
+    }
+
+    private boolean ensureHandSizeWithinLimit(Player player) {
+        while (player.getHandSize() > GameEngine.MAX_HAND_SIZE) {
+            int excess = player.getHandSize() - GameEngine.MAX_HAND_SIZE;
+            Optional<Card> choice = promptDiscardFromHand(player, excess);
+            if (choice.isEmpty()) {
+                showStatus("You must discard down to " + GameEngine.MAX_HAND_SIZE + " cards to end your turn", true);
+                return false;
+            }
+            gameEngine.discardFromHand(player, choice.get());
+            logMessage(player.getName() + " discarded " + choice.get().getName() + " (hand limit)");
+        }
+        return true;
+    }
+
+    private Optional<Card> promptDiscardFromHand(Player player, int excess) {
+        return showStyledChoiceDialog(
+                "Hand Limit",
+                "You have too many cards in hand",
+                "Choose a card to discard (" + excess + " more required before your turn can end):",
+                player.getHand(),
+                Card::getName,
+                card -> null);
     }
     
     private void playSelectedCard() {
+        if (!gameEngine.hasDrawnThisTurn()) {
+            showStatus("Please click Draw Cards first before playing a card", true);
+            return;
+        }
         if (!gameEngine.canPlayCard()) {
             showStatus("Three cards have been played in this round, no more cards can be played!", true);
             return;
@@ -1188,10 +1237,9 @@ private void clipHandDockSlot() {
 
 private void forceEndTurn() {
         Player ending = gameEngine.getCurrentPlayer();
-        List<Card> discarded = gameEngine.enforceHandSizeLimit(ending);
-        if (!discarded.isEmpty()) {
-            logMessage(ending.getName() + " exceeded hand limit. Discarded " + discarded.size() + " card(s) to reduce hand to " + GameEngine.MAX_HAND_SIZE + " cards");
-            showStatus(ending.getName() + " had too many cards! Automatically discarded " + discarded.size() + " card(s)", false);
+        if (!ensureHandSizeWithinLimit(ending)) {
+            updateUI();
+            return;
         }
 
         gameEngine.nextTurn();
@@ -1213,10 +1261,9 @@ private void forceEndTurn() {
     
     private void endCurrentTurn() {
         Player player = gameEngine.getCurrentPlayer();
-        List<Card> discarded = gameEngine.enforceHandSizeLimit(player);
-        if (!discarded.isEmpty()) {
-            logMessage(player.getName() + " exceeded hand limit. Discarded " + discarded.size() + " card(s) to reduce hand to " + GameEngine.MAX_HAND_SIZE + " cards");
-            showStatus(player.getName() + " had too many cards! Automatically discarded " + discarded.size() + " card(s)", false);
+        if (!ensureHandSizeWithinLimit(player)) {
+            updateUI();
+            return;
         }
 
         logMessage(player.getName() + " ended turn voluntarily");
@@ -1334,23 +1381,22 @@ private void forceEndTurn() {
         }
 
         List<Card> hand = getHandCardsForView();
-        boolean handClickable = isMyActionTurn() && canPlayFromView();
+        boolean canSelect = isMyActionTurn() && gameEngine.hasDrawnThisTurn();
+        boolean canPlay = canSelect && canPlayFromView();
         CardView.CardMetrics metrics = computeHandMetrics(hand.size());
 
         for (Card card : hand) {
-            StackPane slot = CardView.wrapInSlot(card, handClickable, metrics);
+            StackPane slot = CardView.wrapInSlot(card, canSelect, metrics);
             CardView cardView = CardView.getCardView(slot);
             if (selectedCard != null && selectedCard.equals(card) && cardView != null) {
                 cardView.setSelected(true);
                 selectedCardView = cardView;
             }
-            if (handClickable && cardView != null) {
+            if (canSelect && cardView != null) {
                 slot.setOnMouseClicked(event -> {
-                    if (event.getClickCount() == 2) {
-                        selectCard(card, cardView);
+                    selectCard(card, cardView);
+                    if (event.getClickCount() == 2 && canPlay) {
                         playSelectedCard();
-                    } else {
-                        selectCard(card, cardView);
                     }
                 });
             }
@@ -1399,7 +1445,7 @@ private void forceEndTurn() {
             showStatus("Selected action card [" + card.getName() + "] (bank " + actionCard.getBankValueM()
                     + "M). Play card to choose: use effect or deposit to bank", false);
         } else {
-            showStatus("Selected: " + card.getName() + ", click 'Play' or double-click to play", false);
+            showStatus("Selected: " + card.getName() + ", double-click to play or use Discard Selected Card", false);
         }
         updateButtonStates();
     }
@@ -1500,7 +1546,7 @@ private void forceEndTurn() {
             playerBlock.getChildren().addAll(titleRow, propsScroll);
             allPlayersPropertiesPanel.getChildren().add(playerBlock);
         }
-        PublicPropertyBoardLayout.applyEqualRows(allPlayersPropertiesPanel);
+        PublicPropertyBoardLayout.applyEqualRows(allPlayersPropertiesPanel, views.size());
     }
 
     private double resolvePublicBoardRowWidth() {
@@ -1566,18 +1612,12 @@ private void forceEndTurn() {
     }
     
     private void updateButtonStates() {
-        boolean canDraw;
-        boolean canPlayCard;
-        if (gameEngine != null) {
-            canDraw = isMyActionTurn() && gameEngine.canDrawCards();
-            canPlayCard = isMyActionTurn() && gameEngine.canPlayCard();
-        } else {
-            canDraw = false;
-            canPlayCard = false;
+        if (gameEngine == null) {
+            return;
         }
-
+        boolean canDraw = isMyActionTurn() && gameEngine.canDrawCards();
         drawCardBtn.setDisable(!canDraw);
-        playCardBtn.setDisable(!canPlayCard || selectedCard == null);
+        discardCardBtn.setDisable(!isMyActionTurn() || !gameEngine.hasDrawnThisTurn() || selectedCard == null);
         endTurnBtn.setDisable(!isMyActionTurn());
     }
 
@@ -1610,7 +1650,7 @@ private void forceEndTurn() {
             gameStatusText.setText("Game Over - " + winner.getName() + " Wins!");
             logMessage("=== GAME OVER === " + winner.getName() + " wins!");
             drawCardBtn.setDisable(true);
-            playCardBtn.setDisable(true);
+            discardCardBtn.setDisable(true);
             endTurnBtn.setDisable(true);
         });
     }
@@ -1640,7 +1680,9 @@ private void forceEndTurn() {
     }
 
     private boolean canPlayFromView() {
-        return gameEngine != null && gameEngine.canPlayCard();
+        return gameEngine != null
+                && gameEngine.hasDrawnThisTurn()
+                && gameEngine.canPlayCard();
     }
 
     private List<PlayerBoardView> getPublicPlayerViews() {

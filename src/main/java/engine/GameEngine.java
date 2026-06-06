@@ -72,9 +72,9 @@ public class GameEngine {
         return !gameOver && !hasDrawnThisTurn;
     }
 
-    /** Checks if the current player still has a play left this turn. */
+    /** Checks if the current player may play a card this turn (after drawing). */
     public boolean canPlayCard() {
-        return !gameOver && playsThisTurn < MAX_PLAYS_PER_TURN;
+        return !gameOver && hasDrawnThisTurn && playsThisTurn < MAX_PLAYS_PER_TURN;
     }
 
     public boolean hasDrawnThisTurn() {
@@ -204,6 +204,22 @@ public class GameEngine {
     public Deck getDeck() {
         return deck;
     }
+    public boolean discardFromHand(Player player, Card card) {
+        if (player == null || card == null) {
+            return false;
+        }
+        if (player.findInHandById(card.getInstanceId()) == null) {
+            return false;
+        }
+        player.removeFromHand(card);
+        discardPile.addCard(card);
+        return true;
+    }
+
+    public boolean canEndTurn(Player player) {
+        return player != null && player.getHandSize() <= MAX_HAND_SIZE;
+    }
+
     public List<Card> enforceHandSizeLimit(Player player) {
         List<Card> discardedCards = new ArrayList<>();
         while (player.getHandSize() > MAX_HAND_SIZE) {
