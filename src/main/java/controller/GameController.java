@@ -13,6 +13,7 @@ import javafx.animation.ScaleTransition;
 import javafx.animation.TranslateTransition;
 import javafx.util.Duration;
 import ui.CardView;
+import ui.AchievementUi;
 import javafx.fxml.FXML;
 import javafx.geometry.Bounds;
 import javafx.geometry.Point2D;
@@ -26,6 +27,7 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.image.WritableImage;
 import javafx.scene.shape.Circle;
+import model.achievement.AchievementManager;
 import model.card.*;
 import model.card.actionCard.*;
 import model.enums.CardType;
@@ -109,6 +111,9 @@ public class GameController {
     
     @FXML
     private Button newGameBtn;
+
+    @FXML
+    private Button achievementBtn;
     
     private GameEngine gameEngine;
     private Deck deck;
@@ -123,7 +128,6 @@ public class GameController {
     private static final double HAND_DOCK_PEEK = 54;
     private boolean handDockExpanded = false;
     private Image avatarImage;
-    private final Set<String> unlockedAchievements = new HashSet<>();
     
     @FXML
     public void initialize() {
@@ -158,6 +162,9 @@ public class GameController {
         }
         if (newGameBtn != null) {
             newGameBtn.setOnAction(e -> onNewGameClick());
+        }
+        if (achievementBtn != null) {
+            achievementBtn.setOnAction(e -> AchievementUi.showLibraryDialog(statusMessage));
         }
     }
 
@@ -272,7 +279,6 @@ private void setupPublicBoardSizing() {
         gameEngine = new GameEngine(players, deck);
         gameEngine.startGame();
         currentPlayer = gameEngine.getCurrentPlayer();
-        resetAchievements();
         logMessage("Players: " + String.join(", ", names));
         updateUI();
     }
@@ -299,7 +305,7 @@ private void setupPublicBoardSizing() {
         }
 
         logMessage(player.getName() + "drew 2 cards");
-        unlockAchievement("first-draw", "First Draw", "First successful draw: You have initiated the achievement system test for this game!");
+        unlockAchievement(AchievementManager.FIRST_DRAW);
         showStatus("Two cards have already been drawn (cannot be drawn again in this round). Remaining number of available card games: "
                 + gameEngine.getRemainingPlays(), false);
         afterStateChange();
@@ -404,6 +410,7 @@ private void setupPublicBoardSizing() {
     }
 
     private void finishPlayStep(Player player, Card played, boolean depositedToBank) {
+        unlockAchievement(AchievementManager.FIRST_PLAY);
         if (gameEngine.checkWin(player)) {
             gameEngine.setGameOver(true);
             showGameOver(player);
@@ -1139,39 +1146,8 @@ private void setupPublicBoardSizing() {
         };
     }
 
-    private void resetAchievements() {
-        unlockedAchievements.clear();
-    }
-
-    private void unlockAchievement(String id, String title, String description) {
-        if (!unlockedAchievements.add(id)) {
-            return;
-        }
-        logMessage("🏆 Achievement unlocked: " + title);
-        showAchievementDialog(title, description);
-    }
-
-    private void showAchievementDialog(String title, String description) {
-        Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle("Achievement Unlocked");
-        ButtonType ok = new ButtonType("Nice!", ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().setAll(ok);
-        HBox body = new HBox(14);
-        body.setAlignment(Pos.CENTER_LEFT);
-        body.getStyleClass().add("achievement-dialog-body");
-        Label icon = new Label("🏆");
-        icon.getStyleClass().add("achievement-icon");
-        VBox textBox = new VBox(6);
-        Label titleLabel = new Label(title);
-        titleLabel.getStyleClass().add("achievement-title");
-        Label descLabel = new Label(description);
-        descLabel.setWrapText(true);
-        descLabel.getStyleClass().add("achievement-description");
-        textBox.getChildren().addAll(titleLabel, descLabel);
-        body.getChildren().addAll(icon, textBox);
-        dialog.getDialogPane().setContent(body);
-        styleDialog(dialog);
-        dialog.showAndWait();
+    private void unlockAchievement(String achievementId) {
+        AchievementUi.unlockAndShow(achievementId, statusMessage);
     }
 
 private void forceEndTurn() {

@@ -13,6 +13,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.scene.shape.Circle;
 import javafx.util.Duration;
+import model.achievement.AchievementManager;
 import model.card.*;
 import model.card.actionCard.*;
 import model.enums.Color;
@@ -27,6 +28,7 @@ import network.protocol.PlayerViewDto;
 import network.protocol.ServerMessage;
 import network.server.PendingActionResolution;
 import ui.CardView;
+import ui.AchievementUi;
 
 import java.util.*;
 import java.util.function.Function;
@@ -56,6 +58,7 @@ public class NetworkGameController {
     @FXML private Button playCardBtn;
     @FXML private Button endTurnBtn;
     @FXML private Button newGameBtn;
+    @FXML private Button achievementBtn;
 
     private static final double HAND_DOCK_HEIGHT = 266;
     private static final double HAND_DOCK_PEEK = 54;
@@ -102,13 +105,17 @@ public class NetworkGameController {
             newGameBtn.setDisable(true);
         }
         setupButtons();
-        Platform.runLater(() -> applyState(initialState));
+        Platform.runLater(() -> {
+            AchievementUi.unlockAndShow(AchievementManager.CHOOSE_MODE, statusMessage);
+            applyState(initialState);
+        });
     }
 
     private void setupButtons() {
         if (drawCardBtn != null) drawCardBtn.setOnAction(e -> onDraw());
         if (playCardBtn != null) playCardBtn.setOnAction(e -> onPlay());
         if (endTurnBtn != null) endTurnBtn.setOnAction(e -> onEndTurn());
+        if (achievementBtn != null) achievementBtn.setOnAction(e -> AchievementUi.showLibraryDialog(statusMessage));
     }
 
     private void setupCollapsibleSidebars() {
@@ -348,6 +355,7 @@ public class NetworkGameController {
             return;
         }
         client.draw();
+        AchievementUi.unlockAndShow(AchievementManager.FIRST_DRAW, statusMessage);
     }
 
     private void onEndTurn() {
@@ -385,7 +393,12 @@ public class NetworkGameController {
             playAction(action, msg);
             return;
         }
+        sendPlayCard(msg);
+    }
+
+    private void sendPlayCard(ClientMessage msg) {
         client.playCard(msg);
+        AchievementUi.unlockAndShow(AchievementManager.FIRST_PLAY, statusMessage);
     }
 
     private void playWild(WildpropertyCard wild, ClientMessage msg) {
@@ -397,7 +410,7 @@ public class NetworkGameController {
             }
             if (choice.get() == ActionPlayChoice.DEPOSIT_BANK) {
                 msg.mode = "BANK";
-                client.playCard(msg);
+                sendPlayCard(msg);
                 return;
             }
         }
@@ -415,7 +428,7 @@ public class NetworkGameController {
         }
         msg.mode = "PROPERTY";
         msg.color = color.get().name();
-        client.playCard(msg);
+        sendPlayCard(msg);
     }
 
     private void playAction(ActionCard action, ClientMessage msg) {
@@ -426,7 +439,7 @@ public class NetworkGameController {
         }
         if (choice.get() == ActionPlayChoice.DEPOSIT_BANK) {
             msg.mode = "BANK";
-            client.playCard(msg);
+            sendPlayCard(msg);
             return;
         }
 
@@ -435,7 +448,7 @@ public class NetworkGameController {
             selectedCard = action;
             return;
         }
-        client.playCard(msg);
+        sendPlayCard(msg);
     }
 
     private boolean fillActionEffectMessage(ActionCard action, ClientMessage msg) {

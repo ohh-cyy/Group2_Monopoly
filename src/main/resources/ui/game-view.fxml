@@ -105,6 +105,10 @@
                                     text="New Game"
                                     maxWidth="Infinity"
                                     styleClass="control-button"/>
+                            <Button fx:id="achievementBtn" id="achievementBtn"
+                                    text="Achievement Library"
+                                    maxWidth="Infinity"
+                                    styleClass="control-button"/>
                         </VBox>
 
                         <Label text="Game Log" styleClass="drawer-title drawer-subtitle"/>

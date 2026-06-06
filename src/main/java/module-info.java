@@ -14,6 +14,7 @@ module com.example.zyzzs {
     opens model.player to javafx.base;
     opens model.card to javafx.base;
     opens model.enums to javafx.base;
+    opens model.achievement to javafx.base;
     opens network to com.google.gson;
     opens network.protocol to com.google.gson;
 
@@ -22,6 +23,7 @@ module com.example.zyzzs {
     exports model.player;
     exports model.card;
     exports model.enums;
+    exports model.achievement;
     exports controller;
     exports network;
     exports network.protocol;

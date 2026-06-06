@@ -1,6 +1,8 @@
 package controller;
 
 import javafx.application.Platform;
+import model.achievement.AchievementManager;
+import ui.AchievementUi;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
@@ -35,6 +37,8 @@ public class LobbyController {
     private Button joinBtn;
     @FXML
     private Button startBtn;
+    @FXML
+    private Label achievementProgressLabel;
 
     private Stage stage;
     private GameServer gameServer;
@@ -50,6 +54,8 @@ public class LobbyController {
     public void initialize() {
         hostField.setText("127.0.0.1");
         portField.setText("5947");
+        refreshAchievementProgress();
+        Platform.runLater(() -> unlockAchievement(AchievementManager.WELCOME_LOBBY));
     }
 
     @FXML
@@ -60,6 +66,8 @@ public class LobbyController {
             return;
         }
         try {
+            unlockNameAchievementIfReady();
+            unlockAchievement(AchievementManager.CHOOSE_MODE);
             int port = parsePort();
             stopServer();
             closeClient();
@@ -84,6 +92,8 @@ public class LobbyController {
             return;
         }
         try {
+            unlockNameAchievementIfReady();
+            unlockAchievement(AchievementManager.CHOOSE_MODE);
             int port = parsePort();
             closeClient();
             connectClient(host, port, name, false);
@@ -108,6 +118,8 @@ public class LobbyController {
     private void onLocalGameClick() {
         stopServer();
         closeClient();
+        unlockNameAchievementIfReady();
+        unlockAchievement(AchievementManager.CHOOSE_MODE);
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/ui/game-view.fxml"));
             loader.load();
@@ -147,6 +159,29 @@ public class LobbyController {
                 }
             }
         });
+    }
+
+    @FXML
+    private void onAchievementsClick() {
+        AchievementUi.showLibraryDialog(statusLabel);
+        refreshAchievementProgress();
+    }
+
+    private void unlockNameAchievementIfReady() {
+        if (nameField != null && nameField.getText() != null && nameField.getText().trim().length() >= 2) {
+            unlockAchievement(AchievementManager.SET_NAME);
+        }
+    }
+
+    private void unlockAchievement(String achievementId) {
+        AchievementUi.unlockAndShow(achievementId, statusLabel);
+        refreshAchievementProgress();
+    }
+
+    private void refreshAchievementProgress() {
+        if (achievementProgressLabel != null) {
+            achievementProgressLabel.setText("Achievements " + AchievementManager.progressText());
+        }
     }
 
     private void updateLobby(ServerMessage message) {

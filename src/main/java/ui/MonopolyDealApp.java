@@ -15,7 +15,9 @@ public class MonopolyDealApp extends Application {
         LobbyController controller = loader.getController();
         controller.setStage(primaryStage);
 
-        Scene scene = new Scene(loader.getRoot(), 520, 420);
+        Scene scene = new Scene(loader.getRoot(), 960, 640);
+        primaryStage.setMinWidth(900);
+        primaryStage.setMinHeight(620);
         primaryStage.setTitle("Monopoly Deal - Lobby");
         primaryStage.setScene(scene);
         primaryStage.show();
