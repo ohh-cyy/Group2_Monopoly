@@ -30,6 +30,7 @@ public class GameSession {
     private final List<String> logLines = new ArrayList<>();
     private final ServerPlayHandler playHandler = new ServerPlayHandler();
     private PendingActionResolution pendingResolution;
+    private boolean pendingUsesTwoPlays;
 
     public synchronized void bindPlayer(int seat, ClientHandler handler, String name) {
         if (seat < 0 || seat >= MAX_PLAYERS) {
@@ -97,7 +98,8 @@ public class GameSession {
             return;
         }
         Player player = engine.getCurrentPlayer();
-        engine.recordCardPlayed();
+        engine.recordCardsPlayed(pendingUsesTwoPlays ? 2 : 1);
+        pendingUsesTwoPlays = false;
         if (engine.checkWin(player)) {
             engine.setGameOver(true);
             appendLog("=== " + player.getName() + " wins! ===");
@@ -133,6 +135,7 @@ public class GameSession {
         if (!pendingResolution.handleResponse(seat, message)) {
             return error("Invalid response");
         }
+        broadcastState();
         return ok("Response accepted");
     }
 
@@ -184,6 +187,12 @@ public class GameSession {
         if (!engine.canPlayCard()) {
             return error("No plays remaining this turn");
         }
+
+        String mode = message.mode != null ? message.mode.toUpperCase() : "PLAY";
+        if ("DOUBLE_RENT".equals(mode) && engine.getRemainingPlays() < 2) {
+            return error("Double the Rent requires 2 plays remaining this turn");
+        }
+
         if (message.cardId == null || message.cardId.isBlank()) {
             return error("Missing card id");
         }
@@ -194,10 +203,10 @@ public class GameSession {
             return error("Card not in hand");
         }
 
-        String mode = message.mode != null ? message.mode.toUpperCase() : "PLAY";
         boolean success = switch (mode) {
             case "BANK" -> playToBank(player, card);
             case "PROPERTY" -> playWildAsProperty(player, card, message);
+            case "DOUBLE_RENT" -> playDoubleRentCombo(seat, player, message);
             case "EFFECT" -> playActionEffect(seat, player, card, message);
             default -> playSimpleCard(player, card);
         };
@@ -257,7 +266,7 @@ public class GameSession {
         if (!(card instanceof ActionCard action)) {
             return false;
         }
-        if (action instanceof JustSayNo) {
+        if (action instanceof JustSayNo || action instanceof DoubleTheRent) {
             return false;
         }
         if (PendingActionResolution.requiresInteraction(action, message)) {
@@ -273,6 +282,42 @@ public class GameSession {
             engine.getDiscardPile().addCard(action);
         }
         return ok;
+    }
+
+    private boolean playDoubleRentCombo(int seat, Player player, ClientMessage message) {
+        if (message.secondCardId == null || message.secondCardId.isBlank()) {
+            return false;
+        }
+        Card doubleCard = player.findInHandById(message.cardId);
+        Card rentRaw = player.findInHandById(message.secondCardId);
+        if (!(doubleCard instanceof DoubleTheRent) || !(rentRaw instanceof RentCard rentCard)) {
+            return false;
+        }
+        Color chargeColor = CardMapper.parseColor(message.color);
+        if (chargeColor == null || !isValidRentChargeColor(rentCard, player, chargeColor)) {
+            return false;
+        }
+        if (rentCard.calculateRent(player, chargeColor) <= 0) {
+            return false;
+        }
+
+        player.removeFromHand(doubleCard);
+        player.removeFromHand(rentCard);
+        engine.getDiscardPile().addCard(doubleCard);
+        engine.getDiscardPile().addCard(rentCard);
+
+        pendingUsesTwoPlays = true;
+        pendingResolution = PendingActionResolution.rentWithDouble(
+                this, engine, seat, rentCard, message, logLines);
+        pendingResolution.begin();
+        return true;
+    }
+
+    private boolean isValidRentChargeColor(RentCard rentCard, Player player, Color color) {
+        if (rentCard.getChargeableColors(player).contains(color)) {
+            return true;
+        }
+        return rentCard.isAllColors() && rentCard.countProperties(player, color) > 0;
     }
 
     private boolean playSimpleCard(Player player, Card card) {
@@ -306,8 +351,8 @@ public class GameSession {
             if (action instanceof JustSayNo) {
                 return "Just Say No can only be played in response to an action against you";
             }
-            if (action instanceof DoubleTheRent && engine.isRentDoubled()) {
-                return "Double the Rent is already active — play a Rent card first";
+            if (action instanceof DoubleTheRent) {
+                return "Choose a playable Rent card in hand (requires 2 plays remaining)";
             }
             if (action instanceof House || action instanceof Hotel) {
                 return "Cannot add improvement to that set (need complete set"

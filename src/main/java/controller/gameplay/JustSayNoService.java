@@ -42,7 +42,10 @@ public class JustSayNoService {
                 return blocked;
             }
 
-            responder.removeFromHand(justSayNo);
+            String justSayNoId = justSayNo.getInstanceId();
+            if (!responder.removeFromHandById(justSayNoId)) {
+                return blocked;
+            }
             gameEngine.getDiscardPile().addCard(justSayNo);
             blocked = !blocked;
             logJustSayNoResponse(responder, actionName, responseDepth, blocked);

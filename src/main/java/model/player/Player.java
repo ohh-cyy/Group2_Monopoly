@@ -152,6 +152,15 @@ public class Player {
         return null;
     }
 
+    public boolean removeFromHandById(String instanceId) {
+        Card card = findInHandById(instanceId);
+        if (card == null) {
+            return false;
+        }
+        hand.remove(card);
+        return true;
+    }
+
     public int getHandSize() {
         return hand.size();
     }

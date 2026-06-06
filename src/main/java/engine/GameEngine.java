@@ -127,8 +127,14 @@ public class GameEngine {
 
     /** Records one played card and ends the turn after three plays. */
     public void recordCardPlayed() {
-        if (playsThisTurn < MAX_PLAYS_PER_TURN) {
-            playsThisTurn++;
+        recordCardsPlayed(1);
+    }
+
+    public void recordCardsPlayed(int count) {
+        for (int i = 0; i < count; i++) {
+            if (playsThisTurn < MAX_PLAYS_PER_TURN) {
+                playsThisTurn++;
+            }
         }
     }
 

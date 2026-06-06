@@ -49,7 +49,7 @@ public class LobbyController {
     @FXML
     public void initialize() {
         hostField.setText("127.0.0.1");
-        portField.setText("8888");
+        portField.setText("5947");
     }
 
     @FXML

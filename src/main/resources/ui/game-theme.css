@@ -81,6 +81,27 @@
     -fx-font-weight: 900;
 }
 
+.bank-pill-current {
+    -fx-background-color: #1a5c40;
+    -fx-border-color: #f39c12;
+    -fx-border-width: 2;
+    -fx-border-radius: 999;
+}
+
+.hand-dock-toggle {
+    -fx-background-color: rgba(16, 60, 42, 0.92);
+    -fx-text-fill: white;
+    -fx-font-size: 12px;
+    -fx-font-weight: 800;
+    -fx-background-radius: 999;
+    -fx-padding: 6 12;
+    -fx-cursor: hand;
+}
+
+.hand-dock-toggle:hover {
+    -fx-background-color: rgba(26, 92, 64, 0.98);
+}
+
 .scroll-pane, .scroll-pane > .viewport {
     -fx-background-color: transparent;
 }

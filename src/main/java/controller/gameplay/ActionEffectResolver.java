@@ -5,6 +5,7 @@ import engine.GameEngine;
 import engine.PropertyRules;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
+import model.card.Card;
 import model.card.PropertyCard;
 import model.card.RentCard;
 import model.card.actionCard.ActionCard;
@@ -21,6 +22,7 @@ import model.enums.Color;
 import model.player.Player;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.BiConsumer;
@@ -81,7 +83,7 @@ public class ActionEffectResolver {
             return resolveMyBirthday(gameEngine, player, myBirthday);
         }
         if (actionCard instanceof DoubleTheRent doubleRent) {
-            return resolveDoubleTheRent(gameEngine, doubleRent);
+            return resolveDoubleTheRent(gameEngine, player, doubleRent);
         }
         if (actionCard instanceof SlyDeal slyDeal) {
             return resolveSlyDeal(gameEngine, player, slyDeal);
@@ -221,13 +223,65 @@ public class ActionEffectResolver {
         return total > 0 || anyBlocked ? ActionEffectResult.SUCCESS : ActionEffectResult.FAILED;
     }
 
-    private ActionEffectResult resolveDoubleTheRent(GameEngine gameEngine, DoubleTheRent doubleRent) {
-        if (!doubleRent.activateForNextRent(gameEngine)) {
-            status.accept("Double rent is already active. Play a rent card first.", true);
+    private ActionEffectResult resolveDoubleTheRent(GameEngine gameEngine, Player player, DoubleTheRent doubleRent) {
+        if (gameEngine.getRemainingPlays() < 2) {
+            status.accept("You need 2 plays remaining to use Double the Rent with a Rent card.", true);
             return ActionEffectResult.FAILED;
         }
-        status.accept("Double rent is active. Play a rent card this turn.", false);
-        log.accept("Double rent is active. The next Rent card will charge double.");
+
+        List<RentCard> rentOptions = new ArrayList<>();
+        for (Card card : player.getHand()) {
+            if (card == doubleRent || !(card instanceof RentCard rent)) {
+                continue;
+            }
+            if (rent.canPlay(player)) {
+                rentOptions.add(rent);
+            }
+        }
+        if (rentOptions.isEmpty()) {
+            status.accept("No playable Rent card in your hand.", true);
+            return ActionEffectResult.FAILED;
+        }
+
+        Optional<RentCard> rentChoice = dialogs.showChoiceDialog(
+                "Choose Rent Card",
+                "Double the Rent",
+                "Select a Rent card to play at double value (uses 2 plays):",
+                rentOptions,
+                rent -> rent.getName() + " (bank " + rent.getBankValueM() + "M)",
+                rent -> null);
+        if (rentChoice.isEmpty()) {
+            return ActionEffectResult.CANCELLED;
+        }
+        RentCard rentCard = rentChoice.get();
+
+        List<Color> colorOptions = rentCard.getChargeableColors(player);
+        Optional<Color> selectedColor;
+        if (rentCard.isAllColors() && colorOptions.isEmpty()) {
+            selectedColor = promptSelectRentColor(player, rentCard, Arrays.asList(Color.values()));
+        } else {
+            selectedColor = chooseRentColor(player, rentCard, colorOptions);
+        }
+        if (selectedColor.isEmpty()) {
+            return ActionEffectResult.CANCELLED;
+        }
+
+        Color chargeColor = selectedColor.get();
+        int rent = rentCard.calculateRent(player, chargeColor);
+        if (rent <= 0) {
+            status.accept("This color has no properties, so rent is 0.", true);
+            return ActionEffectResult.FAILED;
+        }
+
+        int rentPerPlayer = rent * 2;
+        int total = collectRentFromOpponents(gameEngine, player, rentCard, chargeColor, rentPerPlayer);
+        player.removeFromHand(rentCard);
+        gameEngine.getDiscardPile().addCard(rentCard);
+
+        log.accept(player.getName() + " used Double the Rent with \"" + rentCard.getName() + "\" to charge "
+                + chargeColor + " rent: " + rentPerPlayer + "M per player (double rent), total collected "
+                + total + "M");
+        status.accept("Double rent collected " + chargeColor + " from all players (total " + total + "M)", false);
         return ActionEffectResult.SUCCESS;
     }
 

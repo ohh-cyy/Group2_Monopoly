@@ -102,8 +102,10 @@ public final class CardMapper {
             case "PROPERTY" -> new PropertyCard(id, dto.name, dto.description,
                     parseColor(dto.color), dto.price != null ? dto.price : 0);
             case "WILD_PROPERTY" -> {
+                int bankValue = dto.bankValue != null ? dto.bankValue
+                        : (dto.price != null ? dto.price : 0);
                 WildpropertyCard wild = new WildpropertyCard(id, dto.name, dto.description,
-                        dto.bankValue != null ? dto.bankValue : 0,
+                        bankValue,
                         parseColors(dto.wildColors),
                         dto.bankable != null && dto.bankable);
                 Color chosen = parseColor(dto.color);

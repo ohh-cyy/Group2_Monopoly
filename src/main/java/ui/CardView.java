@@ -167,6 +167,11 @@ public class CardView extends StackPane {
             label.setStyle("-fx-text-fill: white; -fx-font-size: " + Math.max(9, subSize + 2) + "px; -fx-font-weight: bold;");
             return label;
         }
+        if (card instanceof WildpropertyCard wild) {
+            Label label = new Label(wild.isBankable() ? wild.getBankValueM() + "M" : "—");
+            label.setStyle("-fx-text-fill: white; -fx-font-size: " + subSize + "px; -fx-font-weight: bold;");
+            return label;
+        }
         if (card instanceof PropertyCard propertyCard) {
             Label label = new Label(propertyCard.getPrice() + "M");
             label.setStyle("-fx-text-fill: white; -fx-font-size: " + (subSize + 1) + "px; -fx-font-weight: bold;");
@@ -180,11 +185,6 @@ public class CardView extends StackPane {
         if (card instanceof ActionCard actionCard) {
             Label label = new Label(actionCard.getBankValueM() + "M");
             label.setStyle("-fx-text-fill: white; -fx-font-size: " + (subSize + 2) + "px; -fx-font-weight: bold;");
-            return label;
-        }
-        if (card instanceof WildpropertyCard wild) {
-            Label label = new Label(wild.isBankable() ? wild.getPrice() + "M" : "—");
-            label.setStyle("-fx-text-fill: white; -fx-font-size: " + subSize + "px; -fx-font-weight: bold;");
             return label;
         }
         return null;

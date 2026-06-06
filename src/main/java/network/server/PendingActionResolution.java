@@ -53,6 +53,7 @@ public final class PendingActionResolution {
     private String currentPromptId;
     private Color chargeColor;
     private int rentPerPlayer;
+    private boolean rentForcedDouble;
 
     public PendingActionResolution(GameSession session, GameEngine engine, int attackerSeat,
                                    ActionCard card, ClientMessage playMessage, List<String> logLines) {
@@ -62,6 +63,15 @@ public final class PendingActionResolution {
         this.card = card;
         this.playMessage = playMessage;
         this.logLines = logLines;
+    }
+
+    public static PendingActionResolution rentWithDouble(GameSession session, GameEngine engine, int attackerSeat,
+                                                        RentCard rentCard, ClientMessage playMessage,
+                                                        List<String> logLines) {
+        PendingActionResolution resolution = new PendingActionResolution(
+                session, engine, attackerSeat, rentCard, playMessage, logLines);
+        resolution.rentForcedDouble = true;
+        return resolution;
     }
 
     public static boolean requiresInteraction(ActionCard card, ClientMessage message) {
@@ -79,13 +89,15 @@ public final class PendingActionResolution {
         Player attacker = engine.getPlayers().get(attackerSeat);
         if (card instanceof RentCard rentCard) {
             chargeColor = CardMapper.parseColor(playMessage.color);
-            if (chargeColor == null || !rentCard.getChargeableColors(attacker).contains(chargeColor)) {
+            if (chargeColor == null || !isValidRentColor(rentCard, attacker, chargeColor)) {
                 appendLog(attacker.getName() + " failed to play " + card.getName());
                 finish(false);
                 return;
             }
             rentPerPlayer = rentCard.calculateRent(attacker, chargeColor);
-            if (engine.isRentDoubled()) {
+            if (rentForcedDouble) {
+                rentPerPlayer *= 2;
+            } else if (engine.isRentDoubled()) {
                 rentPerPlayer *= 2;
                 engine.setRentDoubled(false);
             }
@@ -100,8 +112,9 @@ public final class PendingActionResolution {
                 }
             }
             opponentIndex = 0;
-            appendLog(attacker.getName() + " played " + card.getName() + " (" + chargeColor
-                    + " rent " + rentPerPlayer + "M/player)");
+            String doubleNote = rentForcedDouble ? " + Double the Rent" : "";
+            appendLog(attacker.getName() + " played " + card.getName() + doubleNote + " ("
+                    + chargeColor + " rent " + rentPerPlayer + "M/player)");
             startCurrentOpponent();
             return;
         }
@@ -158,12 +171,9 @@ public final class PendingActionResolution {
         Player responder = engine.getPlayers().get(jsnResponderSeat);
         Player other = engine.getPlayers().get(jsnOtherSeat);
         if (response.useJustSayNo) {
-            JustSayNo justSayNo = findJustSayNo(responder);
-            if (justSayNo == null) {
+            if (!discardJustSayNoFromHand(responder)) {
                 return false;
             }
-            responder.removeFromHand(justSayNo);
-            engine.getDiscardPile().addCard(justSayNo);
             jsnBlocked = !jsnBlocked;
             if (jsnDepth == 0) {
                 appendLog(responder.getName() + " played Just Say No against "
@@ -340,9 +350,17 @@ public final class PendingActionResolution {
 
     private String actionLabel() {
         if (card instanceof RentCard) {
-            return card.getName() + " (" + chargeColor + " rent " + rentPerPlayer + "M)";
+            String prefix = rentForcedDouble ? card.getName() + " + Double the Rent" : card.getName();
+            return prefix + " (" + chargeColor + " rent " + rentPerPlayer + "M)";
         }
         return card.getName();
+    }
+
+    private boolean isValidRentColor(RentCard rentCard, Player player, Color color) {
+        if (rentCard.getChargeableColors(player).contains(color)) {
+            return true;
+        }
+        return rentCard.isAllColors() && rentCard.countProperties(player, color) > 0;
     }
 
     private String playerName(int seat) {
@@ -350,6 +368,19 @@ public final class PendingActionResolution {
             return engine.getPlayers().get(seat).getName();
         }
         return "Player";
+    }
+
+    private boolean discardJustSayNoFromHand(Player player) {
+        for (Card handCard : player.getHand()) {
+            if (handCard instanceof JustSayNo) {
+                String id = handCard.getInstanceId();
+                if (player.removeFromHandById(id)) {
+                    engine.getDiscardPile().addCard(handCard);
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private JustSayNo findJustSayNo(Player player) {

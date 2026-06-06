@@ -44,8 +44,9 @@ public class NetworkGameController {
     @FXML private Button rightSidebarHandle;
     @FXML private VBox handDock;
     @FXML private Label handDockHint;
+    @FXML private Button handDockToggle;
     @FXML private TilePane allPlayersPropertiesPanel;
-    @FXML private Label turnBankLabel;
+    @FXML private HBox allPlayersBankBar;
     @FXML private ScrollPane playerHandScroll;
     @FXML private HBox playerHand;
     @FXML private FlowPane playerBank;
@@ -150,21 +151,25 @@ public class NetworkGameController {
             return;
         }
         setHandDockExpanded(false, false);
-        handDock.setOnMouseEntered(e -> setHandDockExpanded(true, true));
-        handDock.setOnMouseExited(e -> setHandDockExpanded(false, true));
+        if (handDockToggle != null) {
+            handDockToggle.setOnAction(e -> setHandDockExpanded(!handDockExpanded, true));
+        }
     }
 
     private void setHandDockExpanded(boolean expanded, boolean animate) {
-        if (handDock == null || handDockExpanded == expanded && animate) {
+        if (handDock == null || (handDockExpanded == expanded && animate)) {
             return;
         }
         handDockExpanded = expanded;
         double collapsedY = HAND_DOCK_HEIGHT - HAND_DOCK_PEEK;
         double targetY = expanded ? 0 : collapsedY;
+        if (handDockToggle != null) {
+            handDockToggle.setText(expanded ? "Hide Hand ▼" : "Show Hand ▲");
+        }
         if (handDockHint != null) {
             handDockHint.setText(expanded
-                    ? "Mouse out to tuck hand back · Double-click to play"
-                    : "Hover here to expand · Double-click to play");
+                    ? "Double-click a card to play"
+                    : "Click Show Hand to view your cards");
         }
         if (!animate) {
             handDock.setTranslateY(targetY);
@@ -314,6 +319,16 @@ public class NetworkGameController {
         this.state = newState;
         myHand = CardMapper.fromDtos(newState.myHand);
         myBank = CardMapper.fromDtos(newState.myBank);
+        if (selectedCard != null) {
+            String selectedId = selectedCard.getInstanceId();
+            selectedCard = myHand.stream()
+                    .filter(card -> selectedId.equals(card.getInstanceId()))
+                    .findFirst()
+                    .orElse(null);
+            if (selectedCard == null) {
+                selectedCardView = null;
+            }
+        }
         mergeLog(newState.logLines);
         updateUi();
     }
@@ -543,7 +558,53 @@ public class NetworkGameController {
             msg.color = color.get().name();
             return true;
         }
+        if (action instanceof DoubleTheRent doubleRent) {
+            return fillDoubleRentMessage(doubleRent, msg);
+        }
         return true;
+    }
+
+    private boolean fillDoubleRentMessage(DoubleTheRent doubleRent, ClientMessage msg) {
+        if (state == null || state.remainingPlays < 2) {
+            showStatus("You need 2 plays remaining to use Double the Rent with a Rent card", true);
+            return false;
+        }
+        List<RentCard> rentOptions = findPlayableRentCards(doubleRent);
+        if (rentOptions.isEmpty()) {
+            showStatus("No playable Rent card in your hand", true);
+            return false;
+        }
+        Optional<RentCard> rentChoice = showStyledChoiceDialog(
+                "Choose Rent Card",
+                "Double the Rent",
+                "Select a Rent card to play at double value (uses 2 plays):",
+                rentOptions,
+                rent -> rent.getName() + " (bank " + rent.getBankValueM() + "M)",
+                rent -> null);
+        if (rentChoice.isEmpty()) {
+            return false;
+        }
+        Optional<Color> color = promptRentColor(rentChoice.get());
+        if (color.isEmpty()) {
+            return false;
+        }
+        msg.mode = "DOUBLE_RENT";
+        msg.secondCardId = rentChoice.get().getInstanceId();
+        msg.color = color.get().name();
+        return true;
+    }
+
+    private List<RentCard> findPlayableRentCards(ActionCard excluding) {
+        List<RentCard> options = new ArrayList<>();
+        for (Card card : myHand) {
+            if (card == excluding || card == null || !(card instanceof RentCard rent)) {
+                continue;
+            }
+            if (rent.canPlay(playerViewFromSeat(localSeat))) {
+                options.add(rent);
+            }
+        }
+        return options;
     }
 
     private Optional<PropertyCard> promptSelectProperty(List<PropertyCard> properties,
@@ -699,8 +760,9 @@ public class NetworkGameController {
         ButtonType cancelBtn = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
         Optional<ButtonType> result = showStyledButtonDialog(
                 "Wild Property Card",
-                wild.getName() + " — Can deposit to bank for " + wild.getBankValueM() + "M",
-                "Play as property (select color), or deposit to bank?",
+                wild.getName() + " — Bank value " + wild.getBankValueM() + "M",
+                "Play as property (choose a color), or deposit to bank for "
+                        + wild.getBankValueM() + "M?",
                 useBtn, bankBtn, cancelBtn);
         if (result.isEmpty()) {
             return Optional.empty();
@@ -719,7 +781,27 @@ public class NetworkGameController {
         if (options.isEmpty()) {
             return Optional.empty();
         }
-        return showColorChoiceDialog("Wild Property Color", wild.getName(), "Select color for property:", options);
+        return showWildPropertyColorDialog(wild);
+    }
+
+    private Optional<Color> showWildPropertyColorDialog(WildpropertyCard wild) {
+        List<Color> colors = wild.getAvailableColors();
+        if (colors.isEmpty()) {
+            return Optional.empty();
+        }
+        int bankValue = wild.getBankValueM();
+        String bankHint = wild.isBankable()
+                ? "Deposit to bank is always " + bankValue + "M (not affected by color chosen)."
+                : "This wild card cannot be deposited to bank.";
+        return showStyledChoiceDialog(
+                "Wild Property Color",
+                wild.getName(),
+                "Choose a color to play as property.\n" + bankHint,
+                colors,
+                color -> color + "  —  play as " + color + " property",
+                color -> "-fx-background-color: " + cssColorFor(color) + ";"
+                        + "-fx-text-fill: " + textColorFor(color) + ";"
+                        + "-fx-border-color: rgba(255,255,255,0.55);");
     }
 
     private Optional<Color> promptRentColor(RentCard rentCard) {
@@ -989,6 +1071,8 @@ public class NetworkGameController {
         } else if (card instanceof RentCard rentCard) {
             showStatus("Selected rent card [" + card.getName() + "] (bank " + rentCard.getBankValueM()
                     + "M). Play card to collect rent or deposit to bank", false);
+        } else if (card instanceof DoubleTheRent) {
+            showStatus("Selected Double the Rent — pick a Rent card and collect double (uses 2 plays)", false);
         } else if (card instanceof ActionCard actionCard) {
             showStatus("Selected action card [" + card.getName() + "] (bank " + actionCard.getBankValueM()
                     + "M). Play card to choose: use effect or deposit to bank", false);
@@ -1042,9 +1126,28 @@ public class NetworkGameController {
                         + "  |  Discard pile: " + state.discardPileSize);
             }
         }
-        if (turnBankLabel != null) {
-            turnBankLabel.setText(current.name + ": " + current.bankTotal + "M");
+        if (allPlayersBankBar != null) {
+            allPlayersBankBar.getChildren().clear();
+            for (PlayerViewDto player : state.players) {
+                boolean isCurrent = player.seat == state.currentPlayerIndex;
+                String displayName = player.name + (player.seat == localSeat ? " (You)" : "");
+                allPlayersBankBar.getChildren().add(createBankPill(displayName, player.bankTotal, isCurrent));
+            }
         }
+    }
+
+    private VBox createBankPill(String name, int total, boolean isCurrent) {
+        VBox pill = new VBox(2);
+        pill.getStyleClass().add("bank-pill");
+        if (isCurrent) {
+            pill.getStyleClass().add("bank-pill-current");
+        }
+        Label nameLabel = new Label(name);
+        nameLabel.getStyleClass().add("bank-pill-label");
+        Label valueLabel = new Label(total + "M");
+        valueLabel.getStyleClass().add("bank-pill-value");
+        pill.getChildren().addAll(nameLabel, valueLabel);
+        return pill;
     }
 
     private void updateButtons() {

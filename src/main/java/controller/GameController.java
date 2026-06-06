@@ -73,12 +73,15 @@ public class GameController {
 
     @FXML
     private Label handDockHint;
+
+    @FXML
+    private Button handDockToggle;
     
     @FXML
     private TilePane allPlayersPropertiesPanel;
 
     @FXML
-    private Label turnBankLabel;
+    private HBox allPlayersBankBar;
     
     @FXML
     private ScrollPane playerHandScroll;
@@ -199,21 +202,25 @@ private void setupHandDockInteractions() {
             return;
         }
         setHandDockExpanded(false, false);
-        handDock.setOnMouseEntered(e -> setHandDockExpanded(true, true));
-        handDock.setOnMouseExited(e -> setHandDockExpanded(false, true));
+        if (handDockToggle != null) {
+            handDockToggle.setOnAction(e -> setHandDockExpanded(!handDockExpanded, true));
+        }
     }
 
 private void setHandDockExpanded(boolean expanded, boolean animate) {
-        if (handDock == null || handDockExpanded == expanded && animate) {
+        if (handDock == null || (handDockExpanded == expanded && animate)) {
             return;
         }
         handDockExpanded = expanded;
         double collapsedY = HAND_DOCK_HEIGHT - HAND_DOCK_PEEK;
         double targetY = expanded ? 0 : collapsedY;
+        if (handDockToggle != null) {
+            handDockToggle.setText(expanded ? "Hide Hand ▼" : "Show Hand ▲");
+        }
         if (handDockHint != null) {
             handDockHint.setText(expanded
-                    ? "Mouse out to tuck hand back · Double-click to play"
-                    : "Hover here to expand · Double-click to play");
+                    ? "Double-click a card to play"
+                    : "Click Show Hand to view your cards");
         }
         if (!animate) {
             handDock.setTranslateY(targetY);
@@ -385,6 +392,9 @@ private void setupPublicBoardSizing() {
             showStatus("The effect did not take effect (invalid target, etc.)", true);
         }
         completePlayStep(player, actionCard, false);
+        if (actionCard instanceof DoubleTheRent && result == ActionEffectResult.SUCCESS) {
+            gameEngine.recordCardPlayed();
+        }
     }
 
     private void completePlayStep(Player player, Card played, boolean depositedToBank) {
@@ -543,7 +553,7 @@ private void setupPublicBoardSizing() {
             return resolveMyBirthday(player, myBirthday);
         }
         if (actionCard instanceof DoubleTheRent doubleRent) {
-            return resolveDoubleTheRent(doubleRent);
+            return resolveDoubleTheRent(player, doubleRent);
         }
         if (actionCard instanceof SlyDeal slyDeal) {
             return resolveSlyDeal(player, slyDeal);
@@ -642,14 +652,80 @@ private void setupPublicBoardSizing() {
         return total > 0 ? ActionEffectResult.SUCCESS : ActionEffectResult.FAILED;
     }
 
-    private ActionEffectResult resolveDoubleTheRent(DoubleTheRent doubleRent) {
-        if (!doubleRent.activateForNextRent(gameEngine)) {
-            showStatus("Double rent already activated this round, please play a Rent card first", true);
+    private ActionEffectResult resolveDoubleTheRent(Player player, DoubleTheRent doubleRent) {
+        if (gameEngine.getRemainingPlays() < 2) {
+            showStatus("You need 2 plays remaining to use Double the Rent with a Rent card", true);
             return ActionEffectResult.FAILED;
         }
-        showStatus("Double rent activated: play a Rent card this round", false);
-        logMessage("Double rent activated, next Rent will be doubled");
+
+        List<RentCard> rentOptions = findPlayableRentCards(player, doubleRent);
+        if (rentOptions.isEmpty()) {
+            showStatus("No playable Rent card in your hand", true);
+            return ActionEffectResult.FAILED;
+        }
+
+        Optional<RentCard> rentChoice = promptSelectRentCard(rentOptions);
+        if (rentChoice.isEmpty()) {
+            return ActionEffectResult.CANCELLED;
+        }
+        RentCard rentCard = rentChoice.get();
+
+        List<Color> colorOptions = rentCard.getChargeableColors(player);
+        Color chargeColor;
+        if (rentCard.isAllColors() && colorOptions.isEmpty()) {
+            Optional<Color> picked = promptSelectRentColor(player, rentCard, Arrays.asList(Color.values()));
+            if (picked.isEmpty()) {
+                return ActionEffectResult.CANCELLED;
+            }
+            chargeColor = picked.get();
+        } else if (colorOptions.size() == 1) {
+            chargeColor = colorOptions.get(0);
+        } else {
+            Optional<Color> picked = promptSelectRentColor(player, rentCard, colorOptions);
+            if (picked.isEmpty()) {
+                return ActionEffectResult.CANCELLED;
+            }
+            chargeColor = picked.get();
+        }
+
+        int rent = rentCard.calculateRent(player, chargeColor);
+        if (rent <= 0) {
+            showStatus("No properties of this color, rent is 0", true);
+            return ActionEffectResult.FAILED;
+        }
+
+        int rentPerPlayer = rent * 2;
+        int total = rentCard.collectFromAll(player, gameEngine, chargeColor, rentPerPlayer);
+        player.removeFromHand(rentCard);
+        gameEngine.getDiscardPile().addCard(rentCard);
+
+        logMessage(player.getName() + " used Double the Rent with [" + rentCard.getName() + "] to collect "
+                + chargeColor + " rent " + rentPerPlayer + "M/player (double rent), total " + total + "M");
+        showStatus("Double rent collected " + chargeColor + " from all players (total " + total + "M)", false);
         return ActionEffectResult.SUCCESS;
+    }
+
+    private List<RentCard> findPlayableRentCards(Player player, ActionCard excluding) {
+        List<RentCard> options = new ArrayList<>();
+        for (Card card : player.getHand()) {
+            if (card == excluding || !(card instanceof RentCard rent)) {
+                continue;
+            }
+            if (rent.canPlay(player)) {
+                options.add(rent);
+            }
+        }
+        return options;
+    }
+
+    private Optional<RentCard> promptSelectRentCard(List<RentCard> rentCards) {
+        return showStyledChoiceDialog(
+                "Choose Rent Card",
+                "Double the Rent",
+                "Select a Rent card to play at double value (uses 2 plays):",
+                rentCards,
+                rent -> rent.getName() + " (bank " + rent.getBankValueM() + "M)",
+                rent -> null);
     }
 
     private ActionEffectResult resolveSlyDeal(Player player, SlyDeal slyDeal) {
@@ -734,7 +810,10 @@ private void setupPublicBoardSizing() {
             return false;
         }
 
-        defender.removeFromHand(justSayNo);
+        String justSayNoId = justSayNo.getInstanceId();
+        if (!defender.removeFromHandById(justSayNoId)) {
+            return false;
+        }
         gameEngine.getDiscardPile().addCard(justSayNo);
         logMessage(defender.getName() + " played Just Say No, cancelling " + attacker.getName() + "'s [" + actionName + "]");
         showStatus(defender.getName() + " used Just Say No to reject this action", false);
@@ -846,8 +925,9 @@ private void setupPublicBoardSizing() {
         ButtonType cancelBtn = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
         Optional<ButtonType> result = showStyledButtonDialog(
                 "Wild Property Card",
-                wild.getName() + " — Can deposit to bank for " + wild.getBankValueM() + "M",
-                "Play as property (select color), or deposit to bank?",
+                wild.getName() + " — Bank value " + wild.getBankValueM() + "M",
+                "Play as property (choose a color), or deposit to bank for "
+                        + wild.getBankValueM() + "M?",
                 useBtn, bankBtn, cancelBtn);
         if (result.isEmpty()) {
             return Optional.empty();
@@ -866,7 +946,27 @@ private void setupPublicBoardSizing() {
         if (options.isEmpty()) {
             return Optional.empty();
         }
-        return showColorChoiceDialog("Wild Property Color", wild.getName(), "Select color for property:", options);
+        return showWildPropertyColorDialog(wild);
+    }
+
+    private Optional<Color> showWildPropertyColorDialog(WildpropertyCard wild) {
+        List<Color> colors = wild.getAvailableColors();
+        if (colors.isEmpty()) {
+            return Optional.empty();
+        }
+        int bankValue = wild.getBankValueM();
+        String bankHint = wild.isBankable()
+                ? "Deposit to bank is always " + bankValue + "M (not affected by color chosen)."
+                : "This wild card cannot be deposited to bank.";
+        return showStyledChoiceDialog(
+                "Wild Property Color",
+                wild.getName(),
+                "Choose a color to play as property.\n" + bankHint,
+                colors,
+                color -> color + "  —  play as " + color + " property",
+                color -> "-fx-background-color: " + cssColorFor(color) + ";"
+                        + "-fx-text-fill: " + textColorFor(color) + ";"
+                        + "-fx-border-color: rgba(255,255,255,0.55);");
     }
 
     private boolean hasAnyCompleteSet(Player player) {
@@ -1142,7 +1242,7 @@ private void forceEndTurn() {
             updatePlayerInfo();
             updateCurrentPlayerDisplay();
             updateAllPlayersProperties();
-            updateTurnBankLabel();
+            updateAllPlayersBankBar();
             updatePlayerHand();
             updatePlayerBank();
             updatePileCounts();
@@ -1372,17 +1472,31 @@ private void forceEndTurn() {
         }
     }
 
-    private void updateTurnBankLabel() {
-        if (turnBankLabel == null) {
+    private void updateAllPlayersBankBar() {
+        if (allPlayersBankBar == null || gameEngine == null) {
             return;
         }
-        int seat = getCurrentTurnSeat();
-        int total = 0;
-        String name = playerNameAt(seat);
-        if (gameEngine != null && seat >= 0 && seat < gameEngine.getPlayers().size()) {
-            total = gameEngine.getPlayers().get(seat).getBankTotalValue();
+        allPlayersBankBar.getChildren().clear();
+        int currentSeat = getCurrentTurnSeat();
+        for (int i = 0; i < gameEngine.getPlayers().size(); i++) {
+            Player player = gameEngine.getPlayers().get(i);
+            allPlayersBankBar.getChildren().add(createBankPill(
+                    player.getName(), player.getBankTotalValue(), i == currentSeat));
         }
-        turnBankLabel.setText(name + ": " + total + "M");
+    }
+
+    private VBox createBankPill(String name, int total, boolean isCurrent) {
+        VBox pill = new VBox(2);
+        pill.getStyleClass().add("bank-pill");
+        if (isCurrent) {
+            pill.getStyleClass().add("bank-pill-current");
+        }
+        Label nameLabel = new Label(name);
+        nameLabel.getStyleClass().add("bank-pill-label");
+        Label valueLabel = new Label(total + "M");
+        valueLabel.getStyleClass().add("bank-pill-value");
+        pill.getChildren().addAll(nameLabel, valueLabel);
+        return pill;
     }
 
     private HBox buildPropertyColorSet(Color color, List<Card> cards) {

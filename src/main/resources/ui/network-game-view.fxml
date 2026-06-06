@@ -61,9 +61,9 @@
                                 <Label text="Collapse sidebars to give the public board more space." styleClass="section-subtitle"/>
                             </VBox>
                             <Region HBox.hgrow="ALWAYS"/>
-                            <VBox alignment="CENTER_RIGHT" spacing="2" styleClass="bank-pill">
-                                <Label text="Current Player Bank" styleClass="bank-pill-label"/>
-                                <Label fx:id="turnBankLabel" text="0M" styleClass="bank-pill-value"/>
+                            <VBox alignment="CENTER_RIGHT" spacing="4">
+                                <Label text="Player Banks" styleClass="bank-pill-label"/>
+                                <HBox fx:id="allPlayersBankBar" spacing="8" alignment="CENTER_RIGHT"/>
                             </VBox>
                         </HBox>
                         <ScrollPane fitToWidth="true"
@@ -136,8 +136,9 @@
                   styleClass="hand-dock panel-card"
                   StackPane.alignment="BOTTOM_CENTER">
                 <HBox alignment="CENTER_LEFT" spacing="10" styleClass="hand-dock-header">
+                    <Button fx:id="handDockToggle" text="Show Hand ▲" styleClass="hand-dock-toggle"/>
                     <Label text="My Hand" styleClass="section-title"/>
-                    <Label fx:id="handDockHint" text="Hover here to expand - double-click to play" styleClass="section-subtitle"/>
+                    <Label fx:id="handDockHint" text="Click Show Hand to view your cards" styleClass="section-subtitle"/>
                     <Region HBox.hgrow="ALWAYS"/>
                     <Label text="My Bank" styleClass="section-title bank-mini-title"/>
                     <Label fx:id="bankTotalLabel" text="0M" styleClass="bank-mini-value"/>

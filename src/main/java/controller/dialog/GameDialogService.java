@@ -7,6 +7,7 @@ import javafx.scene.control.Dialog;
 import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
 import javafx.scene.layout.VBox;
+import model.card.WildpropertyCard;
 import model.enums.Color;
 
 import java.util.List;
@@ -93,6 +94,26 @@ public class GameDialogService {
     public Optional<Color> showColorChoiceDialog(String title, String header, String prompt, List<Color> colors) {
         return showChoiceDialog(title, header, prompt, colors,
                 color -> color + "  -  " + color.getSetSize() + " cards to complete",
+                color -> "-fx-background-color: " + cssColorFor(color) + ";"
+                        + "-fx-text-fill: " + textColorFor(color) + ";"
+                        + "-fx-border-color: rgba(255,255,255,0.55);");
+    }
+
+    public Optional<Color> showWildPropertyColorDialog(WildpropertyCard wild) {
+        List<Color> colors = wild.getAvailableColors();
+        if (colors.isEmpty()) {
+            return Optional.empty();
+        }
+        int bankValue = wild.getBankValueM();
+        String bankHint = wild.isBankable()
+                ? "Deposit to bank is always " + bankValue + "M (not affected by color chosen)."
+                : "This wild card cannot be deposited to bank.";
+        return showChoiceDialog(
+                "Wild Property Color",
+                wild.getName(),
+                "Choose a color to play as property.\n" + bankHint,
+                colors,
+                color -> color + "  —  play as " + color + " property",
                 color -> "-fx-background-color: " + cssColorFor(color) + ";"
                         + "-fx-text-fill: " + textColorFor(color) + ";"
                         + "-fx-border-color: rgba(255,255,255,0.55);");

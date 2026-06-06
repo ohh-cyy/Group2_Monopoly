@@ -21,12 +21,8 @@ public final class ServerPlayHandler {
         if (card instanceof RentCard rentCard) {
             return applyRent(engine, player, rentCard, msg, log);
         }
-        if (card instanceof DoubleTheRent doubleRent) {
-            boolean ok = doubleRent.activateForNextRent(engine);
-            if (ok) {
-                log.add(player.getName() + " activated Double the Rent");
-            }
-            return ok;
+        if (card instanceof DoubleTheRent) {
+            return false;
         }
         if (card instanceof MyBirthday) {
             return applyMyBirthday(engine, player, log);
