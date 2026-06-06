@@ -116,7 +116,11 @@
     -fx-background-radius: 12;
     -fx-border-radius: 12;
     -fx-border-color: rgba(7,64,1,0.15);
-    -fx-padding: 10;
+    -fx-padding: 8 10;
+}
+
+.public-properties-stack {
+    -fx-padding: 0 2 2 2;
 }
 
 .player-public-block-current {
@@ -126,18 +130,29 @@
 }
 
 .property-set {
-    -fx-background-color: rgba(245, 248, 247, 0.92);
-    -fx-background-radius: 12;
-    -fx-border-radius: 12;
-    -fx-border-color: rgba(0,0,0,0.06);
-    -fx-padding: 9 10;
-    -fx-max-width: infinity;
+    -fx-padding: 6 8;
+    -fx-alignment: top-center;
+    -fx-spacing: 3;
+}
+
+.property-set-title {
+    -fx-font-size: 10px;
+    -fx-font-weight: 900;
+    -fx-alignment: center;
+    -fx-text-alignment: center;
+}
+
+.property-set-rent {
+    -fx-font-size: 10px;
+    -fx-font-weight: 800;
+    -fx-text-fill: #2c3e50;
+    -fx-alignment: center;
+    -fx-text-alignment: center;
 }
 
 .property-set-complete {
-    -fx-background-color: linear-gradient(to bottom right, #fff8df, #ffffff);
-    -fx-border-color: #f1c40f;
-    -fx-border-width: 2;
+    -fx-border-width: 3;
+    -fx-effect: dropshadow(gaussian, rgba(241,196,15,0.35), 10, 0.25, 0, 0);
 }
 
 .player-info-card {
@@ -289,6 +304,12 @@
     -fx-border-width: 1 1 0 1;
     -fx-border-color: rgba(255,255,255,0.76);
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.35), 22, 0.2, 0, -4);
+}
+
+#handDockSlot {
+    -fx-min-height: 266;
+    -fx-pref-height: 266;
+    -fx-max-height: 266;
 }
 
 .hand-dock-header {

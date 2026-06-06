@@ -51,34 +51,78 @@
                 </left>
 
                 <center>
-                    <VBox spacing="10" maxWidth="Infinity" maxHeight="Infinity" styleClass="panel-card public-panel main-public-board">
-                        <BorderPane.margin>
-                            <Insets top="14" right="14" bottom="68" left="14"/>
-                        </BorderPane.margin>
-                        <HBox spacing="12" alignment="CENTER_LEFT">
-                            <VBox spacing="2">
-                                <Label text="Public Board" styleClass="section-title section-title-large"/>
-                                <Label text="Collapse sidebars to give the public board more space." styleClass="section-subtitle"/>
+                    <VBox spacing="0" maxWidth="Infinity" maxHeight="Infinity" minHeight="0">
+                        <VBox fx:id="publicBoardPanel" spacing="10" maxWidth="Infinity" VBox.vgrow="ALWAYS" minHeight="0" styleClass="panel-card public-panel main-public-board">
+                            <HBox fx:id="publicBoardHeader" spacing="12" alignment="CENTER_LEFT">
+                                <VBox spacing="2">
+                                    <Label text="Public Board" styleClass="section-title section-title-large"/>
+                                    <Label text="Collapse sidebars to give the public board more space." styleClass="section-subtitle"/>
+                                </VBox>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <VBox alignment="CENTER_RIGHT" spacing="4">
+                                    <Label text="Player Banks" styleClass="bank-pill-label"/>
+                                    <HBox fx:id="allPlayersBankBar" spacing="8" alignment="CENTER_RIGHT"/>
+                                </VBox>
+                            </HBox>
+                            <VBox fx:id="allPlayersPropertiesPanel"
+                                  spacing="4"
+                                  VBox.vgrow="ALWAYS"
+                                  minHeight="0"
+                                  styleClass="public-properties-stack"/>
+                        </VBox>
+                        <StackPane fx:id="handDockSlot" minHeight="266" prefHeight="266" maxHeight="266">
+                            <VBox fx:id="handDock"
+                                  spacing="8"
+                                  maxWidth="Infinity"
+                                  prefHeight="266"
+                                  minHeight="266"
+                                  maxHeight="266"
+                                  styleClass="hand-dock panel-card">
+                                <HBox alignment="CENTER_LEFT" spacing="10" styleClass="hand-dock-header">
+                                    <Button fx:id="handDockToggle" text="Show Hand ▲" styleClass="hand-dock-toggle"/>
+                                    <Label text="My Hand" styleClass="section-title"/>
+                                    <Label fx:id="handDockHint" text="Click Show Hand to view your cards" styleClass="section-subtitle"/>
+                                    <Region HBox.hgrow="ALWAYS"/>
+                                    <Label text="My Bank" styleClass="section-title bank-mini-title"/>
+                                    <Label fx:id="bankTotalLabel" text="0M" styleClass="bank-mini-value"/>
+                                </HBox>
+                                <HBox spacing="14" VBox.vgrow="ALWAYS">
+                                    <VBox spacing="6" HBox.hgrow="ALWAYS" styleClass="hand-area">
+                                        <ScrollPane fx:id="playerHandScroll"
+                                                    fitToHeight="true"
+                                                    hbarPolicy="AS_NEEDED"
+                                                    vbarPolicy="NEVER"
+                                                    VBox.vgrow="ALWAYS"
+                                                    pannable="true"
+                                                    styleClass="transparent-scroll hand-scroll">
+                                            <HBox fx:id="playerHand"
+                                                  spacing="10"
+                                                  alignment="CENTER_LEFT"
+                                                  style="-fx-padding: 12 14 18 14;"/>
+                                        </ScrollPane>
+                                    </VBox>
+                                    <VBox spacing="6"
+                                          prefWidth="285"
+                                          minWidth="250"
+                                          maxWidth="320"
+                                          styleClass="bank-dock-area">
+                                        <ScrollPane fitToWidth="true"
+                                                    hbarPolicy="NEVER"
+                                                    vbarPolicy="AS_NEEDED"
+                                                    VBox.vgrow="ALWAYS"
+                                                    pannable="true"
+                                                    styleClass="transparent-scroll">
+                                            <FlowPane fx:id="playerBank"
+                                                      hgap="7"
+                                                      vgap="7"
+                                                      prefWrapLength="250"
+                                                      alignment="CENTER_LEFT"
+                                                      style="-fx-padding: 4;"/>
+                                        </ScrollPane>
+                                    </VBox>
+                                </HBox>
                             </VBox>
-                            <Region HBox.hgrow="ALWAYS"/>
-                            <VBox alignment="CENTER_RIGHT" spacing="4">
-                                <Label text="Player Banks" styleClass="bank-pill-label"/>
-                                <HBox fx:id="allPlayersBankBar" spacing="8" alignment="CENTER_RIGHT"/>
-                            </VBox>
-                        </HBox>
-                        <ScrollPane fitToWidth="true"
-                                    VBox.vgrow="ALWAYS"
-                                    hbarPolicy="NEVER"
-                                    vbarPolicy="AS_NEEDED"
-                                    pannable="true"
-                                    styleClass="transparent-scroll">
-                            <TilePane fx:id="allPlayersPropertiesPanel"
-                                      hgap="14"
-                                      vgap="14"
-                                      prefColumns="2"
-                                      tileAlignment="TOP_LEFT"
-                                      style="-fx-padding: 6 8 12 6;"/>
-                        </ScrollPane>
+                        </StackPane>
                     </VBox>
                 </center>
 
@@ -130,59 +174,6 @@
                     text="&#8249; Controls / Log"
                     styleClass="drawer-handle drawer-handle-right"
                     StackPane.alignment="CENTER_RIGHT"/>
-
-            <VBox fx:id="handDock"
-                  spacing="8"
-                  maxWidth="Infinity"
-                  prefHeight="266"
-                  minHeight="266"
-                  maxHeight="266"
-                  styleClass="hand-dock panel-card"
-                  StackPane.alignment="BOTTOM_CENTER">
-                <HBox alignment="CENTER_LEFT" spacing="10" styleClass="hand-dock-header">
-                    <Button fx:id="handDockToggle" text="Show Hand ▲" styleClass="hand-dock-toggle"/>
-                    <Label text="My Hand" styleClass="section-title"/>
-                    <Label fx:id="handDockHint" text="Click Show Hand to view your cards" styleClass="section-subtitle"/>
-                    <Region HBox.hgrow="ALWAYS"/>
-                    <Label text="My Bank" styleClass="section-title bank-mini-title"/>
-                    <Label fx:id="bankTotalLabel" text="0M" styleClass="bank-mini-value"/>
-                </HBox>
-                <HBox spacing="14" VBox.vgrow="ALWAYS">
-                    <VBox spacing="6" HBox.hgrow="ALWAYS" styleClass="hand-area">
-                        <ScrollPane fx:id="playerHandScroll"
-                                    fitToHeight="true"
-                                    hbarPolicy="AS_NEEDED"
-                                    vbarPolicy="NEVER"
-                                    VBox.vgrow="ALWAYS"
-                                    pannable="true"
-                                    styleClass="transparent-scroll hand-scroll">
-                            <HBox fx:id="playerHand"
-                                  spacing="10"
-                                  alignment="CENTER_LEFT"
-                                  style="-fx-padding: 12 14 18 14;"/>
-                        </ScrollPane>
-                    </VBox>
-                    <VBox spacing="6"
-                          prefWidth="285"
-                          minWidth="250"
-                          maxWidth="320"
-                          styleClass="bank-dock-area">
-                        <ScrollPane fitToWidth="true"
-                                    hbarPolicy="NEVER"
-                                    vbarPolicy="AS_NEEDED"
-                                    VBox.vgrow="ALWAYS"
-                                    pannable="true"
-                                    styleClass="transparent-scroll">
-                            <FlowPane fx:id="playerBank"
-                                      hgap="7"
-                                      vgap="7"
-                                      prefWrapLength="250"
-                                      alignment="CENTER_LEFT"
-                                      style="-fx-padding: 4;"/>
-                        </ScrollPane>
-                    </VBox>
-                </HBox>
-            </VBox>
         </StackPane>
     </center>
 

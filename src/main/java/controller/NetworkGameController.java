@@ -12,6 +12,7 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.scene.shape.Circle;
+import javafx.scene.shape.Rectangle;
 import javafx.util.Duration;
 import model.achievement.AchievementManager;
 import model.card.*;
@@ -29,6 +30,8 @@ import network.protocol.ServerMessage;
 import network.server.PendingActionResolution;
 import ui.CardView;
 import ui.AchievementUi;
+import ui.PublicPropertyBoardLayout;
+import ui.PublicPropertySetView;
 
 import java.util.*;
 import java.util.function.Function;
@@ -47,7 +50,9 @@ public class NetworkGameController {
     @FXML private VBox handDock;
     @FXML private Label handDockHint;
     @FXML private Button handDockToggle;
-    @FXML private TilePane allPlayersPropertiesPanel;
+    @FXML private VBox publicBoardPanel;
+    @FXML private HBox publicBoardHeader;
+    @FXML private VBox allPlayersPropertiesPanel;
     @FXML private HBox allPlayersBankBar;
     @FXML private ScrollPane playerHandScroll;
     @FXML private HBox playerHand;
@@ -73,6 +78,7 @@ public class NetworkGameController {
     private CardView selectedCardView;
     private int mergedLogSize;
     private boolean handDockExpanded = false;
+    private double lastPropertyRowHeight = -1;
     private Image avatarImage;
 
     private enum ActionPlayChoice {
@@ -157,6 +163,7 @@ public class NetworkGameController {
         if (handDock == null) {
             return;
         }
+        clipHandDockSlot();
         setHandDockExpanded(false, false);
         if (handDockToggle != null) {
             handDockToggle.setOnAction(e -> setHandDockExpanded(!handDockExpanded, true));
@@ -180,10 +187,12 @@ public class NetworkGameController {
         }
         if (!animate) {
             handDock.setTranslateY(targetY);
+            refreshPropertyAreaLayout();
             return;
         }
         TranslateTransition transition = new TranslateTransition(Duration.millis(170), handDock);
         transition.setToY(targetY);
+        transition.setOnFinished(e -> refreshPropertyAreaLayout());
         transition.play();
     }
 
@@ -191,21 +200,49 @@ public class NetworkGameController {
         if (allPlayersPropertiesPanel == null) {
             return;
         }
-        javafx.scene.Parent parent = allPlayersPropertiesPanel.getParent();
-        if (parent instanceof ScrollPane scrollPane) {
-            scrollPane.setFitToWidth(true);
-            scrollPane.setPannable(true);
-            scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-            scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
-        }
         allPlayersPropertiesPanel.widthProperty().addListener((obs, oldW, newW) -> {
-            double width = newW.doubleValue();
-            int columns = width > 1060 ? 2 : 1;
-            allPlayersPropertiesPanel.setPrefColumns(columns);
-            allPlayersPropertiesPanel.setPrefTileWidth(Math.max(420, (width - 32) / columns));
+            if (newW.doubleValue() > 0 && state != null) {
+                updateAllPlayersProperties();
+            }
         });
-        allPlayersPropertiesPanel.setTileAlignment(Pos.TOP_LEFT);
-        allPlayersPropertiesPanel.setSnapToPixel(true);
+        allPlayersPropertiesPanel.heightProperty().addListener((obs, oldH, newH) -> {
+            if (newH.doubleValue() <= 0) {
+                return;
+            }
+            PublicPropertyBoardLayout.applyEqualRows(allPlayersPropertiesPanel);
+            maybeRescalePropertyCards();
+        });
+    }
+
+    private void refreshPropertyAreaLayout() {
+        PublicPropertyBoardLayout.applyEqualRows(allPlayersPropertiesPanel);
+        maybeRescalePropertyCards();
+    }
+
+    private void maybeRescalePropertyCards() {
+        if (allPlayersPropertiesPanel == null || state == null) {
+            return;
+        }
+        double rowHeight = PublicPropertyBoardLayout.rowHeightFor(allPlayersPropertiesPanel);
+        if (rowHeight <= 0 || Math.abs(rowHeight - lastPropertyRowHeight) <= 2) {
+            return;
+        }
+        lastPropertyRowHeight = rowHeight;
+        updateAllPlayersProperties();
+    }
+
+    private double computePropertyRowHeight(int playerCount) {
+        return PublicPropertyBoardLayout.rowHeightFor(allPlayersPropertiesPanel, playerCount);
+    }
+
+    private void clipHandDockSlot() {
+        if (handDock == null || !(handDock.getParent() instanceof StackPane slot)) {
+            return;
+        }
+        Runnable updateClip = () -> slot.setClip(new Rectangle(slot.getWidth(), slot.getHeight()));
+        slot.widthProperty().addListener((obs, oldW, newW) -> updateClip.run());
+        slot.heightProperty().addListener((obs, oldH, newH) -> updateClip.run());
+        Platform.runLater(updateClip);
     }
 
     private void handleMessage(ServerMessage message) {
@@ -931,9 +968,16 @@ public class NetworkGameController {
             return;
         }
 
+        double rowHeight = computePropertyRowHeight(state.players.size());
+        lastPropertyRowHeight = rowHeight;
+        CardView.CardMetrics propertyMetrics = PublicPropertyBoardLayout.cardMetricsForRow(rowHeight);
+        double avatarSize = Math.min(38, Math.max(24, rowHeight - 28));
+
         for (PlayerViewDto p : state.players) {
-            VBox playerBlock = new VBox(8);
+            VBox playerBlock = new VBox(6);
             playerBlock.setMaxWidth(Double.MAX_VALUE);
+            playerBlock.setMinHeight(0);
+            playerBlock.setMaxHeight(Double.MAX_VALUE);
             boolean isTurn = p.seat == state.currentPlayerIndex;
             playerBlock.getStyleClass().add("player-public-block");
             if (isTurn) {
@@ -942,15 +986,16 @@ public class NetworkGameController {
 
             HBox titleRow = new HBox(9);
             titleRow.setAlignment(Pos.CENTER_LEFT);
-            ImageView avatar = createAvatarView(38);
+            ImageView avatar = createAvatarView(avatarSize);
             Label title = new Label((isTurn ? "▶ " : "") + p.name
                     + "  |  Hand: " + p.handSize + " cards  |  Bank: " + p.bankTotal + "M");
             title.setStyle("-fx-font-weight: 900; -fx-font-size: 15px; -fx-text-fill: #103c2a;");
             titleRow.getChildren().addAll(avatar, title);
 
-            FlowPane props = new FlowPane(13, 13);
-            props.setPrefWrapLength(640);
+            FlowPane props = new FlowPane(10, 10);
+            props.setPrefWrapLength(Math.max(320, resolvePublicBoardRowWidth() - 40));
             props.setMaxWidth(Double.MAX_VALUE);
+            props.setMaxHeight(propertyMetrics.slotH() + 56);
 
             List<Card> properties = new ArrayList<>();
             for (var dto : p.properties) {
@@ -964,50 +1009,38 @@ public class NetworkGameController {
             } else {
                 Map<Color, List<Card>> byColor = groupPropertiesByColor(properties);
                 for (Map.Entry<Color, List<Card>> entry : byColor.entrySet()) {
-                    props.getChildren().add(buildPropertyColorSet(entry.getKey(), entry.getValue()));
+                    props.getChildren().add(PublicPropertySetView.build(entry.getKey(), entry.getValue(), propertyMetrics));
                 }
             }
-            playerBlock.getChildren().addAll(titleRow, props);
+
+            ScrollPane propsScroll = new ScrollPane(props);
+            propsScroll.setFitToHeight(true);
+            propsScroll.setMinHeight(0);
+            propsScroll.setMaxHeight(Double.MAX_VALUE);
+            propsScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+            propsScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+            propsScroll.setPannable(true);
+            propsScroll.getStyleClass().add("transparent-scroll");
+            VBox.setVgrow(propsScroll, Priority.ALWAYS);
+
+            playerBlock.getChildren().addAll(titleRow, propsScroll);
             allPlayersPropertiesPanel.getChildren().add(playerBlock);
         }
+        PublicPropertyBoardLayout.applyEqualRows(allPlayersPropertiesPanel);
     }
 
-    private HBox buildPropertyColorSet(Color color, List<Card> cards) {
-        HBox colorSet = new HBox(10);
-        colorSet.setAlignment(Pos.CENTER_LEFT);
-        colorSet.getStyleClass().add("property-set");
-        if (cards.size() >= color.getSetSize()) {
-            colorSet.getStyleClass().add("property-set-complete");
+    private double resolvePublicBoardRowWidth() {
+        if (allPlayersPropertiesPanel == null) {
+            return 640;
         }
-        Label groupLabel = new Label(color + "\n" + cards.size() + "/" + color.getSetSize());
-        groupLabel.setStyle("-fx-font-weight: 900; -fx-font-size: 12px; -fx-text-fill: #25342d;");
-        groupLabel.setMinWidth(64);
-
-        Pane row = createOverlappedPropertyRow(cards);
-        colorSet.getChildren().addAll(groupLabel, row);
-        return colorSet;
-    }
-
-    private Pane createOverlappedPropertyRow(List<Card> cards) {
-        Pane row = new Pane();
-        double offset = 30;
-        double fanDrop = 5;
-        double width = CardView.PUBLIC.slotW() + Math.max(0, cards.size() - 1) * offset + 18;
-        double height = CardView.PUBLIC.slotH() + fanDrop + 14;
-        row.setMinSize(width, height);
-        row.setPrefSize(width, height);
-        row.setMaxSize(width, height);
-
-        double middle = (cards.size() - 1) / 2.0;
-        for (int i = 0; i < cards.size(); i++) {
-            StackPane slot = CardView.wrapInSlot(cards.get(i), false, CardView.PUBLIC);
-            slot.setLayoutX(i * offset);
-            slot.setLayoutY(i % 2 == 0 ? 0 : fanDrop);
-            slot.setRotate((i - middle) * 3.5);
-            slot.addEventHandler(javafx.scene.input.MouseEvent.MOUSE_ENTERED, e -> slot.toFront());
-            row.getChildren().add(slot);
+        double width = allPlayersPropertiesPanel.getWidth();
+        if (width > 0) {
+            return width;
         }
-        return row;
+        if (publicBoardPanel != null && publicBoardPanel.getWidth() > 0) {
+            return publicBoardPanel.getWidth();
+        }
+        return 640;
     }
 
     private Map<Color, List<Card>> groupPropertiesByColor(List<Card> properties) {
