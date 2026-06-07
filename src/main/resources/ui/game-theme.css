@@ -427,36 +427,26 @@
     -fx-text-fill: #c0392b;
 }
 
-.victory-dialog {
-    -fx-background-color: linear-gradient(to bottom, #fffdf5, #fff0c9);
-    -fx-border-color: rgba(212, 136, 6, 0.45);
+.victory-overlay {
+    -fx-background-color: rgba(0, 0, 0, 0.62);
 }
 
-.victory-screen-body {
-    -fx-padding: 10 24 6 24;
+.victory-overlay-content {
+    -fx-padding: 24;
     -fx-alignment: center;
 }
 
-.victory-fireworks-image {
-    -fx-effect: dropshadow(gaussian, rgba(255, 193, 7, 0.35), 18, 0.25, 0, 2);
-}
-
-.victory-title {
-    -fx-font-size: 22px;
+.victory-overlay-winner {
+    -fx-font-size: 34px;
     -fx-font-weight: 900;
-    -fx-text-fill: #103c2a;
-}
-
-.victory-winner-label {
-    -fx-font-size: 28px;
-    -fx-font-weight: 900;
-    -fx-text-fill: #d48806;
+    -fx-text-fill: #ffe082;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.55), 8, 0.35, 0, 2);
     -fx-text-alignment: center;
 }
 
-.victory-subtitle {
+.victory-overlay-hint {
     -fx-font-size: 13px;
-    -fx-text-fill: #5a6b62;
+    -fx-text-fill: rgba(255, 255, 255, 0.72);
     -fx-text-alignment: center;
 }
 

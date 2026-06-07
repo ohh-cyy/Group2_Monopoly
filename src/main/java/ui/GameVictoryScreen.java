@@ -1,114 +1,104 @@
 package ui;
 
 import javafx.animation.FadeTransition;
-import javafx.animation.ScaleTransition;
 import javafx.application.Platform;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
-import javafx.scene.control.ButtonBar;
-import javafx.scene.control.ButtonType;
-import javafx.scene.control.Dialog;
-import javafx.scene.control.DialogPane;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.Label;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 
 import java.util.Objects;
 
+/**
+ * Full-screen semi-transparent victory overlay with procedural fireworks.
+ */
 public final class GameVictoryScreen {
+    private static final String OVERLAY_HOST_KEY = "victoryOverlayHost";
+
     private GameVictoryScreen() {
     }
 
-    public static void show(Node owner, String winnerName) {
-        Platform.runLater(() -> showNow(owner, winnerName));
+    public static void show(Node anchor, String winnerName) {
+        Platform.runLater(() -> showOverlay(anchor, winnerName));
     }
 
-    private static void showNow(Node owner, String winnerName) {
+    private static void showOverlay(Node anchor, String winnerName) {
+        if (anchor == null || anchor.getScene() == null) {
+            return;
+        }
+        Scene scene = anchor.getScene();
+        StackPane host = ensureOverlayHost(scene);
+        if (host.getChildren().stream().anyMatch(node -> node.getStyleClass().contains("victory-overlay"))) {
+            return;
+        }
+
         String name = winnerName == null || winnerName.isBlank() ? "Unknown" : winnerName.trim();
 
-        Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle("游戏结束");
-        ButtonType ok = new ButtonType("知道了", ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().setAll(ok);
-        dialog.setResultConverter(button -> button);
+        StackPane overlay = new StackPane();
+        overlay.getStyleClass().add("victory-overlay");
+        overlay.setPickOnBounds(true);
 
-        VBox body = new VBox(14);
-        body.setAlignment(Pos.CENTER);
-        body.getStyleClass().add("victory-screen-body");
+        VBox content = new VBox(18);
+        content.setAlignment(Pos.CENTER);
+        content.getStyleClass().add("victory-overlay-content");
+        content.setMaxWidth(520);
 
-        ImageView fireworks = createFireworksView();
-        Label title = new Label("恭喜获胜！");
-        title.getStyleClass().add("victory-title");
-        Label winner = new Label(name + " 赢得本局");
-        winner.getStyleClass().add("victory-winner-label");
-        Label subtitle = new Label("成功集齐 3 套完整地产");
-        subtitle.getStyleClass().add("victory-subtitle");
+        VictoryFireworksView fireworks = new VictoryFireworksView(360, 300);
+        Label winnerLabel = new Label(name + " 赢得本局");
+        winnerLabel.getStyleClass().add("victory-overlay-winner");
+        Label hintLabel = new Label("点击任意处关闭");
+        hintLabel.getStyleClass().add("victory-overlay-hint");
 
-        body.getChildren().addAll(fireworks, title, winner, subtitle);
-        dialog.getDialogPane().setContent(body);
-        styleDialog(dialog, owner);
+        content.getChildren().addAll(fireworks, winnerLabel, hintLabel);
+        overlay.getChildren().add(content);
+        StackPane.setAlignment(content, Pos.CENTER);
 
-        playEntranceAnimation(fireworks, title, winner, subtitle);
-        dialog.showAndWait();
+        overlay.setOpacity(0);
+        host.getChildren().add(overlay);
+        overlay.toFront();
+
+        FadeTransition fadeIn = new FadeTransition(Duration.millis(450), overlay);
+        fadeIn.setFromValue(0);
+        fadeIn.setToValue(1);
+        fadeIn.play();
+
+        overlay.setOnMouseClicked(event -> dismissOverlay(host, overlay));
     }
 
-    private static ImageView createFireworksView() {
-        ImageView view = new ImageView();
-        view.getStyleClass().add("victory-fireworks-image");
-        view.setFitWidth(240);
-        view.setPreserveRatio(true);
-        try {
-            Image image = new Image(Objects.requireNonNull(
-                    GameVictoryScreen.class.getResourceAsStream("/ui/victory-fireworks.png")));
-            view.setImage(image);
-        } catch (Exception ignored) {
+    private static void dismissOverlay(StackPane host, StackPane overlay) {
+        FadeTransition fadeOut = new FadeTransition(Duration.millis(280), overlay);
+        fadeOut.setFromValue(overlay.getOpacity());
+        fadeOut.setToValue(0);
+        fadeOut.setOnFinished(event -> host.getChildren().remove(overlay));
+        fadeOut.play();
+    }
+
+    private static StackPane ensureOverlayHost(Scene scene) {
+        Parent root = scene.getRoot();
+        if (root instanceof StackPane stack
+                && Boolean.TRUE.equals(stack.getProperties().get(OVERLAY_HOST_KEY))) {
+            return stack;
         }
-        return view;
+        StackPane host = new StackPane();
+        host.getProperties().put(OVERLAY_HOST_KEY, true);
+        attachThemeStylesheet(host);
+        host.getChildren().add(root);
+        scene.setRoot(host);
+        return host;
     }
 
-    private static void playEntranceAnimation(ImageView fireworks, Label... labels) {
-        fireworks.setOpacity(0);
-        fireworks.setScaleX(0.72);
-        fireworks.setScaleY(0.72);
-
-        ScaleTransition scale = new ScaleTransition(Duration.millis(520), fireworks);
-        scale.setFromX(0.72);
-        scale.setFromY(0.72);
-        scale.setToX(1.0);
-        scale.setToY(1.0);
-
-        FadeTransition fade = new FadeTransition(Duration.millis(520), fireworks);
-        fade.setFromValue(0);
-        fade.setToValue(1);
-
-        scale.play();
-        fade.play();
-
-        for (int i = 0; i < labels.length; i++) {
-            Label label = labels[i];
-            label.setOpacity(0);
-            FadeTransition labelFade = new FadeTransition(Duration.millis(360), label);
-            labelFade.setFromValue(0);
-            labelFade.setToValue(1);
-            labelFade.setDelay(Duration.millis(180L + i * 80L));
-            labelFade.play();
-        }
-    }
-
-    private static void styleDialog(Dialog<?> dialog, Node owner) {
-        DialogPane pane = dialog.getDialogPane();
+    private static void attachThemeStylesheet(StackPane node) {
         try {
-            String css = Objects.requireNonNull(GameVictoryScreen.class.getResource("/ui/game-theme.css")).toExternalForm();
-            if (!pane.getStylesheets().contains(css)) {
-                pane.getStylesheets().add(css);
+            String css = Objects.requireNonNull(
+                    GameVictoryScreen.class.getResource("/ui/game-theme.css")).toExternalForm();
+            if (!node.getStylesheets().contains(css)) {
+                node.getStylesheets().add(css);
             }
         } catch (Exception ignored) {
-        }
-        pane.getStyleClass().addAll("game-dialog", "victory-dialog");
-        if (owner != null && owner.getScene() != null) {
-            dialog.initOwner(owner.getScene().getWindow());
         }
     }
 }
