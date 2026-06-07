@@ -34,6 +34,7 @@ import network.server.PendingActionResolution;
 import controller.dialog.HandDiscardDialogService;
 import ui.AchievementUi;
 import ui.CardView;
+import ui.GameAlertDialogs;
 import ui.PublicPropertyBoardLayout;
 import ui.PublicPropertySetView;
 
@@ -85,6 +86,9 @@ public class NetworkGameController {
     private double lastPropertyRowHeight = -1;
     private boolean pendingEndTurnAfterDiscard = false;
     private Image avatarImage;
+    private String lastStatusMessage = "";
+    private boolean lastStatusError = false;
+    private FadeTransition statusFadeTransition;
 
     private enum ActionPlayChoice {
         USE_EFFECT, DEPOSIT_BANK
@@ -1181,10 +1185,17 @@ public class NetworkGameController {
                     if (e.getButton() != MouseButton.PRIMARY) {
                         return;
                     }
-                    selectCard(card, cv);
-                    if (e.getClickCount() == 2 && canPlay) {
+                    int clicks = e.getClickCount();
+                    if (clicks == 2 && canPlay) {
                         e.consume();
+                        if (!card.equals(selectedCard)) {
+                            selectCard(card, cv);
+                        }
                         cv.playActivationAnimation(() -> playCardFromDoubleClick(card, cv));
+                        return;
+                    }
+                    if (clicks == 1) {
+                        selectCard(card, cv);
                     }
                 });
             }
@@ -1196,8 +1207,8 @@ public class NetworkGameController {
         if (!myHand.contains(card)) {
             return;
         }
-        selectCard(card, cardView);
-        onPlay();
+        // Dialogs must not run inside animation/layout callbacks.
+        Platform.runLater(this::onPlay);
     }
 
     private CardView.CardMetrics computeHandMetrics(int cardCount) {
@@ -1218,6 +1229,9 @@ public class NetworkGameController {
     }
 
     private void selectCard(Card card, CardView cv) {
+        if (card.equals(selectedCard)) {
+            return;
+        }
         for (var node : playerHand.getChildren()) {
             if (node instanceof StackPane sp) {
                 CardView view = CardView.getCardView(sp);
@@ -1335,14 +1349,30 @@ public class NetworkGameController {
     }
 
     private void showStatus(String text, boolean error) {
-        if (statusMessage == null) return;
+        if (error) {
+            GameAlertDialogs.showError(statusMessage, text);
+            return;
+        }
+        if (statusMessage == null) {
+            return;
+        }
+        if (text.equals(lastStatusMessage) && error == lastStatusError) {
+            return;
+        }
+        lastStatusMessage = text;
+        lastStatusError = error;
+
+        if (statusFadeTransition != null) {
+            statusFadeTransition.stop();
+        }
+        statusMessage.setOpacity(0.4);
         statusMessage.setText(text);
         statusMessage.setStyle(error ? "-fx-text-fill: #e74c3c;" : "-fx-text-fill: white;");
-        FadeTransition fade = new FadeTransition(Duration.millis(220), statusMessage);
-        fade.setFromValue(0.25);
-        fade.setToValue(1);
-        fade.setInterpolator(Interpolator.EASE_OUT);
-        fade.play();
+        statusFadeTransition = new FadeTransition(Duration.millis(160), statusMessage);
+        statusFadeTransition.setFromValue(0.4);
+        statusFadeTransition.setToValue(1);
+        statusFadeTransition.setInterpolator(Interpolator.EASE_OUT);
+        statusFadeTransition.play();
     }
 
     private void loadAvatarImage() {

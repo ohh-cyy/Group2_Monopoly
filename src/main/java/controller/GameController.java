@@ -15,6 +15,7 @@ import javafx.util.Duration;
 import controller.dialog.HandDiscardDialogService;
 import ui.AchievementUi;
 import ui.CardView;
+import ui.GameAlertDialogs;
 import ui.PublicPropertyBoardLayout;
 import ui.PublicPropertySetView;
 import javafx.fxml.FXML;
@@ -138,6 +139,9 @@ public class GameController {
     private boolean handDockExpanded = false;
     private double lastPropertyRowHeight = -1;
     private Image avatarImage;
+    private String lastStatusMessage = "";
+    private boolean lastStatusError = false;
+    private FadeTransition statusFadeTransition;
     
     @FXML
     public void initialize() {
@@ -1234,22 +1238,24 @@ private double computePropertyRowHeight(int playerCount) {
     }
 
     private void unlockAchievement(String achievementId) {
-        AchievementUi.unlockAndShow(achievementId, statusMessage);
+        Platform.runLater(() -> AchievementUi.unlockAndShow(achievementId, statusMessage));
     }
 
 private void forceEndTurn() {
-        Player ending = gameEngine.getCurrentPlayer();
-        if (!ensureHandSizeWithinLimit(ending)) {
-            updateUI();
-            return;
-        }
+        Platform.runLater(() -> {
+            Player ending = gameEngine.getCurrentPlayer();
+            if (!ensureHandSizeWithinLimit(ending)) {
+                updateUI();
+                return;
+            }
 
-        gameEngine.nextTurn();
-        currentPlayer = gameEngine.getCurrentPlayer();
-        logMessage(ending.getName() + " turn ends → " + currentPlayer.getName() + "'s turn");
-        showStatus("Played 3 cards, automatically switching to " + currentPlayer.getName()
-                + ". Please draw 2 cards before playing", false);
-        afterStateChange();
+            gameEngine.nextTurn();
+            currentPlayer = gameEngine.getCurrentPlayer();
+            logMessage(ending.getName() + " turn ends → " + currentPlayer.getName() + "'s turn");
+            showStatus("Played 3 cards, automatically switching to " + currentPlayer.getName()
+                    + ". Please draw 2 cards before playing", false);
+            afterStateChange();
+        });
     }
     
     @FXML
@@ -1399,10 +1405,17 @@ private void forceEndTurn() {
                     if (event.getButton() != MouseButton.PRIMARY) {
                         return;
                     }
-                    selectCard(card, cardView);
-                    if (event.getClickCount() == 2 && canPlay) {
+                    int clicks = event.getClickCount();
+                    if (clicks == 2 && canPlay) {
                         event.consume();
+                        if (!card.equals(selectedCard)) {
+                            selectCard(card, cardView);
+                        }
                         cardView.playActivationAnimation(() -> playCardFromDoubleClick(card, cardView));
+                        return;
+                    }
+                    if (clicks == 1) {
+                        selectCard(card, cardView);
                     }
                 });
             }
@@ -1414,8 +1427,8 @@ private void forceEndTurn() {
         if (!getHandCardsForView().contains(card)) {
             return;
         }
-        selectCard(card, cardView);
-        playSelectedCard();
+        // Dialogs must not run inside animation/layout callbacks.
+        Platform.runLater(this::playSelectedCard);
     }
 
     /** Single line display of hand: When the width is not enough, the face of the hand will be proportionally reduced (including hover size) */
@@ -1437,6 +1450,9 @@ private void forceEndTurn() {
     }
     
     private void selectCard(Card card, CardView cardView) {
+        if (card.equals(selectedCard)) {
+            return;
+        }
         for (javafx.scene.Node node : playerHand.getChildren()) {
             CardView cv = node instanceof StackPane sp ? CardView.getCardView(sp) : null;
             if (cv != null) {
@@ -1647,18 +1663,32 @@ private void forceEndTurn() {
     }
     
     private void showStatus(String message, boolean isError) {
+        if (isError) {
+            GameAlertDialogs.showError(statusMessage, message);
+            return;
+        }
         Platform.runLater(() -> {
+            if (message.equals(lastStatusMessage) && isError == lastStatusError) {
+                return;
+            }
+            lastStatusMessage = message;
+            lastStatusError = isError;
+
+            if (statusFadeTransition != null) {
+                statusFadeTransition.stop();
+            }
+            statusMessage.setOpacity(0.4);
             statusMessage.setText(message);
             if (isError) {
                 statusMessage.setStyle("-fx-text-fill: #e74c3c; -fx-font-size: 14px;");
             } else {
                 statusMessage.setStyle("-fx-text-fill: white; -fx-font-size: 14px;");
             }
-            FadeTransition fade = new FadeTransition(Duration.millis(220), statusMessage);
-            fade.setFromValue(0.25);
-            fade.setToValue(1);
-            fade.setInterpolator(Interpolator.EASE_OUT);
-            fade.play();
+            statusFadeTransition = new FadeTransition(Duration.millis(160), statusMessage);
+            statusFadeTransition.setFromValue(0.4);
+            statusFadeTransition.setToValue(1);
+            statusFadeTransition.setInterpolator(Interpolator.EASE_OUT);
+            statusFadeTransition.play();
         });
     }
     
