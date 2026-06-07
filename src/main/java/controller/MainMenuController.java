@@ -18,7 +18,7 @@ public class MainMenuController {
         Stage stage = (Stage) source.getScene().getWindow();
         javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/ui/game-view.fxml"));
         Parent root = loader.load();
-        Scene scene = new Scene(SettingsOverlay.wrap(root, stage), 1200, 800);
+        Scene scene = SettingsOverlay.createGameScene(root, stage);
         stage.setScene(scene);
         stage.setTitle("Monopoly Deal - Game");
     }

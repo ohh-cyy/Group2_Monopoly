@@ -24,7 +24,11 @@
                 <Region HBox.hgrow="ALWAYS"/>
                 <Label fx:id="gameStatusText"
                        text="Draw pile: --  |  Discard pile: --"
-                       styleClass="top-meta-label"/>
+                       styleClass="top-meta-label">
+                    <HBox.margin>
+                        <Insets right="78"/>
+                    </HBox.margin>
+                </Label>
             </HBox>
             <HBox spacing="14" alignment="CENTER_LEFT">
                 <Label fx:id="currentPlayerLabel"

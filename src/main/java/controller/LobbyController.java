@@ -127,7 +127,7 @@ public class LobbyController {
             GameController controller = loader.getController();
             controller.startLocalGame();
             stage.setTitle("Monopoly Deal - Local");
-            stage.setScene(new Scene(SettingsOverlay.wrap(loader.getRoot(), stage), 1360, 900));
+            stage.setScene(SettingsOverlay.createGameScene(loader.getRoot(), stage));
         } catch (IOException e) {
             statusLabel.setText("Unable to open local game: " + e.getMessage());
         }
@@ -215,7 +215,7 @@ public class LobbyController {
             }
             NetworkClient gameClient = client;
             stage.setTitle("Monopoly Deal - Online");
-            stage.setScene(new Scene(SettingsOverlay.wrap((javafx.scene.Parent) root, stage), 1360, 900));
+            stage.setScene(SettingsOverlay.createGameScene((javafx.scene.Parent) root, stage, gameClient::close));
             stage.show();
             controller.startOnlineGame(gameClient, localSeat, message.state);
             client = null;

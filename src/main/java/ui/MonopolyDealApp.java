@@ -133,7 +133,7 @@ public class MonopolyDealApp extends Application {
             LobbyController controller = loader.getController();
             controller.setStage(primaryStage);
 
-            Scene scene = new Scene(SettingsOverlay.wrap(root, primaryStage), 960, 640);
+            Scene scene = SettingsOverlay.createScene(root, primaryStage);
             addTheme(scene);
             primaryStage.setTitle("Monopoly Deal - Lobby");
             primaryStage.setScene(scene);
