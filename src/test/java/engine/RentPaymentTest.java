@@ -41,6 +41,24 @@ class RentPaymentTest {
     }
 
     @Test
+    void collectUpToCannotTakePropertyFromCompleteSet() {
+        Player collector = new Player("Collector");
+        Player debtor = new Player("Debtor");
+        PropertyCard pink = new PropertyCard("Pall Mall", "Pink property", Color.PINK, 2);
+        debtor.addProperty(new PropertyCard("Old Kent Road", "Brown", Color.BROWN, 1));
+        debtor.addProperty(new PropertyCard("Whitechapel", "Brown", Color.BROWN, 1));
+        debtor.addProperty(pink);
+
+        int paid = RentPayment.collectUpTo(collector, debtor, 5);
+
+        assertEquals(2, paid);
+        assertTrue(debtor.hasCompleteSet(Color.BROWN));
+        assertEquals(2, debtor.getPropertiesByColor(Color.BROWN).size());
+        assertFalse(debtor.getAllProperties().contains(pink));
+        assertTrue(collector.getAllProperties().contains(pink));
+    }
+
+    @Test
     void collectUpToReturnsZeroForInvalidAmount() {
         Player collector = new Player("Collector");
         Player debtor = new Player("Debtor");

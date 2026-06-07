@@ -4,6 +4,9 @@ import model.enums.Color;
 
 /** CSS colors for property set boxes on the public board. */
 public final class PropertyColorStyles {
+    private static final double COMPLETE_BG_ALPHA_MULTIPLIER = 3.1;
+    private static final double COMPLETE_BG_ALPHA_MAX = 0.58;
+
     private PropertyColorStyles() {
     }
 
@@ -26,21 +29,33 @@ public final class PropertyColorStyles {
     }
 
     public static String backgroundHex(Color color) {
+        return backgroundHex(color, false);
+    }
+
+    public static String backgroundHex(Color color, boolean complete) {
         if (color == null) {
-            return "rgba(245,248,247,0.92)";
+            return complete ? "rgba(245,248,247,0.96)" : "rgba(245,248,247,0.92)";
         }
         return switch (color) {
-            case BROWN -> "rgba(139,90,43,0.14)";
-            case DARK_BLUE -> "rgba(23,78,166,0.12)";
-            case GREEN -> "rgba(27,127,67,0.12)";
-            case ORANGE -> "rgba(242,153,74,0.14)";
-            case RED -> "rgba(214,69,69,0.12)";
-            case YELLOW -> "rgba(242,201,76,0.18)";
-            case BLACK -> "rgba(45,52,54,0.10)";
-            case LIGHT_BLUE -> "rgba(126,200,227,0.18)";
-            case LIGHT_GREEN -> "rgba(111,207,151,0.16)";
-            case PINK -> "rgba(232,67,147,0.12)";
+            case BROWN -> rgba(139, 90, 43, 0.14, complete);
+            case DARK_BLUE -> rgba(23, 78, 166, 0.12, complete);
+            case GREEN -> rgba(27, 127, 67, 0.12, complete);
+            case ORANGE -> rgba(242, 153, 74, 0.14, complete);
+            case RED -> rgba(214, 69, 69, 0.12, complete);
+            case YELLOW -> rgba(242, 201, 76, 0.18, complete);
+            case BLACK -> rgba(45, 52, 54, 0.10, complete);
+            case LIGHT_BLUE -> rgba(126, 200, 227, 0.18, complete);
+            case LIGHT_GREEN -> rgba(111, 207, 151, 0.16, complete);
+            case PINK -> rgba(232, 67, 147, 0.12, complete);
         };
+    }
+
+    private static String rgba(int r, int g, int b, double alpha, boolean complete) {
+        if (complete) {
+            double completeAlpha = Math.min(COMPLETE_BG_ALPHA_MAX, alpha * COMPLETE_BG_ALPHA_MULTIPLIER);
+            return String.format("rgba(%d,%d,%d,%.2f)", r, g, b, completeAlpha);
+        }
+        return String.format("rgba(%d,%d,%d,%.2f)", r, g, b, alpha);
     }
 
     public static String titleTextHex(Color color) {
@@ -72,5 +87,20 @@ public final class PropertyColorStyles {
             }
         }
         return sb.toString();
+    }
+
+    public static String setTitleText(Color color, int ownedCount, int setSize) {
+        return displayName(color) + "  " + ownedCount + "/" + setSize;
+    }
+
+    /** Extra horizontal room for longer color names such as Light Blue. */
+    public static double minBoxWidthBonus(Color color) {
+        if (color == null) {
+            return 0;
+        }
+        return switch (color) {
+            case LIGHT_BLUE, DARK_BLUE, LIGHT_GREEN -> 20;
+            default -> 0;
+        };
     }
 }

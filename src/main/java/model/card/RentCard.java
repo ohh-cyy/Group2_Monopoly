@@ -1,8 +1,8 @@
 package model.card;
 
 import engine.GameEngine;
+import engine.PropertyRules;
 import engine.RentPayment;
-import engine.RentTable;
 import model.card.actionCard.ActionCard;
 import model.enums.CardType;
 import model.enums.Color;
@@ -95,14 +95,13 @@ public class RentCard extends ActionCard {
         return false;
     }
 
-    /** Counts properties used to calculate rent for this color. */
+    /** Counts billable properties used to calculate rent for this color. */
     public int countProperties(Player player, Color color) {
-        return player.getPropertiesByColor(color).size();
+        return PropertyRules.countBillableProperties(player, color);
     }
 
     public int calculateRent(Player player, Color chargeColor) {
-        int count = countProperties(player, chargeColor);
-        return RentTable.getRent(chargeColor, count);
+        return PropertyRules.calculateRent(player, chargeColor);
     }
 
     /**

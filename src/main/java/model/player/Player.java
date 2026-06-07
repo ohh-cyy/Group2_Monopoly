@@ -1,5 +1,6 @@
 package model.player;
 
+import engine.PropertyRules;
 import model.card.Card;
 import model.card.MoneyCard;
 import model.card.PropertyCard;
@@ -54,9 +55,9 @@ public class Player {
         return properties.getOrDefault(color, new ArrayList<>());
     }
 
-    public void addProperty(PropertyCard card) {
+    public boolean addProperty(PropertyCard card) {
         if (card == null) {
-            return;
+            return false;
         }
 
         Color color = card.getColor();
@@ -64,8 +65,13 @@ public class Player {
             color = Color.BROWN;
         }
 
+        if (!PropertyRules.isSetImprovement(card) && !PropertyRules.canAddBillableProperty(this, color)) {
+            return false;
+        }
+
         properties.putIfAbsent(color, new ArrayList<>());
         properties.get(color).add(card);
+        return true;
     }
 
     public void addBank(Card card) {
@@ -109,10 +115,7 @@ public class Player {
 
     /** Checks whether this color has a complete property set. */
     public boolean hasCompleteSet(Color color) {
-        if (color == null) {
-            return false;
-        }
-        return getPropertiesByColor(color).size() >= color.getSetSize();
+        return PropertyRules.isCompleteSet(this, color);
     }
 
     //use for dealbreaker to remove one player's set

@@ -5,6 +5,8 @@ import model.card.MoneyCard;
 import model.card.PropertyCard;
 import model.card.RentCard;
 import model.card.actionCard.DealBreaker;
+import model.card.actionCard.Hotel;
+import model.card.actionCard.House;
 import model.card.actionCard.PassGoCard;
 import model.enums.CardType;
 import model.enums.Color;
@@ -73,5 +75,37 @@ class DeckAndRulesTest {
         assertEquals(2, RentTable.getRent(Color.BROWN, 2));
         assertEquals(6, RentTable.getRent(Color.RED, 3));
         assertEquals(0, RentTable.getRent(null, 2));
+    }
+
+    @Test
+    void propertyRulesAddsHouseAndHotelRentBonuses() {
+        Player player = new Player("Player");
+        player.addProperty(new PropertyCard("Old Kent Road", "Brown", Color.BROWN, 1));
+        player.addProperty(new PropertyCard("Whitechapel", "Brown", Color.BROWN, 1));
+        House house = new House("House", "Add house", CardType.ACTION);
+        Hotel hotel = new Hotel("Hotel", "Add hotel", CardType.ACTION);
+
+        assertEquals(2, PropertyRules.calculateRent(player, Color.BROWN));
+
+        assertTrue(house.addHouseToSet(player, Color.BROWN));
+        assertEquals(5, PropertyRules.calculateRent(player, Color.BROWN));
+
+        assertTrue(hotel.addHotelToSet(player, Color.BROWN));
+        assertEquals(9, PropertyRules.calculateRent(player, Color.BROWN));
+    }
+
+    @Test
+    void completeSetRejectsAdditionalBillablePropertiesButAllowsHouse() {
+        Player player = new Player("Player");
+        player.addProperty(new PropertyCard("Old Kent Road", "Brown", Color.BROWN, 1));
+        player.addProperty(new PropertyCard("Whitechapel", "Brown", Color.BROWN, 1));
+        assertTrue(PropertyRules.isCompleteSet(player, Color.BROWN));
+        assertFalse(PropertyRules.canAddBillableProperty(player, Color.BROWN));
+        assertFalse(player.addProperty(new PropertyCard("Extra", "Brown", Color.BROWN, 1)));
+
+        House house = new House("House", "Add house", CardType.ACTION);
+        assertTrue(house.addHouseToSet(player, Color.BROWN));
+        assertFalse(player.addProperty(new PropertyCard("Extra 2", "Brown", Color.BROWN, 1)));
+        assertTrue(PropertyRules.hasHouse(player, Color.BROWN));
     }
 }

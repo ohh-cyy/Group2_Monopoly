@@ -1,5 +1,7 @@
 package controller.gameplay;
 
+import engine.PaymentTransfer;
+import engine.PropertyRules;
 import controller.dialog.GameDialogService;
 import model.card.Card;
 import model.card.MoneyCard;
@@ -43,6 +45,10 @@ public class PaymentService {
                 continue;
             }
             Card card = chosen.get();
+            if (!PaymentTransfer.isPayableAsset(payer, card)) {
+                status.accept("Properties in complete sets cannot be used to pay rent.", true);
+                continue;
+            }
             int value = getPaymentValue(card);
             movePaymentCard(collector, payer, card);
             paid += value;
@@ -53,17 +59,18 @@ public class PaymentService {
     }
 
     private boolean hasPayableAsset(Player player) {
-        return !player.getBank().isEmpty() || !player.getAllProperties().isEmpty();
+        return PaymentTransfer.hasPayableAsset(player);
     }
 
     private Optional<Card> promptSelectPaymentCard(Player payer, int remainingM, String reason) {
-        List<Card> options = new ArrayList<>();
-        options.addAll(payer.getBank());
-        options.addAll(payer.getAllProperties());
+        List<Card> options = PaymentTransfer.listPayableAssets(payer);
+        if (options.isEmpty()) {
+            return Optional.empty();
+        }
         return dialogs.showChoiceDialog(
                 "Choose Payment Asset",
                 payer.getName() + " must pay " + remainingM + "M",
-                reason + "\nChoose one bank card or property to pay. Extra value is not returned.",
+                reason + "\nChoose one bank card or property to pay. Properties in complete sets cannot be used.",
                 options,
                 card -> card.getName() + " (" + describePaymentCard(card) + ")",
                 this::paymentCardStyle);
@@ -75,9 +82,11 @@ public class PaymentService {
             collector.addBank(card);
             return;
         }
-        if (card instanceof PropertyCard property && payer.getAllProperties().contains(property)) {
+        if (card instanceof PropertyCard property && PropertyRules.canPayWithProperty(payer, property)) {
             payer.removeProperty(property);
-            collector.addProperty(property);
+            if (!collector.addProperty(property)) {
+                payer.addProperty(property);
+            }
         }
     }
 

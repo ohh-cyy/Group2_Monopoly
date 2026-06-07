@@ -168,8 +168,9 @@
 }
 
 .property-set-complete {
-    -fx-border-width: 3;
-    -fx-effect: dropshadow(gaussian, rgba(241,196,15,0.35), 10, 0.25, 0, 0);
+    -fx-border-width: 3.5;
+    -fx-border-style: solid;
+    -fx-effect: dropshadow(gaussian, rgba(241,196,15,0.42), 12, 0.28, 0, 1);
 }
 
 .player-info-card {
@@ -424,6 +425,39 @@
     -fx-font-size: 18px;
     -fx-font-weight: 900;
     -fx-text-fill: #c0392b;
+}
+
+.victory-dialog {
+    -fx-background-color: linear-gradient(to bottom, #fffdf5, #fff0c9);
+    -fx-border-color: rgba(212, 136, 6, 0.45);
+}
+
+.victory-screen-body {
+    -fx-padding: 10 24 6 24;
+    -fx-alignment: center;
+}
+
+.victory-fireworks-image {
+    -fx-effect: dropshadow(gaussian, rgba(255, 193, 7, 0.35), 18, 0.25, 0, 2);
+}
+
+.victory-title {
+    -fx-font-size: 22px;
+    -fx-font-weight: 900;
+    -fx-text-fill: #103c2a;
+}
+
+.victory-winner-label {
+    -fx-font-size: 28px;
+    -fx-font-weight: 900;
+    -fx-text-fill: #d48806;
+    -fx-text-alignment: center;
+}
+
+.victory-subtitle {
+    -fx-font-size: 13px;
+    -fx-text-fill: #5a6b62;
+    -fx-text-alignment: center;
 }
 
 .dialog-choice-list {

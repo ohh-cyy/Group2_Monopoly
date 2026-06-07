@@ -4,6 +4,7 @@ import engine.GameEngine;
 import engine.PropertyRules;
 import model.card.PropertyCard;
 import model.enums.CardType;
+import model.enums.Color;
 import model.player.Player;
 
 public class SlyDeal extends ActionCard {
@@ -38,8 +39,15 @@ public class SlyDeal extends ActionCard {
         if (PropertyRules.isCompleteSet(target, property.getColor())) {
             return false;
         }
+        Color color = property.getColor();
+        if (color != null && !PropertyRules.canAddBillableProperty(thief, color)) {
+            return false;
+        }
         target.removeProperty(property);
-        thief.addProperty(property);
+        if (!thief.addProperty(property)) {
+            target.addProperty(property);
+            return false;
+        }
         return true;
     }
 }
