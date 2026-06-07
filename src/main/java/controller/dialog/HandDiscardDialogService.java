@@ -1,34 +1,49 @@
 package controller.dialog;
 
-import engine.GameEngine;
-import javafx.scene.control.Dialog;
 import model.card.Card;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 
-/** Prompts for voluntary discards and end-of-turn hand limit (max 7 cards). */
+/**
+ * Prepares the shared hand-limit discard prompt for local and network games.
+ */
 public final class HandDiscardDialogService {
     private HandDiscardDialogService() {
     }
 
     public static Optional<Card> promptDiscardOne(
-            Function<DialogHelper, Optional<Card>> showChoiceDialog,
+            Function<DiscardPrompt, Optional<Card>> promptHandler,
             List<Card> hand,
             int excess,
             boolean endingTurn) {
-        String prompt = endingTurn
-                ? "请选择要丢弃的卡牌（还需丢弃 " + excess + " 张才能结束回合）"
-                : "请选择要丢弃的卡牌（当前手牌 " + hand.size() + " 张，上限 "
-                        + GameEngine.MAX_HAND_SIZE + " 张）";
-        return showChoiceDialog.apply(new DialogHelper(
-                "手牌上限",
-                "手牌超过 " + GameEngine.MAX_HAND_SIZE + " 张",
-                prompt,
-                hand));
+        Objects.requireNonNull(promptHandler, "promptHandler");
+        if (hand == null || hand.isEmpty() || excess <= 0) {
+            return Optional.empty();
+        }
+
+        List<Card> availableCards = List.copyOf(hand);
+        String suffix = endingTurn
+                ? " before your turn can end"
+                : "";
+        DiscardPrompt prompt = new DiscardPrompt(
+                "Hand Limit",
+                "You have too many cards in hand",
+                "Choose a card to discard (" + excess + " more required" + suffix + "):",
+                availableCards);
+
+        Optional<Card> selected = promptHandler.apply(prompt);
+        if (selected == null || selected.isEmpty() || !availableCards.contains(selected.get())) {
+            return Optional.empty();
+        }
+        return selected;
     }
 
-    public record DialogHelper(String title, String header, String prompt, List<Card> hand) {
+    public record DiscardPrompt(String title, String header, String prompt, List<Card> hand) {
+        public DiscardPrompt {
+            hand = List.copyOf(hand);
+        }
     }
 }
