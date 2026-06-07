@@ -3,8 +3,10 @@ package controller;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
+import ui.SettingsOverlay;
 
 import java.io.IOException;
 
@@ -15,7 +17,8 @@ public class MainMenuController {
         Node source = (Node) event.getSource();
         Stage stage = (Stage) source.getScene().getWindow();
         javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/ui/game-view.fxml"));
-        Scene scene = new Scene(loader.load(), 1200, 800);
+        Parent root = loader.load();
+        Scene scene = new Scene(SettingsOverlay.wrap(root, stage), 1200, 800);
         stage.setScene(scene);
         stage.setTitle("Monopoly Deal - Game");
     }

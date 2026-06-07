@@ -17,6 +17,7 @@ import network.protocol.MessageTypes;
 import network.protocol.ServerMessage;
 import network.server.GameServer;
 import network.server.GameSession;
+import ui.SettingsOverlay;
 
 import java.io.IOException;
 
@@ -126,7 +127,7 @@ public class LobbyController {
             GameController controller = loader.getController();
             controller.startLocalGame();
             stage.setTitle("Monopoly Deal - Local");
-            stage.setScene(new Scene(loader.getRoot(), 1360, 900));
+            stage.setScene(new Scene(SettingsOverlay.wrap(loader.getRoot(), stage), 1360, 900));
         } catch (IOException e) {
             statusLabel.setText("Unable to open local game: " + e.getMessage());
         }
@@ -214,7 +215,7 @@ public class LobbyController {
             }
             NetworkClient gameClient = client;
             stage.setTitle("Monopoly Deal - Online");
-            stage.setScene(new Scene((javafx.scene.Parent) root, 1360, 900));
+            stage.setScene(new Scene(SettingsOverlay.wrap((javafx.scene.Parent) root, stage), 1360, 900));
             stage.show();
             controller.startOnlineGame(gameClient, localSeat, message.state);
             client = null;

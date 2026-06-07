@@ -3,6 +3,140 @@
     -fx-background-color: linear-gradient(to bottom right, #26140c, #5a321d 48%, #1b0f09);
 }
 
+.cover-root {
+    -fx-font-family: "Inter", "Segoe UI", "Microsoft YaHei UI", "Arial";
+    -fx-background-color:
+        radial-gradient(center 50% 42%, radius 92%, #287a4d, #145438 58%, #092d20 100%),
+        linear-gradient(to bottom right, #26140c, #5a321d 48%, #1b0f09);
+    -fx-border-color: #7b4b28 #2a160d #1a0d07 #7b4b28;
+    -fx-border-width: 14;
+    -fx-effect: innershadow(gaussian, rgba(0,0,0,0.70), 38, 0.32, 0, 2);
+}
+
+.cover-motion-layer {
+    -fx-background-color:
+        radial-gradient(center 50% 35%, radius 66%, rgba(255, 232, 161, 0.12), rgba(0, 0, 0, 0.0)),
+        radial-gradient(center 50% 50%, radius 94%, rgba(0, 0, 0, 0.0), rgba(0, 0, 0, 0.34));
+}
+
+.cover-floating-card {
+    -fx-fill: rgba(248, 221, 154, 0.42);
+    -fx-stroke: rgba(255, 248, 221, 0.42);
+    -fx-stroke-width: 2;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.35), 18, 0.20, 0, 6);
+}
+
+.cover-light-orb {
+    -fx-fill: rgba(255, 226, 151, 0.34);
+    -fx-effect: dropshadow(gaussian, rgba(255, 226, 151, 0.25), 36, 0.48, 0, 0);
+}
+
+.cover-content {
+    -fx-padding: 44 56;
+    -fx-background-color: rgba(3, 22, 14, 0.22);
+    -fx-background-radius: 32;
+    -fx-border-color: rgba(242, 198, 111, 0.26);
+    -fx-border-width: 1.5;
+    -fx-border-radius: 32;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.38), 28, 0.22, 0, 10);
+}
+
+.cover-title {
+    -fx-text-fill: linear-gradient(to bottom, #fff6d6, #e0ac52);
+    -fx-font-size: 68px;
+    -fx-font-weight: 900;
+    -fx-letter-spacing: 1.8px;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.58), 14, 0.30, 0, 4);
+}
+
+.cover-start-button {
+    -fx-min-width: 260;
+    -fx-min-height: 64;
+    -fx-background-color: linear-gradient(to bottom, #f6d98f, #c98f38);
+    -fx-background-radius: 999;
+    -fx-border-color: rgba(255,255,255,0.52);
+    -fx-border-width: 2;
+    -fx-border-radius: 999;
+    -fx-text-fill: #2f1a0f;
+    -fx-font-size: 22px;
+    -fx-font-weight: 900;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.42), 16, 0.24, 0, 6);
+}
+
+.cover-start-button:hover {
+    -fx-translate-y: -2;
+    -fx-background-color: linear-gradient(to bottom, #ffe7a5, #dc9f3f);
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.52), 20, 0.28, 0, 8);
+}
+
+.cover-start-button:pressed {
+    -fx-translate-y: 1;
+    -fx-scale-x: 0.985;
+    -fx-scale-y: 0.985;
+}
+
+.settings-button {
+    -fx-min-width: 46;
+    -fx-min-height: 46;
+    -fx-background-color: linear-gradient(to bottom, rgba(246, 217, 143, 0.96), rgba(190, 128, 45, 0.96));
+    -fx-background-radius: 999;
+    -fx-border-color: rgba(255,255,255,0.58);
+    -fx-border-width: 2;
+    -fx-border-radius: 999;
+    -fx-text-fill: #2f1a0f;
+    -fx-font-size: 20px;
+    -fx-font-weight: 900;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.42), 14, 0.22, 0, 5);
+}
+
+.settings-button:hover {
+    -fx-translate-y: -1;
+    -fx-background-color: linear-gradient(to bottom, #ffe7a5, #d99a3d);
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.54), 18, 0.28, 0, 7);
+}
+
+.settings-dialog {
+    -fx-min-width: 360;
+}
+
+.settings-dialog-body {
+    -fx-padding: 16;
+    -fx-background-color: linear-gradient(to bottom right, rgba(255, 246, 218, 0.98), rgba(217, 194, 150, 0.98));
+    -fx-background-radius: 16;
+    -fx-border-color: rgba(115, 75, 35, 0.36);
+    -fx-border-radius: 16;
+    -fx-spacing: 14;
+}
+
+.settings-dialog-title {
+    -fx-font-size: 24px;
+    -fx-font-weight: 900;
+    -fx-text-fill: #103c2a;
+}
+
+.settings-dialog-subtitle {
+    -fx-font-size: 13px;
+    -fx-text-fill: #5a4630;
+}
+
+.settings-checkbox {
+    -fx-font-size: 16px;
+    -fx-font-weight: 900;
+    -fx-text-fill: #173527;
+    -fx-padding: 10 12;
+    -fx-background-color: rgba(255,255,255,0.46);
+    -fx-background-radius: 12;
+    -fx-border-color: rgba(16, 60, 42, 0.16);
+    -fx-border-radius: 12;
+}
+
+.settings-checkbox:selected {
+    -fx-background-color: rgba(255, 238, 177, 0.74);
+    -fx-border-color: rgba(224, 172, 82, 0.75);
+}
+
 .top-bar {
     -fx-background-color: linear-gradient(to bottom, #5a321d, #351b10);
     -fx-padding: 16 22 14 22;
