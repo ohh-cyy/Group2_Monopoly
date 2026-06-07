@@ -33,7 +33,7 @@
                             <Label text="🎮" styleClass="lobby-card-icon"/>
                             <VBox spacing="2">
                                 <Label text="Player Setup" styleClass="lobby-section-title"/>
-                                <Label text="保留原有联机与本地入口，只升级大厅展示层。" styleClass="lobby-section-subtitle"/>
+                                <Label text="Keep the original online and local entry points, only upgrade the lobby display layer." styleClass="lobby-section-subtitle"/>
                             </VBox>
                         </HBox>
 
@@ -112,7 +112,7 @@
                             <Label text="🏆" styleClass="lobby-card-icon"/>
                             <VBox spacing="2">
                                 <Label text="Achievement Library" styleClass="lobby-section-title"/>
-                                <Label text="5 条轻量成就，可在大厅和基础操作中完成。"
+                                <Label text="5 lightweight achievements that can be completed in the lobby and through basic operations."
                                        wrapText="true"
                                        styleClass="lobby-section-subtitle"/>
                             </VBox>

@@ -365,11 +365,11 @@ private double computePropertyRowHeight(int playerCount) {
             return;
         }
         if (!gameEngine.hasDrawnThisTurn()) {
-            showStatus("请先点击 Draw Cards 抽牌", true);
+            showStatus("Please click Draw Cards first", true);
             return;
         }
         if (selectedCard == null) {
-            showStatus("请先在手牌中选择一张要丢弃的卡牌", true);
+            showStatus("Please select a card from your hand to discard", true);
             return;
         }
         discardSelectedCard();
@@ -382,8 +382,8 @@ private double computePropertyRowHeight(int playerCount) {
         selectedCardView = null;
         pendingPlayedCardView = null;
         gameEngine.discardFromHand(player, card);
-        logMessage(player.getName() + " 丢弃 " + card.getName());
-        showStatus("已丢弃 " + card.getName(), false);
+        logMessage(player.getName() + " discarded " + card.getName());
+        showStatus("Discarded " + card.getName(), false);
         afterStateChange();
     }
 
@@ -402,11 +402,11 @@ private double computePropertyRowHeight(int playerCount) {
                     excess,
                     true);
             if (choice.isEmpty()) {
-                showStatus("结束回合前必须将手牌弃至 " + GameEngine.MAX_HAND_SIZE + " 张以内", true);
+                showStatus("You must discard down to " + GameEngine.MAX_HAND_SIZE + " cards before ending your turn", true);
                 return false;
             }
             gameEngine.discardFromHand(player, choice.get());
-            logMessage(player.getName() + " 丢弃 " + choice.get().getName() + "（手牌上限）");
+            logMessage(player.getName() + " discarded " + choice.get().getName() + " (hand size limit)");
         }
         return true;
     }
@@ -1494,7 +1494,7 @@ private void forceEndTurn() {
             showStatus("Selected action card [" + card.getName() + "] (bank " + actionCard.getBankValueM()
                     + "M). Play card to choose: use effect or deposit to bank", false);
         } else {
-            showStatus("已选择：" + card.getName() + "，双击出牌，或点击 Discard Selected Card 丢弃", false);
+            showStatus("Selected: " + card.getName() + ". Double-click to play, or click Discard Selected Card to discard", false);
         }
         updateButtonStates();
     }

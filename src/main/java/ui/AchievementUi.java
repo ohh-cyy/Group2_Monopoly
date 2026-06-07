@@ -43,7 +43,7 @@ public final class AchievementUi {
         icon.getStyleClass().add("achievement-icon");
 
         VBox textBox = new VBox(6);
-        Label titleLabel = new Label("成就解锁 · " + achievement.title());
+        Label titleLabel = new Label("Achievement Unlocked · " + achievement.title());
         titleLabel.getStyleClass().add("achievement-title");
         Label descLabel = new Label(achievement.description());
         descLabel.setWrapText(true);
@@ -65,9 +65,9 @@ public final class AchievementUi {
         VBox body = new VBox(14);
         body.getStyleClass().add("achievement-library-body");
 
-        Label header = new Label("成就库");
+        Label header = new Label("Achievement Library");
         header.getStyleClass().add("achievement-library-title");
-        Label subtitle = new Label("已解锁 " + AchievementManager.progressText() + " · 这些成就都可以通过大厅和基础出牌操作轻松完成。");
+        Label subtitle = new Label("Unlocked " + AchievementManager.progressText() + " · These achievements can be easily completed through lobby and basic gameplay actions.");
         subtitle.setWrapText(true);
         subtitle.getStyleClass().add("achievement-library-subtitle");
         ProgressBar progressBar = new ProgressBar(AchievementManager.unlockedCount() / (double) AchievementManager.totalCount());
@@ -110,7 +110,7 @@ public final class AchievementUi {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        Label badge = new Label(unlocked ? "已解锁" : "未解锁");
+        Label badge = new Label(unlocked ? "Unlocked" : "Locked");
         badge.getStyleClass().add(unlocked ? "achievement-badge-unlocked" : "achievement-badge-locked");
 
         row.getChildren().addAll(icon, textBox, spacer, badge);

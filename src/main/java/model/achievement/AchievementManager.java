@@ -21,11 +21,11 @@ public final class AchievementManager {
     public static final String FIRST_PLAY = "first-play";
 
     private static final List<Achievement> CATALOG = List.of(
-            new Achievement(WELCOME_LOBBY, "🎲", "初入大厅", "打开 Monopoly Deal 大厅，正式进入游戏 Lobby。"),
-            new Achievement(SET_NAME, "🧑", "准备就绪", "输入一个玩家名，让自己出现在牌桌名单中。"),
-            new Achievement(CHOOSE_MODE, "🚪", "选择模式", "点击房主开局、加入游戏或本地热座任意入口。"),
-            new Achievement(FIRST_DRAW, "🃏", "首次摸牌", "在游戏中成功摸 2 张牌。"),
-            new Achievement(FIRST_PLAY, "💰", "打出第一张牌", "在游戏中打出、放置或存入任意一张牌。")
+            new Achievement(WELCOME_LOBBY, "🎲", "First Lobby Visit", "Open the Monopoly Deal lobby and enter the game."),
+            new Achievement(SET_NAME, "🧑", "Ready to Play", "Enter a player name to appear on the roster."),
+            new Achievement(CHOOSE_MODE, "🚪", "Choose Mode", "Start as host, join a game, or play local hot seat."),
+            new Achievement(FIRST_DRAW, "🃏", "First Draw", "Successfully draw 2 cards in a game."),
+            new Achievement(FIRST_PLAY, "💰", "First Card Played", "Play, place, or deposit any card in a game.")
     );
 
     private static final Path SAVE_FILE = Path.of(
