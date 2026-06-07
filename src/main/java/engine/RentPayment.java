@@ -5,6 +5,7 @@ import model.card.MoneyCard;
 import model.card.PropertyCard;
 import model.card.WildpropertyCard;
 import model.card.actionCard.ActionCard;
+import model.enums.Color;
 import model.player.Player;
 
 import java.util.ArrayList;
@@ -49,7 +50,10 @@ public final class RentPayment {
             }
             int value = Math.max(1, property.getPrice());
             debtor.removeProperty(property);
-            collector.addProperty(property);
+            if (!collector.addProperty(property)) {
+                debtor.addProperty(property);
+                break;
+            }
             paid += value;
         }
 
@@ -71,7 +75,7 @@ public final class RentPayment {
             }
         }
 
-        for (PropertyCard property : player.getAllProperties()) {
+        for (PropertyCard property : PropertyRules.getPayableProperties(player)) {
             int value = Math.max(1, property.getPrice());
             if (value > 0) {
                 min = Math.min(min, value);
@@ -95,7 +99,7 @@ public final class RentPayment {
     }
 
     private static PropertyCard findSmallestProperty(Player player) {
-        List<PropertyCard> list = new ArrayList<>(player.getAllProperties());
+        List<PropertyCard> list = new ArrayList<>(PropertyRules.getPayableProperties(player));
         if (list.isEmpty()) {
             return null;
         }

@@ -22,13 +22,23 @@ public final class PaymentTransfer {
             return options;
         }
         options.addAll(player.getBank());
-        options.addAll(player.getAllProperties());
+        options.addAll(PropertyRules.getPayableProperties(player));
         return options;
     }
 
     public static boolean hasPayableAsset(Player player) {
         return player != null
-                && (!player.getBank().isEmpty() || !player.getAllProperties().isEmpty());
+                && (!player.getBank().isEmpty() || !PropertyRules.getPayableProperties(player).isEmpty());
+    }
+
+    public static boolean isPayableAsset(Player player, Card card) {
+        if (player == null || card == null) {
+            return false;
+        }
+        if (player.getBank().contains(card)) {
+            return true;
+        }
+        return card instanceof PropertyCard property && PropertyRules.canPayWithProperty(player, property);
     }
 
     public static OptionalInt payWithCard(Player collector, Player payer, String cardId) {
@@ -36,7 +46,7 @@ public final class PaymentTransfer {
             return OptionalInt.empty();
         }
         Card card = findPayableCard(payer, cardId);
-        if (card == null) {
+        if (card == null || !isPayableAsset(payer, card)) {
             return OptionalInt.empty();
         }
         int value = getPaymentValue(card);
@@ -50,7 +60,7 @@ public final class PaymentTransfer {
                 return card;
             }
         }
-        for (PropertyCard property : payer.getAllProperties()) {
+        for (PropertyCard property : PropertyRules.getPayableProperties(payer)) {
             if (cardId.equals(property.getInstanceId())) {
                 return property;
             }
@@ -64,9 +74,11 @@ public final class PaymentTransfer {
             collector.addBank(card);
             return;
         }
-        if (card instanceof PropertyCard property && payer.getAllProperties().contains(property)) {
+        if (card instanceof PropertyCard property && PropertyRules.canPayWithProperty(payer, property)) {
             payer.removeProperty(property);
-            collector.addProperty(property);
+            if (!collector.addProperty(property)) {
+                payer.addProperty(property);
+            }
         }
     }
 

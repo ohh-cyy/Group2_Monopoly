@@ -4,6 +4,7 @@ import engine.GameEngine;
 import engine.PropertyRules;
 import model.card.PropertyCard;
 import model.enums.CardType;
+import model.enums.Color;
 import model.player.Player;
 
 public class ForcedDeal extends ActionCard {
@@ -43,11 +44,22 @@ public class ForcedDeal extends ActionCard {
         if (PropertyRules.isCompleteSet(target, targetGives.getColor())) {
             return false;
         }
+        Color playerReceives = targetGives.getColor();
+        Color targetReceives = playerGives.getColor();
+        if (playerReceives != null && !PropertyRules.canAddBillableProperty(player, playerReceives)) {
+            return false;
+        }
+        if (targetReceives != null && !PropertyRules.canAddBillableProperty(target, targetReceives)) {
+            return false;
+        }
 
         player.removeProperty(playerGives);
         target.removeProperty(targetGives);
-        player.addProperty(targetGives);
-        target.addProperty(playerGives);
+        if (!player.addProperty(targetGives) || !target.addProperty(playerGives)) {
+            player.addProperty(playerGives);
+            target.addProperty(targetGives);
+            return false;
+        }
         return true;
     }
 }

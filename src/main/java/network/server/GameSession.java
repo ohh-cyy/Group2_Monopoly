@@ -3,6 +3,7 @@ package network.server;
 import engine.Deck;
 import engine.DeckFactory;
 import engine.GameEngine;
+import engine.PropertyRules;
 import model.card.Card;
 import model.card.RentCard;
 import model.card.WildpropertyCard;
@@ -300,7 +301,7 @@ public class GameSession {
             return false;
         }
         Color color = CardMapper.parseColor(message.color);
-        if (color == null) {
+        if (color == null || !PropertyRules.canAddBillableProperty(player, color)) {
             return false;
         }
         wild.setChosenColor(color);
@@ -375,6 +376,13 @@ public class GameSession {
         if (card instanceof ActionCard) {
             return false;
         }
+        if (card instanceof model.card.PropertyCard property
+                && !PropertyRules.isSetImprovement(property)) {
+            Color color = property.getColor();
+            if (color != null && !PropertyRules.canAddBillableProperty(player, color)) {
+                return false;
+            }
+        }
         card.use(player, engine);
         player.removeFromHand(card);
         appendLog(player.getName() + " played " + card.getName());
@@ -421,7 +429,10 @@ public class GameSession {
             return "This card cannot be deposited to the bank";
         }
         if ("PROPERTY".equals(mode)) {
-            return "Choose a valid color for the wild property";
+            return "That color set is already complete; choose another color or deposit to bank";
+        }
+        if (card instanceof model.card.PropertyCard) {
+            return "That color set is already complete; only House or Hotel can be added";
         }
         return "Could not play card";
     }

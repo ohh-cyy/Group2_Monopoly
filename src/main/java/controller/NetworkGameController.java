@@ -2,7 +2,6 @@ package controller;
 
 import engine.PaymentTransfer;
 import engine.PropertyRules;
-import engine.RentTable;
 import engine.GameEngine;
 import javafx.animation.FadeTransition;
 import javafx.animation.Interpolator;
@@ -35,6 +34,7 @@ import controller.dialog.HandDiscardDialogService;
 import ui.AchievementUi;
 import ui.CardView;
 import ui.GameAlertDialogs;
+import ui.GameVictoryScreen;
 import ui.PublicPropertyBoardLayout;
 import ui.PublicPropertySetView;
 
@@ -83,6 +83,7 @@ public class NetworkGameController {
     private CardView selectedCardView;
     private int mergedLogSize;
     private boolean handDockExpanded = false;
+    private boolean victoryScreenShown = false;
     private double lastPropertyRowHeight = -1;
     private boolean pendingEndTurnAfterDiscard = false;
     private Image avatarImage;
@@ -324,7 +325,7 @@ public class NetworkGameController {
         Optional<Card> chosen = showStyledChoiceDialog(
                 "Choose Payment Asset",
                 "You must pay " + prompt.remainingDue + "M",
-                prompt.actionName + "\nChoose one bank card or property to pay. Extra value is not returned.",
+                prompt.actionName + "\nChoose one bank card or property to pay. Properties in complete sets cannot be used.",
                 options,
                 this::describePaymentCard,
                 this::paymentCardStyle);
@@ -389,7 +390,28 @@ public class NetworkGameController {
         }
         mergeLog(newState.logLines);
         updateUi();
+        maybeShowVictoryScreen();
         maybePromptHandLimitDiscard();
+    }
+
+    private void maybeShowVictoryScreen() {
+        if (state == null || !state.gameOver || victoryScreenShown) {
+            return;
+        }
+        if (state.winnerName == null || state.winnerName.isBlank()) {
+            return;
+        }
+        victoryScreenShown = true;
+        GameVictoryScreen.show(statusMessage, state.winnerName);
+        if (drawCardBtn != null) {
+            drawCardBtn.setDisable(true);
+        }
+        if (discardCardBtn != null) {
+            discardCardBtn.setDisable(true);
+        }
+        if (endTurnBtn != null) {
+            endTurnBtn.setDisable(true);
+        }
     }
 
     private void maybePromptHandLimitDiscard() {
@@ -559,7 +581,16 @@ public class NetworkGameController {
             restoreSelectedCard(wild, sourceView);
             return;
         }
-        Optional<Color> color = promptSelectWildColor(wild);
+        Player localView = playerViewFromSeat(localSeat);
+        List<Color> playableColors = colors.stream()
+                .filter(color -> PropertyRules.canAddBillableProperty(localView, color))
+                .toList();
+        if (playableColors.isEmpty()) {
+            showStatus("All available colors are already complete. Deposit to bank if you can.", true);
+            restoreSelectedCard(wild, sourceView);
+            return;
+        }
+        Optional<Color> color = promptSelectWildColor(wild, playableColors);
         if (color.isEmpty()) {
             restoreSelectedCard(wild, sourceView);
             showStatus("Cancelled, wild card kept in hand", false);
@@ -937,16 +968,14 @@ public class NetworkGameController {
         return Optional.empty();
     }
 
-    private Optional<Color> promptSelectWildColor(WildpropertyCard wild) {
-        List<Color> options = wild.getAvailableColors();
-        if (options.isEmpty()) {
+    private Optional<Color> promptSelectWildColor(WildpropertyCard wild, List<Color> playableColors) {
+        if (playableColors == null || playableColors.isEmpty()) {
             return Optional.empty();
         }
-        return showWildPropertyColorDialog(wild);
+        return showWildPropertyColorDialog(wild, playableColors);
     }
 
-    private Optional<Color> showWildPropertyColorDialog(WildpropertyCard wild) {
-        List<Color> colors = wild.getAvailableColors();
+    private Optional<Color> showWildPropertyColorDialog(WildpropertyCard wild, List<Color> colors) {
         if (colors.isEmpty()) {
             return Optional.empty();
         }
@@ -966,15 +995,19 @@ public class NetworkGameController {
     }
 
     private Optional<Color> promptRentColor(RentCard rentCard) {
-        Map<Color, Integer> counts = propertyCountsForLocalSeat();
+        Map<Color, List<Card>> byColor = propertiesByColorForLocalSeat();
         List<Color> options = new ArrayList<>();
         if (rentCard.isAllColors()) {
             for (Color c : Color.values()) {
-                if (counts.getOrDefault(c, 0) > 0) options.add(c);
+                if (PropertyRules.countBillableProperties(byColor.get(c)) > 0) {
+                    options.add(c);
+                }
             }
         } else {
             for (Color c : rentCard.getApplicableColors()) {
-                if (counts.getOrDefault(c, 0) > 0) options.add(c);
+                if (PropertyRules.countBillableProperties(byColor.get(c)) > 0) {
+                    options.add(c);
+                }
             }
         }
         if (options.isEmpty()) {
@@ -989,9 +1022,29 @@ public class NetworkGameController {
                 "Select which property set to collect rent from",
                 "Color (count → rent):",
                 options,
-                color -> color + "  ·  " + counts.getOrDefault(color, 0) + " cards → "
-                        + RentTable.getRent(color, counts.getOrDefault(color, 0)) + "M",
+                color -> color + "  ·  " + PropertyRules.countBillableProperties(byColor.get(color)) + " cards → "
+                        + PropertyRules.calculateRent(color, byColor.get(color)) + "M",
                 color -> "-fx-background-color: " + cssColorFor(color) + "; -fx-text-fill: " + textColorFor(color) + ";");
+    }
+
+    private Map<Color, List<Card>> propertiesByColorForLocalSeat() {
+        Map<Color, List<Card>> byColor = new EnumMap<>(Color.class);
+        if (state == null) {
+            return byColor;
+        }
+        for (PlayerViewDto p : state.players) {
+            if (p.seat != localSeat) {
+                continue;
+            }
+            for (var dto : p.properties) {
+                Color color = CardMapper.parseColor(dto.color);
+                if (color == null) {
+                    continue;
+                }
+                byColor.computeIfAbsent(color, ignored -> new ArrayList<>()).add(CardMapper.fromDto(dto));
+            }
+        }
+        return byColor;
     }
 
     private Optional<Integer> promptOpponentSeat(String title) {
@@ -1006,20 +1059,6 @@ public class NetworkGameController {
         Optional<PlayerViewDto> picked = showStyledChoiceDialog(
                 title, title, "Select player:", opponents, p -> p.name, p -> null);
         return picked.map(p -> p.seat);
-    }
-
-
-    private Map<Color, Integer> propertyCountsForLocalSeat() {
-        Map<Color, Integer> counts = new EnumMap<>(Color.class);
-        if (state == null) return counts;
-        for (PlayerViewDto p : state.players) {
-            if (p.seat != localSeat) continue;
-            for (var dto : p.properties) {
-                Color c = CardMapper.parseColor(dto.color);
-                if (c != null) counts.merge(c, 1, Integer::sum);
-            }
-        }
-        return counts;
     }
 
     private boolean isMyTurn() {
@@ -1340,6 +1379,12 @@ public class NetworkGameController {
 
     private void updateButtons() {
         if (state == null) return;
+        if (state.gameOver) {
+            if (drawCardBtn != null) drawCardBtn.setDisable(true);
+            if (discardCardBtn != null) discardCardBtn.setDisable(true);
+            if (endTurnBtn != null) endTurnBtn.setDisable(true);
+            return;
+        }
         boolean myTurn = isMyTurn();
         if (drawCardBtn != null) drawCardBtn.setDisable(!myTurn || state.hasDrawnThisTurn);
         if (discardCardBtn != null) {

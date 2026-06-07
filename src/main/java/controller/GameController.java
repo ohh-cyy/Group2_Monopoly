@@ -16,6 +16,7 @@ import controller.dialog.HandDiscardDialogService;
 import ui.AchievementUi;
 import ui.CardView;
 import ui.GameAlertDialogs;
+import ui.GameVictoryScreen;
 import ui.PublicPropertyBoardLayout;
 import ui.PublicPropertySetView;
 import javafx.fxml.FXML;
@@ -439,6 +440,15 @@ private double computePropertyRowHeight(int playerCount) {
 
             if (played instanceof WildpropertyCard wildCard) {
                 playWildPropertyCard(player, wildCard);
+                return;
+            }
+
+            if (played instanceof PropertyCard propertyCard
+                    && !PropertyRules.isSetImprovement(propertyCard)
+                    && propertyCard.getColor() != null
+                    && !PropertyRules.canAddBillableProperty(player, propertyCard.getColor())) {
+                selectedCard = played;
+                showStatus("This color set is already complete. You can only add House or Hotel.", true);
                 return;
             }
 
@@ -1019,7 +1029,17 @@ private double computePropertyRowHeight(int playerCount) {
             }
         }
 
-        Optional<Color> color = promptSelectWildColor(wild);
+        List<Color> playableColors = wild.getAvailableColors().stream()
+                .filter(color -> PropertyRules.canAddBillableProperty(player, color))
+                .toList();
+        if (playableColors.isEmpty()) {
+            selectedCard = wild;
+            pendingPlayedCardView = null;
+            showStatus("All available colors are already complete. Deposit to bank if you can.", true);
+            return;
+        }
+
+        Optional<Color> color = promptSelectWildColor(wild, playableColors);
         if (color.isEmpty()) {
             selectedCard = wild;
             pendingPlayedCardView = null;
@@ -1029,6 +1049,12 @@ private double computePropertyRowHeight(int playerCount) {
         }
 
         wild.setChosenColor(color.get());
+        if (!PropertyRules.canAddBillableProperty(player, color.get())) {
+            selectedCard = wild;
+            pendingPlayedCardView = null;
+            showStatus("This color set is already complete. You can only add House or Hotel.", true);
+            return;
+        }
         player.removeFromHand(wild);
         wild.use(player, gameEngine);
         logMessage(player.getName() + " played wild property [" + wild.getName() + "] as " + color.get());
@@ -1058,16 +1084,14 @@ private double computePropertyRowHeight(int playerCount) {
         return Optional.empty();
     }
 
-        private Optional<Color> promptSelectWildColor(WildpropertyCard wild) {
-        List<Color> options = wild.getAvailableColors();
-        if (options.isEmpty()) {
+        private Optional<Color> promptSelectWildColor(WildpropertyCard wild, List<Color> playableColors) {
+        if (playableColors == null || playableColors.isEmpty()) {
             return Optional.empty();
         }
-        return showWildPropertyColorDialog(wild);
+        return showWildPropertyColorDialog(wild, playableColors);
     }
 
-    private Optional<Color> showWildPropertyColorDialog(WildpropertyCard wild) {
-        List<Color> colors = wild.getAvailableColors();
+    private Optional<Color> showWildPropertyColorDialog(WildpropertyCard wild, List<Color> colors) {
         if (colors.isEmpty()) {
             return Optional.empty();
         }
@@ -1713,8 +1737,7 @@ private void forceEndTurn() {
     
         private void showGameOver(Player winner) {
         Platform.runLater(() -> {
-            showStyledButtonDialog("Game Over", "Congratulations!", winner.getName() + " wins the game!",
-                    new ButtonType("OK", ButtonBar.ButtonData.OK_DONE));
+            GameVictoryScreen.show(statusMessage, winner.getName());
             gameStatusText.setText("Game Over - " + winner.getName() + " Wins!");
             logMessage("=== GAME OVER === " + winner.getName() + " wins!");
             drawCardBtn.setDisable(true);

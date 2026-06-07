@@ -1,11 +1,12 @@
 package ui;
 
-import engine.RentTable;
+import engine.PropertyRules;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.text.Text;
 import model.card.Card;
 import model.enums.Color;
 
@@ -20,9 +21,10 @@ public final class PublicPropertySetView {
 
     public static VBox build(Color color, List<Card> cards, CardView.CardMetrics metrics) {
         CardView.CardMetrics setMetrics = compactMetrics(metrics);
-        boolean complete = cards.size() >= color.getSetSize();
+        int billableCount = PropertyRules.countBillableProperties(cards);
+        boolean complete = billableCount >= color.getSetSize();
         String borderColor = PropertyColorStyles.borderHex(color);
-        String backgroundColor = PropertyColorStyles.backgroundHex(color);
+        String backgroundColor = PropertyColorStyles.backgroundHex(color, complete);
 
         VBox box = new VBox(3);
         box.setAlignment(Pos.TOP_CENTER);
@@ -30,22 +32,27 @@ public final class PublicPropertySetView {
         if (complete) {
             box.getStyleClass().add("property-set-complete");
         }
+        double borderWidth = complete ? 3.5 : 2.5;
         box.setStyle(String.format(
-                "-fx-background-color: %s; -fx-border-color: %s; -fx-border-width: 2.5; "
+                "-fx-background-color: %s; -fx-border-color: %s; -fx-border-width: %.1f; "
                         + "-fx-border-radius: 10; -fx-background-radius: 10;",
-                backgroundColor, borderColor));
+                backgroundColor, borderColor, borderWidth));
 
-        Label title = new Label(PropertyColorStyles.displayName(color) + "  " + cards.size() + "/" + color.getSetSize());
+        Label title = new Label(PropertyColorStyles.setTitleText(color, billableCount, color.getSetSize()));
         title.getStyleClass().add("property-set-title");
         title.setStyle("-fx-text-fill: " + PropertyColorStyles.titleTextHex(color) + ";");
 
         Pane cardRow = createOverlappedRow(cards, setMetrics);
-        double boxWidth = Math.max(setMetrics.slotW() + BOX_PADDING * 2, cardRow.getPrefWidth() + BOX_PADDING * 2);
+        double titleWidth = measureTitleWidth(title.getText());
+        double contentWidth = Math.max(cardRow.getPrefWidth(), titleWidth);
+        double boxWidth = contentWidth + BOX_PADDING * 2 + PropertyColorStyles.minBoxWidthBonus(color);
+        boxWidth = Math.max(boxWidth, setMetrics.slotW() + BOX_PADDING * 2);
         box.setMinWidth(boxWidth);
         box.setPrefWidth(boxWidth);
         box.setMaxWidth(boxWidth);
+        title.setMaxWidth(boxWidth - BOX_PADDING * 2);
 
-        int rent = RentTable.getRent(color, cards.size());
+        int rent = PropertyRules.calculateRent(color, cards);
         Label rentLabel = new Label("Rent: " + rent + "M");
         rentLabel.getStyleClass().add("property-set-rent");
 
@@ -89,5 +96,11 @@ public final class PublicPropertySetView {
             row.getChildren().add(slot);
         }
         return row;
+    }
+
+    private static double measureTitleWidth(String titleText) {
+        Text measure = new Text(titleText);
+        measure.setStyle("-fx-font-size: 10px; -fx-font-weight: bold;");
+        return Math.ceil(measure.getLayoutBounds().getWidth()) + 6;
     }
 }
