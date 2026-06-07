@@ -4,6 +4,8 @@ import engine.PaymentTransfer;
 import engine.PropertyRules;
 import engine.RentTable;
 import engine.GameEngine;
+import javafx.animation.FadeTransition;
+import javafx.animation.Interpolator;
 import javafx.animation.TranslateTransition;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
@@ -11,6 +13,7 @@ import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.MouseButton;
 import javafx.scene.layout.*;
 import javafx.scene.shape.Circle;
 import javafx.util.Duration;
@@ -193,8 +196,9 @@ public class NetworkGameController {
             handDock.setTranslateY(targetY);
             return;
         }
-        TranslateTransition transition = new TranslateTransition(Duration.millis(170), handDock);
+        TranslateTransition transition = new TranslateTransition(Duration.millis(280), handDock);
         transition.setToY(targetY);
+        transition.setInterpolator(Interpolator.EASE_BOTH);
         transition.play();
     }
 
@@ -510,17 +514,18 @@ public class NetworkGameController {
 
     private void playSelectedCard() {
         Card card = selectedCard;
+        CardView sourceView = selectedCardView;
         selectedCard = null;
         selectedCardView = null;
         ClientMessage msg = new ClientMessage();
         msg.cardId = card.getInstanceId();
 
         if (card instanceof WildpropertyCard wild) {
-            playWild(wild, msg);
+            playWild(wild, msg, sourceView);
             return;
         }
         if (card instanceof ActionCard action) {
-            playAction(action, msg);
+            playAction(action, msg, sourceView);
             return;
         }
         sendPlayCard(msg);
@@ -531,11 +536,11 @@ public class NetworkGameController {
         AchievementUi.unlockAndShow(AchievementManager.FIRST_PLAY, statusMessage);
     }
 
-    private void playWild(WildpropertyCard wild, ClientMessage msg) {
+    private void playWild(WildpropertyCard wild, ClientMessage msg, CardView sourceView) {
         if (wild.isBankable()) {
             Optional<ActionPlayChoice> choice = promptWildPropertyChoice(wild);
             if (choice.isEmpty()) {
-                selectedCard = wild;
+                restoreSelectedCard(wild, sourceView);
                 return;
             }
             if (choice.get() == ActionPlayChoice.DEPOSIT_BANK) {
@@ -547,12 +552,12 @@ public class NetworkGameController {
         List<Color> colors = wild.getAvailableColors();
         if (colors.isEmpty()) {
             showStatus("No color available", true);
-            selectedCard = wild;
+            restoreSelectedCard(wild, sourceView);
             return;
         }
         Optional<Color> color = promptSelectWildColor(wild);
         if (color.isEmpty()) {
-            selectedCard = wild;
+            restoreSelectedCard(wild, sourceView);
             showStatus("Cancelled, wild card kept in hand", false);
             return;
         }
@@ -561,10 +566,10 @@ public class NetworkGameController {
         sendPlayCard(msg);
     }
 
-    private void playAction(ActionCard action, ClientMessage msg) {
+    private void playAction(ActionCard action, ClientMessage msg, CardView sourceView) {
         Optional<ActionPlayChoice> choice = promptActionCardChoice(action);
         if (choice.isEmpty()) {
-            selectedCard = action;
+            restoreSelectedCard(action, sourceView);
             return;
         }
         if (choice.get() == ActionPlayChoice.DEPOSIT_BANK) {
@@ -575,10 +580,19 @@ public class NetworkGameController {
 
         msg.mode = "EFFECT";
         if (!fillActionEffectMessage(action, msg)) {
-            selectedCard = action;
+            restoreSelectedCard(action, sourceView);
             return;
         }
         sendPlayCard(msg);
+    }
+
+    private void restoreSelectedCard(Card card, CardView sourceView) {
+        selectedCard = card;
+        selectedCardView = sourceView;
+        if (sourceView != null) {
+            sourceView.setSelected(true);
+        }
+        updateButtons();
     }
 
     private boolean fillActionEffectMessage(ActionCard action, ClientMessage msg) {
@@ -1164,14 +1178,26 @@ public class NetworkGameController {
             }
             if (canSelect && cv != null) {
                 slot.setOnMouseClicked(e -> {
+                    if (e.getButton() != MouseButton.PRIMARY) {
+                        return;
+                    }
                     selectCard(card, cv);
                     if (e.getClickCount() == 2 && canPlay) {
-                        onPlay();
+                        e.consume();
+                        cv.playActivationAnimation(() -> playCardFromDoubleClick(card, cv));
                     }
                 });
             }
             playerHand.getChildren().add(slot);
         }
+    }
+
+    private void playCardFromDoubleClick(Card card, CardView cardView) {
+        if (!myHand.contains(card)) {
+            return;
+        }
+        selectCard(card, cardView);
+        onPlay();
     }
 
     private CardView.CardMetrics computeHandMetrics(int cardCount) {
@@ -1312,6 +1338,11 @@ public class NetworkGameController {
         if (statusMessage == null) return;
         statusMessage.setText(text);
         statusMessage.setStyle(error ? "-fx-text-fill: #e74c3c;" : "-fx-text-fill: white;");
+        FadeTransition fade = new FadeTransition(Duration.millis(220), statusMessage);
+        fade.setFromValue(0.25);
+        fade.setToValue(1);
+        fade.setInterpolator(Interpolator.EASE_OUT);
+        fade.play();
     }
 
     private void loadAvatarImage() {

@@ -29,6 +29,7 @@ import javafx.scene.layout.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.image.WritableImage;
+import javafx.scene.input.MouseButton;
 import javafx.scene.shape.Circle;
 import model.achievement.AchievementManager;
 import model.card.*;
@@ -40,7 +41,6 @@ import model.player.Player;
 import java.io.IOException;
 import java.util.*;
 import java.util.function.Function;
-import javafx.util.Duration;
 
 public class GameController {
     @FXML
@@ -246,8 +246,9 @@ private void setHandDockExpanded(boolean expanded, boolean animate) {
             handDock.setTranslateY(targetY);
             return;
         }
-        TranslateTransition transition = new TranslateTransition(Duration.millis(170), handDock);
+        TranslateTransition transition = new TranslateTransition(Duration.millis(280), handDock);
         transition.setToY(targetY);
+        transition.setInterpolator(Interpolator.EASE_BOTH);
         transition.play();
     }
 
@@ -1395,14 +1396,26 @@ private void forceEndTurn() {
             }
             if (canSelect && cardView != null) {
                 slot.setOnMouseClicked(event -> {
+                    if (event.getButton() != MouseButton.PRIMARY) {
+                        return;
+                    }
                     selectCard(card, cardView);
                     if (event.getClickCount() == 2 && canPlay) {
-                        playSelectedCard();
+                        event.consume();
+                        cardView.playActivationAnimation(() -> playCardFromDoubleClick(card, cardView));
                     }
                 });
             }
             playerHand.getChildren().add(slot);
         }
+    }
+
+    private void playCardFromDoubleClick(Card card, CardView cardView) {
+        if (!getHandCardsForView().contains(card)) {
+            return;
+        }
+        selectCard(card, cardView);
+        playSelectedCard();
     }
 
     /** Single line display of hand: When the width is not enough, the face of the hand will be proportionally reduced (including hover size) */
@@ -1641,6 +1654,11 @@ private void forceEndTurn() {
             } else {
                 statusMessage.setStyle("-fx-text-fill: white; -fx-font-size: 14px;");
             }
+            FadeTransition fade = new FadeTransition(Duration.millis(220), statusMessage);
+            fade.setFromValue(0.25);
+            fade.setToValue(1);
+            fade.setInterpolator(Interpolator.EASE_OUT);
+            fade.play();
         });
     }
     

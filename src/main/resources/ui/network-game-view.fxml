@@ -20,7 +20,7 @@
                         <Font name="System Bold" size="27"/>
                     </font>
                 </Label>
-                <Label text="Board First Layout" styleClass="top-pill"/>
+                <Label text="Classic Felt Table" styleClass="top-pill"/>
                 <Region HBox.hgrow="ALWAYS"/>
                 <Label fx:id="gameStatusText"
                        text="Draw pile: --  |  Discard pile: --"
@@ -60,7 +60,7 @@
                         <HBox fx:id="publicBoardHeader" spacing="12" alignment="CENTER_LEFT">
                             <VBox spacing="2">
                                 <Label text="Public Board" styleClass="section-title section-title-large"/>
-                                <Label text="Collapse sidebars to give the public board more space." styleClass="section-subtitle"/>
+                                <Label text="Double-click a card in your hand to play it." styleClass="section-subtitle"/>
                             </VBox>
                             <Region HBox.hgrow="ALWAYS"/>
                             <VBox alignment="CENTER_RIGHT" spacing="4">

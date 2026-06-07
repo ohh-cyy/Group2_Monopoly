@@ -1,5 +1,9 @@
 package ui;
 
+import javafx.animation.Interpolator;
+import javafx.animation.KeyFrame;
+import javafx.animation.KeyValue;
+import javafx.animation.Timeline;
 import javafx.geometry.Pos;
 import javafx.scene.control.Tooltip;
 import javafx.scene.Cursor;
@@ -30,6 +34,8 @@ public class CardView extends StackPane {
     private final CardMetrics metrics;
     private boolean selected;
     private boolean hovered;
+    private boolean activating;
+    private Timeline visualTransition;
 
     public CardView(Card card, boolean clickable) {
         this(card, clickable, HAND);
@@ -116,7 +122,10 @@ public class CardView extends StackPane {
 
     public void setHovered(boolean hovered) {
         this.hovered = hovered;
-        applyVisualState();
+        if (activating) {
+            return;
+        }
+        animateVisualState();
     }
 
     private void applyVisualState() {
@@ -125,6 +134,7 @@ public class CardView extends StackPane {
         double scaleY = enlarged ? metrics.hoverH() / metrics.normalH() : 1.0;
         setScaleX(scaleX);
         setScaleY(scaleY);
+        setTranslateY(enlarged ? -6 : 0);
 
         if (enlarged) {
             setEffect(new DropShadow(10, 0, 3, javafx.scene.paint.Color.rgb(0, 0, 0, 0.45)));
@@ -133,6 +143,66 @@ public class CardView extends StackPane {
         }
 
         updateCardStyle();
+    }
+
+    private void animateVisualState() {
+        boolean enlarged = selected || hovered;
+        double targetScaleX = enlarged ? metrics.hoverW() / metrics.normalW() : 1.0;
+        double targetScaleY = enlarged ? metrics.hoverH() / metrics.normalH() : 1.0;
+
+        if (visualTransition != null) {
+            visualTransition.stop();
+        }
+        visualTransition = new Timeline(
+                new KeyFrame(
+                        Duration.millis(170),
+                        new KeyValue(scaleXProperty(), targetScaleX, Interpolator.EASE_BOTH),
+                        new KeyValue(scaleYProperty(), targetScaleY, Interpolator.EASE_BOTH),
+                        new KeyValue(translateYProperty(), enlarged ? -6 : 0, Interpolator.EASE_BOTH)
+                )
+        );
+        visualTransition.play();
+
+        setEffect(enlarged
+                ? new DropShadow(12, 0, 4, javafx.scene.paint.Color.rgb(0, 0, 0, 0.46))
+                : new DropShadow(3, 0, 1, javafx.scene.paint.Color.rgb(0, 0, 0, 0.22)));
+        updateCardStyle();
+    }
+
+    public void playActivationAnimation(Runnable onFinished) {
+        if (activating) {
+            return;
+        }
+        activating = true;
+        if (visualTransition != null) {
+            visualTransition.stop();
+        }
+
+        double selectedScaleX = metrics.hoverW() / metrics.normalW();
+        double selectedScaleY = metrics.hoverH() / metrics.normalH();
+        visualTransition = new Timeline(
+                new KeyFrame(
+                        Duration.millis(85),
+                        new KeyValue(scaleXProperty(), selectedScaleX * 0.94, Interpolator.EASE_BOTH),
+                        new KeyValue(scaleYProperty(), selectedScaleY * 0.94, Interpolator.EASE_BOTH),
+                        new KeyValue(translateYProperty(), -2, Interpolator.EASE_BOTH),
+                        new KeyValue(rotateProperty(), -1.2, Interpolator.EASE_BOTH)
+                ),
+                new KeyFrame(
+                        Duration.millis(180),
+                        new KeyValue(scaleXProperty(), selectedScaleX, Interpolator.EASE_OUT),
+                        new KeyValue(scaleYProperty(), selectedScaleY, Interpolator.EASE_OUT),
+                        new KeyValue(translateYProperty(), -8, Interpolator.EASE_OUT),
+                        new KeyValue(rotateProperty(), 0, Interpolator.EASE_OUT)
+                )
+        );
+        visualTransition.setOnFinished(event -> {
+            activating = false;
+            if (onFinished != null) {
+                onFinished.run();
+            }
+        });
+        visualTransition.play();
     }
 
     private VBox createFallbackContent() {
@@ -308,7 +378,11 @@ public class CardView extends StackPane {
 
     public void setSelected(boolean selected) {
         this.selected = selected;
-        applyVisualState();
+        if (activating) {
+            updateCardStyle();
+            return;
+        }
+        animateVisualState();
     }
 
     public boolean isSelected() {
