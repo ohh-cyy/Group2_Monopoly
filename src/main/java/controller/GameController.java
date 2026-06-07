@@ -484,6 +484,9 @@ private double computePropertyRowHeight(int playerCount) {
         if (result == ActionEffectResult.SUCCESS) {
             logMessage(player.getName() + " use「" + actionCard.getName() + "」effect");
             showStatus("Effect has been successfully used: " + actionCard.getName(), false);
+        } else if (result == ActionEffectResult.BLOCKED) {
+            logMessage(player.getName() + " use「" + actionCard.getName() + "」but was blocked by Just Say No");
+            showStatus("The effect was blocked by Just Say No", true);
         } else {
             logMessage(player.getName() + " Fail to use「" + actionCard.getName() + "」,the cards enter the discard pile");
             showStatus("The effect did not take effect (invalid target, etc.)", true);
@@ -612,7 +615,7 @@ private double computePropertyRowHeight(int playerCount) {
     }
 
     private enum ActionEffectResult {
-        SUCCESS, FAILED, CANCELLED
+        SUCCESS, FAILED, CANCELLED, BLOCKED
     }
 
         private Optional<ActionPlayChoice> promptActionCardChoice(ActionCard card) {
@@ -735,7 +738,8 @@ private double computePropertyRowHeight(int playerCount) {
             return ActionEffectResult.CANCELLED;
         }
         if (tryRespondWithJustSayNo(target.get(), player, "Debt Collector (collect 5M)")) {
-            return ActionEffectResult.CANCELLED;
+            discardPlayedActionCard(player);
+            return ActionEffectResult.BLOCKED;
         }
         int paid = debtCollector.collectFrom(player, target.get());
         logMessage(player.getName() + " received " + paid + "M from " + target.get().getName());
@@ -832,7 +836,8 @@ private double computePropertyRowHeight(int playerCount) {
             return ActionEffectResult.CANCELLED;
         }
         if (tryRespondWithJustSayNo(target.get(), player, "Sly Deal (steal one property)")) {
-            return ActionEffectResult.CANCELLED;
+            discardPlayedActionCard(player);
+            return ActionEffectResult.BLOCKED;
         }
         List<PropertyCard> stealable = PropertyRules.getPropertiesOutsideCompleteSets(target.get());
         if (stealable.isEmpty()) {
@@ -858,7 +863,8 @@ private double computePropertyRowHeight(int playerCount) {
             return ActionEffectResult.CANCELLED;
         }
         if (tryRespondWithJustSayNo(target.get(), player, "Forced Deal (exchange properties)")) {
-            return ActionEffectResult.CANCELLED;
+            discardPlayedActionCard(player);
+            return ActionEffectResult.BLOCKED;
         }
         List<PropertyCard> myProps = player.getAllProperties();
         if (myProps.isEmpty()) {
@@ -927,6 +933,18 @@ private double computePropertyRowHeight(int playerCount) {
         return null;
     }
 
+    private void discardPlayedActionCard(Player player) {
+        if (selectedCard != null && selectedCard instanceof ActionCard) {
+            ActionCard actionCard = (ActionCard) selectedCard;
+            player.removeFromHand(actionCard);
+            gameEngine.getDiscardPile().addCard(actionCard);
+            logMessage(player.getName() + "'s " + actionCard.getName() + " was discarded due to Just Say No");
+            selectedCard = null;
+            selectedCardView = null;
+            pendingPlayedCardView = null;
+        }
+    }
+
         private Optional<PropertyCard> promptSelectProperty(List<PropertyCard> properties,
                                                           String title, String header) {
         return showStyledChoiceDialog(title, header, "Select a property:", properties,
@@ -960,7 +978,8 @@ private double computePropertyRowHeight(int playerCount) {
             return ActionEffectResult.CANCELLED;
         }
         if (tryRespondWithJustSayNo(opponent, player, "Deal Breaker(steal complete set)")) {
-            return ActionEffectResult.CANCELLED;
+            discardPlayedActionCard(player);
+            return ActionEffectResult.BLOCKED;
         }
         if (!dealBreaker.useOnTarget(player, opponent, color.get())) {
             showStatus("Steal failed", true);
