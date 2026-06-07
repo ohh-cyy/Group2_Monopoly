@@ -366,11 +366,11 @@ private double computePropertyRowHeight(int playerCount) {
             return;
         }
         if (!gameEngine.hasDrawnThisTurn()) {
-            showStatus("请先点击 Draw Cards 抽牌", true);
+            showStatus("Please click Draw Cards first", true);
             return;
         }
         if (selectedCard == null) {
-            showStatus("请先在手牌中选择一张要丢弃的卡牌", true);
+            showStatus("Please select a card from your hand to discard", true);
             return;
         }
         discardSelectedCard();
@@ -383,8 +383,8 @@ private double computePropertyRowHeight(int playerCount) {
         selectedCardView = null;
         pendingPlayedCardView = null;
         gameEngine.discardFromHand(player, card);
-        logMessage(player.getName() + " 丢弃 " + card.getName());
-        showStatus("已丢弃 " + card.getName(), false);
+        logMessage(player.getName() + " discarded " + card.getName());
+        showStatus("Discarded " + card.getName(), false);
         afterStateChange();
     }
 
@@ -403,11 +403,11 @@ private double computePropertyRowHeight(int playerCount) {
                     excess,
                     true);
             if (choice.isEmpty()) {
-                showStatus("结束回合前必须将手牌弃至 " + GameEngine.MAX_HAND_SIZE + " 张以内", true);
+                showStatus("You must discard down to " + GameEngine.MAX_HAND_SIZE + " cards before ending your turn", true);
                 return false;
             }
             gameEngine.discardFromHand(player, choice.get());
-            logMessage(player.getName() + " 丢弃 " + choice.get().getName() + "（手牌上限）");
+            logMessage(player.getName() + " discarded " + choice.get().getName() + " (hand size limit)");
         }
         return true;
     }
@@ -494,6 +494,9 @@ private double computePropertyRowHeight(int playerCount) {
         if (result == ActionEffectResult.SUCCESS) {
             logMessage(player.getName() + " use「" + actionCard.getName() + "」effect");
             showStatus("Effect has been successfully used: " + actionCard.getName(), false);
+        } else if (result == ActionEffectResult.BLOCKED) {
+            logMessage(player.getName() + " use「" + actionCard.getName() + "」but was blocked by Just Say No");
+            showStatus("The effect was blocked by Just Say No", true);
         } else {
             logMessage(player.getName() + " Fail to use「" + actionCard.getName() + "」,the cards enter the discard pile");
             showStatus("The effect did not take effect (invalid target, etc.)", true);
@@ -622,7 +625,7 @@ private double computePropertyRowHeight(int playerCount) {
     }
 
     private enum ActionEffectResult {
-        SUCCESS, FAILED, CANCELLED
+        SUCCESS, FAILED, CANCELLED, BLOCKED
     }
 
         private Optional<ActionPlayChoice> promptActionCardChoice(ActionCard card) {
@@ -745,7 +748,8 @@ private double computePropertyRowHeight(int playerCount) {
             return ActionEffectResult.CANCELLED;
         }
         if (tryRespondWithJustSayNo(target.get(), player, "Debt Collector (collect 5M)")) {
-            return ActionEffectResult.CANCELLED;
+            discardPlayedActionCard(player);
+            return ActionEffectResult.BLOCKED;
         }
         int paid = debtCollector.collectFrom(player, target.get());
         logMessage(player.getName() + " received " + paid + "M from " + target.get().getName());
@@ -842,7 +846,8 @@ private double computePropertyRowHeight(int playerCount) {
             return ActionEffectResult.CANCELLED;
         }
         if (tryRespondWithJustSayNo(target.get(), player, "Sly Deal (steal one property)")) {
-            return ActionEffectResult.CANCELLED;
+            discardPlayedActionCard(player);
+            return ActionEffectResult.BLOCKED;
         }
         List<PropertyCard> stealable = PropertyRules.getPropertiesOutsideCompleteSets(target.get());
         if (stealable.isEmpty()) {
@@ -868,7 +873,8 @@ private double computePropertyRowHeight(int playerCount) {
             return ActionEffectResult.CANCELLED;
         }
         if (tryRespondWithJustSayNo(target.get(), player, "Forced Deal (exchange properties)")) {
-            return ActionEffectResult.CANCELLED;
+            discardPlayedActionCard(player);
+            return ActionEffectResult.BLOCKED;
         }
         List<PropertyCard> myProps = player.getAllProperties();
         if (myProps.isEmpty()) {
@@ -937,6 +943,18 @@ private double computePropertyRowHeight(int playerCount) {
         return null;
     }
 
+    private void discardPlayedActionCard(Player player) {
+        if (selectedCard != null && selectedCard instanceof ActionCard) {
+            ActionCard actionCard = (ActionCard) selectedCard;
+            player.removeFromHand(actionCard);
+            gameEngine.getDiscardPile().addCard(actionCard);
+            logMessage(player.getName() + "'s " + actionCard.getName() + " was discarded due to Just Say No");
+            selectedCard = null;
+            selectedCardView = null;
+            pendingPlayedCardView = null;
+        }
+    }
+
         private Optional<PropertyCard> promptSelectProperty(List<PropertyCard> properties,
                                                           String title, String header) {
         return showStyledChoiceDialog(title, header, "Select a property:", properties,
@@ -970,7 +988,8 @@ private double computePropertyRowHeight(int playerCount) {
             return ActionEffectResult.CANCELLED;
         }
         if (tryRespondWithJustSayNo(opponent, player, "Deal Breaker(steal complete set)")) {
-            return ActionEffectResult.CANCELLED;
+            discardPlayedActionCard(player);
+            return ActionEffectResult.BLOCKED;
         }
         if (!dealBreaker.useOnTarget(player, opponent, color.get())) {
             showStatus("Steal failed", true);
@@ -1499,7 +1518,7 @@ private void forceEndTurn() {
             showStatus("Selected action card [" + card.getName() + "] (bank " + actionCard.getBankValueM()
                     + "M). Play card to choose: use effect or deposit to bank", false);
         } else {
-            showStatus("已选择：" + card.getName() + "，双击出牌，或点击 Discard Selected Card 丢弃", false);
+            showStatus("Selected: " + card.getName() + ". Double-click to play, or click Discard Selected Card to discard", false);
         }
         updateButtonStates();
     }

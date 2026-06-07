@@ -201,7 +201,7 @@ public class LobbyController {
     private void openNetworkGame(ServerMessage message) {
         var resource = getClass().getResource("/ui/network-game-view.fxml");
         if (resource == null) {
-            statusLabel.setText("无法打开游戏：缺少 network-game-view.fxml，请先执行 mvn compile");
+            statusLabel.setText("Unable to open game: missing network-game-view.fxml. Please run mvn compile first");
             return;
         }
         try {
@@ -209,11 +209,11 @@ public class LobbyController {
             var root = loader.load();
             NetworkGameController controller = loader.getController();
             if (controller == null) {
-                statusLabel.setText("无法打开游戏：界面控制器未加载");
+                statusLabel.setText("Unable to open game: controller not loaded");
                 return;
             }
             NetworkClient gameClient = client;
-            stage.setTitle("Monopoly Deal - 联机");
+            stage.setTitle("Monopoly Deal - Online");
             stage.setScene(new Scene((javafx.scene.Parent) root, 1360, 900));
             stage.show();
             controller.startOnlineGame(gameClient, localSeat, message.state);
@@ -221,7 +221,7 @@ public class LobbyController {
         } catch (Exception e) {
             e.printStackTrace();
             String detail = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
-            statusLabel.setText("无法打开游戏：" + detail);
+            statusLabel.setText("Unable to open game: " + detail);
         }
     }
 

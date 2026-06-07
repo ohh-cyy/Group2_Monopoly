@@ -17,7 +17,7 @@ public final class GameAlertDialogs {
     }
 
     public static void showError(Node owner, String message) {
-        showError(owner, "无法执行", message);
+        showError(owner, "Action Failed", message);
     }
 
     public static void showError(Node owner, String title, String message) {
@@ -26,8 +26,8 @@ public final class GameAlertDialogs {
 
     private static void showErrorNow(Node owner, String title, String message) {
         Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle(title == null || title.isBlank() ? "无法执行" : title);
-        ButtonType ok = new ButtonType("知道了", ButtonBar.ButtonData.OK_DONE);
+        dialog.setTitle(title == null || title.isBlank() ? "Action Failed" : title);
+        ButtonType ok = new ButtonType("OK", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().setAll(ok);
         dialog.setResultConverter(button -> button);
 
@@ -35,7 +35,7 @@ public final class GameAlertDialogs {
         body.setAlignment(Pos.CENTER_LEFT);
         body.getStyleClass().add("dialog-body");
 
-        Label header = new Label("操作无效");
+        Label header = new Label("Invalid Operation");
         header.getStyleClass().add("dialog-error-header");
         Label content = new Label(message == null ? "" : message);
         content.setWrapText(true);

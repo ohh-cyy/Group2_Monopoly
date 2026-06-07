@@ -357,7 +357,7 @@ public class NetworkGameController {
 
     private void applyState(GameStateDto newState) {
         if (newState == null) {
-            showStatus("等待服务器同步游戏状态…", false);
+            showStatus("Waiting for server to sync game state...", false);
             if (client != null) {
                 client.requestSync();
             }
@@ -461,7 +461,7 @@ public class NetworkGameController {
                 excess,
                 pendingEndTurnAfterDiscard || state.remainingPlays <= 0);
         if (choice.isEmpty()) {
-            showStatus("结束回合前必须将手牌弃至 " + GameEngine.MAX_HAND_SIZE + " 张以内", true);
+            showStatus("You must discard down to " + GameEngine.MAX_HAND_SIZE + " cards before ending your turn", true);
             return;
         }
         client.discardCard(choice.get().getInstanceId());
@@ -524,18 +524,18 @@ public class NetworkGameController {
             return;
         }
         if (state != null && !state.hasDrawnThisTurn) {
-            showStatus("请先点击 Draw Cards 抽牌", true);
+            showStatus("Please click Draw Cards first", true);
             return;
         }
         if (selectedCard == null) {
-            showStatus("请先在手牌中选择一张要丢弃的卡牌", true);
+            showStatus("Please select a card from your hand to discard", true);
             return;
         }
         Card card = selectedCard;
         selectedCard = null;
         selectedCardView = null;
         client.discardCard(card.getInstanceId());
-        showStatus("已丢弃 " + card.getName(), false);
+        showStatus("Discarded " + card.getName(), false);
     }
 
     private void playSelectedCard() {
@@ -1294,7 +1294,7 @@ public class NetworkGameController {
             showStatus("Selected action card [" + card.getName() + "] (bank " + actionCard.getBankValueM()
                     + "M). Play card to choose: use effect or deposit to bank", false);
         } else {
-            showStatus("已选择：" + card.getName() + "，双击出牌，或点击 Discard Selected Card 丢弃", false);
+            showStatus("Selected: " + card.getName() + ". Double-click to play, or click Discard Selected Card to discard", false);
         }
         updateButtons();
     }
