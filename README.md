@@ -265,16 +265,14 @@ transfer code.
 
 | Pattern or technique | Where it appears |
 | --- | --- |
-| **MVC** | `model` + `engine` (Model), `ui` + `ui.render` (View), `controller` (Controller) |
-| **Singleton** | `AchievementManager`, `GameSettings`, `JsonUtil`, `CardImageLoader` |
-| **Facade** | `LocalGameSession`, `LocalCardPlayService`, `GameDialogService`, `PaymentService`, `ActionEffectResolver` |
-| **Observer** | `NetworkClient` listener → `NetworkGameController`; local `afterStateChange()` → `updateUI()` |
-| **Factory** | `DeckFactory`, `RentCard.allColors`, `RentCard.dual` |
-| **Template Method** | `ActionCard.use()` in action card subclasses |
-| DTO and mapper | `GameStateDto`, `CardMapper`, `GameStateMapper` |
-| Interface contract | `PayableAsset` |
-
-See [docs/design_patterns.md](docs/design_patterns.md) for assignment/report notes.
+| **MVC** | `model` and `engine` hold data/rules, `controller` handles user actions, and `ui` / `ui.render` handle visual rendering. |
+| **Factory** | `DeckFactory` builds the game deck; `RentCard.allColors()` and `RentCard.dual()` create rent card variants. |
+| **Facade/service layer** | `LocalGameSession`, `LocalCardPlayService`, `OnlineCardPlayService`, `PaymentService`, and `ActionEffectResolver` wrap multi-step gameplay workflows behind clearer service methods. |
+| **Observer-style callback** | `NetworkClient` receives server messages and notifies `NetworkGameController` through a listener callback. |
+| **DTO and Mapper** | `GameStateDto`, `CardDto`, `CardMapper`, and `GameStateMapper` separate network data transfer from domain objects. |
+| **Singleton-style utility/manager** | `AchievementManager`, `GameSettings`, `JsonUtil`, and `CardImageLoader` centralize shared state or utility behaviour. |
+| **Interface contract** | `PayableAsset` gives money, property, wild property, and action cards a shared payment-value contract. |
+| **Polymorphism** | Concrete action cards provide their own behaviour through the shared `ActionCard` hierarchy. |
 
 ## Testing Strategy
 
