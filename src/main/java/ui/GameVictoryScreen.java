@@ -7,6 +7,7 @@ import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.util.Duration;
@@ -23,10 +24,14 @@ public final class GameVictoryScreen {
     }
 
     public static void show(Node anchor, String winnerName) {
-        Platform.runLater(() -> showOverlay(anchor, winnerName));
+        show(anchor, winnerName, null);
     }
 
-    private static void showOverlay(Node anchor, String winnerName) {
+    public static void show(Node anchor, String winnerName, Runnable onDismissed) {
+        Platform.runLater(() -> showOverlay(anchor, winnerName, onDismissed));
+    }
+
+    private static void showOverlay(Node anchor, String winnerName, Runnable onDismissed) {
         if (anchor == null || anchor.getScene() == null) {
             return;
         }
@@ -66,14 +71,25 @@ public final class GameVictoryScreen {
         fadeIn.setToValue(1);
         fadeIn.play();
 
-        overlay.setOnMouseClicked(event -> dismissOverlay(host, overlay));
+        overlay.addEventFilter(MouseEvent.MOUSE_CLICKED, event -> {
+            if (overlay.getProperties().putIfAbsent("victoryDismissing", Boolean.TRUE) != null) {
+                return;
+            }
+            event.consume();
+            dismissOverlay(host, overlay, onDismissed);
+        });
     }
 
-    private static void dismissOverlay(StackPane host, StackPane overlay) {
+    private static void dismissOverlay(StackPane host, StackPane overlay, Runnable onDismissed) {
         FadeTransition fadeOut = new FadeTransition(Duration.millis(280), overlay);
         fadeOut.setFromValue(overlay.getOpacity());
         fadeOut.setToValue(0);
-        fadeOut.setOnFinished(event -> host.getChildren().remove(overlay));
+        fadeOut.setOnFinished(event -> {
+            host.getChildren().remove(overlay);
+            if (onDismissed != null) {
+                Platform.runLater(onDismissed);
+            }
+        });
         fadeOut.play();
     }
 

@@ -107,6 +107,13 @@ public class NetworkClient implements AutoCloseable {
         send(msg);
     }
 
+    public void voteRematch(boolean accept) {
+        ClientMessage msg = new ClientMessage();
+        msg.type = MessageTypes.REMATCH_VOTE;
+        msg.acceptRematch = accept;
+        send(msg);
+    }
+
     @Override
     public void close() {
         connected = false;

@@ -84,6 +84,10 @@ public class NetworkGameController {
     private int mergedLogSize;
     private boolean handDockExpanded = false;
     private boolean victoryScreenShown = false;
+    private boolean rematchPromptShown = false;
+    private boolean rematchDeclinedNotified = false;
+    private int lastRematchYesCount = -1;
+    private boolean previousGameOver = false;
     private double lastPropertyRowHeight = -1;
     private boolean pendingEndTurnAfterDiscard = false;
     private Image avatarImage;
@@ -375,7 +379,28 @@ public class NetworkGameController {
         if (newState.logLines == null) {
             newState.logLines = new ArrayList<>();
         }
+        boolean wasGameOver = previousGameOver;
         this.state = newState;
+        previousGameOver = newState.gameOver;
+        if (wasGameOver && !newState.gameOver) {
+            victoryScreenShown = false;
+            rematchPromptShown = false;
+            rematchDeclinedNotified = false;
+            lastRematchYesCount = -1;
+            showStatus("新一局已开始，请先抽牌。", false);
+        }
+        if (newState.rematchDeclined && !rematchDeclinedNotified) {
+            rematchDeclinedNotified = true;
+            showStatus("有玩家选择不继续，本局结束。", false);
+        }
+        if (newState.rematchOpen
+                && Boolean.TRUE.equals(newState.myRematchVote)
+                && newState.rematchYesCount < newState.rematchRequired
+                && newState.rematchYesCount != lastRematchYesCount) {
+            lastRematchYesCount = newState.rematchYesCount;
+            showStatus("已选择再来一局，等待其他玩家（"
+                    + newState.rematchYesCount + "/" + newState.rematchRequired + "）", false);
+        }
         myHand = CardMapper.fromDtos(newState.myHand);
         myBank = CardMapper.fromDtos(newState.myBank);
         if (selectedCard != null) {
@@ -402,7 +427,7 @@ public class NetworkGameController {
             return;
         }
         victoryScreenShown = true;
-        GameVictoryScreen.show(statusMessage, state.winnerName);
+        GameVictoryScreen.show(statusMessage, state.winnerName, this::promptRematchAfterVictory);
         if (drawCardBtn != null) {
             drawCardBtn.setDisable(true);
         }
@@ -412,6 +437,28 @@ public class NetworkGameController {
         if (endTurnBtn != null) {
             endTurnBtn.setDisable(true);
         }
+    }
+
+    private void promptRematchAfterVictory() {
+        if (rematchPromptShown || client == null || state == null) {
+            return;
+        }
+        rematchPromptShown = true;
+        GameAlertDialogs.askPlayAgain(
+                statusMessage,
+                "是否和大家再开一局？只有所有玩家都选择再来一局才会重新开始。",
+                accept -> {
+                    if (client == null || state == null) {
+                        return;
+                    }
+                    client.voteRematch(accept);
+                    if (accept) {
+                        lastRematchYesCount = state.rematchYesCount;
+                        showStatus("已选择再来一局，等待其他玩家…", false);
+                    } else {
+                        showStatus("你已选择结束本局", false);
+                    }
+                });
     }
 
     private void maybePromptHandLimitDiscard() {

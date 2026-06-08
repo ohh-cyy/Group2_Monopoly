@@ -17,4 +17,6 @@ public class ClientMessage {
     public Boolean useJustSayNo;
     /** RESPOND for PAYMENT: card instance id to pay with */
     public String paymentCardId;
+    /** REMATCH_VOTE: true = play again, false = decline */
+    public Boolean acceptRematch;
 }

@@ -11,6 +11,8 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.VBox;
 
 import java.util.Objects;
+import java.util.Optional;
+import java.util.function.Consumer;
 
 public final class GameAlertDialogs {
     private GameAlertDialogs() {
@@ -22,6 +24,55 @@ public final class GameAlertDialogs {
 
     public static void showError(Node owner, String title, String message) {
         Platform.runLater(() -> showErrorNow(owner, title, message));
+    }
+
+    /** @return true if the player wants another round */
+    public static boolean askPlayAgain(Node owner) {
+        return askPlayAgainBlocking(owner, "是否再开一局？");
+    }
+
+    public static void askPlayAgain(Node owner, Consumer<Boolean> onResult) {
+        askPlayAgain(owner, "是否再开一局？", onResult);
+    }
+
+    public static void askPlayAgain(Node owner, String message, Consumer<Boolean> onResult) {
+        Platform.runLater(() -> {
+            boolean accept = showPlayAgainDialog(owner, message);
+            if (onResult != null) {
+                onResult.accept(accept);
+            }
+        });
+    }
+
+    private static boolean askPlayAgainBlocking(Node owner, String message) {
+        if (!Platform.isFxApplicationThread()) {
+            throw new IllegalStateException("askPlayAgainBlocking must run on the JavaFX thread");
+        }
+        return showPlayAgainDialog(owner, message);
+    }
+
+    private static boolean showPlayAgainDialog(Node owner, String message) {
+        ButtonType yes = new ButtonType("再来一局");
+        ButtonType no = new ButtonType("结束", ButtonBar.ButtonData.CANCEL_CLOSE);
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("再来一局？");
+        dialog.getDialogPane().getButtonTypes().setAll(yes, no);
+        dialog.setResultConverter(button -> button);
+
+        VBox body = new VBox(10);
+        body.setAlignment(Pos.CENTER_LEFT);
+        body.getStyleClass().add("dialog-body");
+        Label header = new Label("本局已结束");
+        header.getStyleClass().add("dialog-header-label");
+        Label contentLabel = new Label(message == null || message.isBlank() ? "是否再开一局？" : message);
+        contentLabel.setWrapText(true);
+        contentLabel.getStyleClass().add("dialog-content-label");
+        body.getChildren().addAll(header, contentLabel);
+        dialog.getDialogPane().setContent(body);
+        styleDialog(dialog, owner, false);
+
+        Optional<ButtonType> result = dialog.showAndWait();
+        return result.isPresent() && result.get() == yes;
     }
 
     private static void showErrorNow(Node owner, String title, String message) {

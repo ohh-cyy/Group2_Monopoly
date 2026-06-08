@@ -32,6 +32,9 @@ public class GameSession {
     private final ServerPlayHandler playHandler = new ServerPlayHandler();
     private PendingActionResolution pendingResolution;
     private boolean pendingUsesTwoPlays;
+    private boolean rematchOpen;
+    private boolean rematchDeclined;
+    private final Boolean[] rematchVotes = new Boolean[MAX_PLAYERS];
 
     public synchronized void bindPlayer(int seat, ClientHandler handler, String name) {
         if (seat < 0 || seat >= MAX_PLAYERS) {
@@ -50,7 +53,10 @@ public class GameSession {
         }
         engine = new GameEngine(players, new Deck(DeckFactory.createFullDeck()));
         engine.startGame();
+        pendingResolution = null;
+        pendingUsesTwoPlays = false;
         logLines.clear();
+        clearRematchState();
         appendLog("=== Game started with " + activePlayers + " players ===");
         broadcastState();
     }
@@ -66,6 +72,7 @@ public class GameSession {
             case MessageTypes.END_TURN -> handleEndTurn(seat);
             case MessageTypes.SYNC -> buildStateMessage(seat);
             case MessageTypes.RESPOND -> handleRespond(seat, message);
+            case MessageTypes.REMATCH_VOTE -> handleRematchVote(seat, message);
             default -> error("Unknown command: " + message.type);
         };
     }
@@ -78,6 +85,7 @@ public class GameSession {
         msg.type = MessageTypes.PROMPT;
         msg.prompt = prompt;
         msg.state = GameStateMapper.buildForSeat(engine, seat, logLines);
+        enrichRematchState(msg.state, seat);
         seats[seat].send(msg);
         broadcastStateExceptPrompt(seat);
     }
@@ -103,8 +111,7 @@ public class GameSession {
         engine.recordCardsPlayed(pendingUsesTwoPlays ? 2 : 1);
         pendingUsesTwoPlays = false;
         if (engine.checkWin(player)) {
-            engine.setGameOver(true);
-            appendLog("=== " + player.getName() + " wins! ===");
+            markGameWon(player);
         } else if (engine.isTurnOver()) {
             tryAdvanceTurnAfterPlay(player);
         }
@@ -135,8 +142,86 @@ public class GameSession {
         msg.type = MessageTypes.STATE;
         if (engine != null) {
             msg.state = GameStateMapper.buildForSeat(engine, seat, logLines);
+            enrichRematchState(msg.state, seat);
         }
         return msg;
+    }
+
+    private ServerMessage handleRematchVote(int seat, ClientMessage message) {
+        if (!rematchOpen || engine == null || !engine.isGameOver()) {
+            return error("Rematch not available");
+        }
+        if (seat < 0 || seat >= playerCount) {
+            return error("Invalid seat");
+        }
+        if (rematchVotes[seat] != null) {
+            return error("Already voted");
+        }
+        boolean accept = Boolean.TRUE.equals(message.acceptRematch);
+        rematchVotes[seat] = accept;
+        if (!accept) {
+            rematchOpen = false;
+            rematchDeclined = true;
+            appendLog(names[seat] + " declined a rematch");
+            broadcastState();
+            return ok("Rematch declined");
+        }
+
+        appendLog(names[seat] + " wants a rematch");
+        if (allRematchVotesYes()) {
+            appendLog("All players voted yes — starting a new game");
+            startGame(playerCount);
+            return ok("New game started");
+        }
+        broadcastState();
+        return ok("Vote recorded");
+    }
+
+    private void markGameWon(Player winner) {
+        engine.setGameOver(true);
+        appendLog("=== " + winner.getName() + " wins! ===");
+        openRematchPhase();
+    }
+
+    private void openRematchPhase() {
+        rematchOpen = true;
+        rematchDeclined = false;
+        java.util.Arrays.fill(rematchVotes, null);
+    }
+
+    private void clearRematchState() {
+        rematchOpen = false;
+        rematchDeclined = false;
+        java.util.Arrays.fill(rematchVotes, null);
+    }
+
+    private boolean allRematchVotesYes() {
+        for (int i = 0; i < playerCount; i++) {
+            if (!Boolean.TRUE.equals(rematchVotes[i])) {
+                return false;
+            }
+        }
+        return playerCount > 0;
+    }
+
+    private int countRematchYesVotes() {
+        int count = 0;
+        for (int i = 0; i < playerCount; i++) {
+            if (Boolean.TRUE.equals(rematchVotes[i])) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private void enrichRematchState(network.protocol.GameStateDto state, int seat) {
+        state.rematchOpen = rematchOpen;
+        state.rematchRequired = playerCount;
+        state.rematchYesCount = countRematchYesVotes();
+        state.rematchDeclined = rematchDeclined;
+        if (seat >= 0 && seat < MAX_PLAYERS) {
+            state.myRematchVote = rematchVotes[seat];
+        }
     }
 
     private ServerMessage handleRespond(int seat, ClientMessage message) {
@@ -271,8 +356,7 @@ public class GameSession {
 
         engine.recordCardPlayed();
         if (engine.checkWin(player)) {
-            engine.setGameOver(true);
-            appendLog("=== " + player.getName() + " wins! ===");
+            markGameWon(player);
         } else if (engine.isTurnOver()) {
             tryAdvanceTurnAfterPlay(player);
         }

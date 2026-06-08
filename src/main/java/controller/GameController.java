@@ -1737,7 +1737,12 @@ private void forceEndTurn() {
     
         private void showGameOver(Player winner) {
         Platform.runLater(() -> {
-            GameVictoryScreen.show(statusMessage, winner.getName());
+            GameVictoryScreen.show(statusMessage, winner.getName(), () ->
+                    GameAlertDialogs.askPlayAgain(statusMessage, accept -> {
+                        if (accept) {
+                            initializeGame();
+                        }
+                    }));
             gameStatusText.setText("Game Over - " + winner.getName() + " Wins!");
             logMessage("=== GAME OVER === " + winner.getName() + " wins!");
             drawCardBtn.setDisable(true);
