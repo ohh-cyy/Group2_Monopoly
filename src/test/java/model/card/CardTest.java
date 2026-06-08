@@ -2,6 +2,8 @@ package model.card;
 
 import engine.Deck;
 import engine.GameEngine;
+import model.card.actionCard.JustSayNo;
+import model.enums.CardType;
 import model.enums.Color;
 import model.player.Player;
 import org.junit.jupiter.api.Test;
@@ -76,6 +78,20 @@ class CardTest {
         assertEquals(1, total);
         assertEquals(1, collector.getBankTotalValue());
         assertEquals(0, target.getBankTotalValue());
+    }
+
+    @Test
+    void payableAssetInterfaceReturnsCardPaymentValues() {
+        PayableAsset money = new MoneyCard("5M", "Money", 5);
+        PayableAsset property = new PropertyCard("Pall Mall", "Pink property", Color.PINK, 2);
+        PayableAsset action = new JustSayNo("Just Say No", "Cancel action", CardType.ACTION);
+        PayableAsset wild = new WildpropertyCard(
+                "All Color", "Wild property", 0, List.of(Color.values()), false);
+
+        assertEquals(5, money.getPaymentValueM());
+        assertEquals(2, property.getPaymentValueM());
+        assertEquals(4, action.getPaymentValueM());
+        assertEquals(0, wild.getPaymentValueM());
     }
 
     private GameEngine createGame(Player... players) {

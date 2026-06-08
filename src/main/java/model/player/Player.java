@@ -2,10 +2,8 @@ package model.player;
 
 import engine.PropertyRules;
 import model.card.Card;
-import model.card.MoneyCard;
+import model.card.PayableAsset;
 import model.card.PropertyCard;
-import model.card.WildpropertyCard;
-import model.card.actionCard.ActionCard;
 import model.enums.Color;
 
 import java.util.ArrayList;
@@ -87,12 +85,8 @@ public class Player {
     public int getBankTotalValue() {
         int total = money;
         for (Card card : bank) {
-            if (card instanceof MoneyCard moneyCard) {
-                total += moneyCard.getMoney();
-            } else if (card instanceof ActionCard actionCard) {
-                total += actionCard.getBankValueM();
-            } else if (card instanceof WildpropertyCard wildCard) {
-                total += wildCard.getBankValueM();
+            if (card instanceof PayableAsset payableAsset) {
+                total += payableAsset.getPaymentValueM();
             }
         }
         return total;

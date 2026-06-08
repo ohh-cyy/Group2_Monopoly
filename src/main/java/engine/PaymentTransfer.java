@@ -1,10 +1,8 @@
 package engine;
 
 import model.card.Card;
-import model.card.MoneyCard;
+import model.card.PayableAsset;
 import model.card.PropertyCard;
-import model.card.WildpropertyCard;
-import model.card.actionCard.ActionCard;
 import model.player.Player;
 
 import java.util.ArrayList;
@@ -83,17 +81,8 @@ public final class PaymentTransfer {
     }
 
     public static int getPaymentValue(Card card) {
-        if (card instanceof MoneyCard moneyCard) {
-            return moneyCard.getMoney();
-        }
-        if (card instanceof ActionCard actionCard) {
-            return actionCard.getBankValueM();
-        }
-        if (card instanceof WildpropertyCard wildCard) {
-            return wildCard.getBankValueM();
-        }
-        if (card instanceof PropertyCard propertyCard) {
-            return Math.max(1, propertyCard.getPrice());
+        if (card instanceof PayableAsset payableAsset) {
+            return payableAsset.getPaymentValueM();
         }
         return 0;
     }

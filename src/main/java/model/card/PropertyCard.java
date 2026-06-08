@@ -6,7 +6,7 @@ import model.enums.CardType;
 import model.enums.Color;
 import model.player.Player;
 
-public class PropertyCard extends Card {
+public class PropertyCard extends Card implements PayableAsset {
     private final Color color;
     private final int price;
 
@@ -29,6 +29,11 @@ public class PropertyCard extends Card {
 
     public int getPrice() {
         return price;
+    }
+
+    @Override
+    public int getPaymentValueM() {
+        return Math.max(1, price);
     }
 
     /** Rent tiers shown on the card, such as "1M / 2M / 3M". */

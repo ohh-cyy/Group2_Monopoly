@@ -2,6 +2,7 @@ package model.card.actionCard;
 
 import engine.GameEngine;
 import model.card.Card;
+import model.card.PayableAsset;
 import model.enums.CardType;
 import model.player.Player;
 
@@ -9,7 +10,7 @@ import model.player.Player;
  * Base class for action cards. An action card can be played for its effect
  * or placed in the player's bank for its money value.
  */
-public abstract class ActionCard extends Card {
+public abstract class ActionCard extends Card implements PayableAsset {
     /** Monetary value when deposited into the bank as cash (in millions). */
     private final int bankValueM;
 
@@ -24,6 +25,11 @@ public abstract class ActionCard extends Card {
     }
 
     public int getBankValueM() {
+        return bankValueM;
+    }
+
+    @Override
+    public int getPaymentValueM() {
         return bankValueM;
     }
 

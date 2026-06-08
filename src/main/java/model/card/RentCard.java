@@ -123,7 +123,7 @@ public class RentCard extends ActionCard {
             if (other.equals(collector)) {
                 continue;
             }
-            int paid = RentPayment.collect(collector, other, rentPerPlayer);
+            int paid = RentPayment.collectUpTo(collector, other, rentPerPlayer);
             totalCollected += paid;
         }
         return totalCollected;

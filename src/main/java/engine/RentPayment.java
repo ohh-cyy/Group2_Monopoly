@@ -1,11 +1,8 @@
 package engine;
 
 import model.card.Card;
-import model.card.MoneyCard;
+import model.card.PayableAsset;
 import model.card.PropertyCard;
-import model.card.WildpropertyCard;
-import model.card.actionCard.ActionCard;
-import model.enums.Color;
 import model.player.Player;
 
 import java.util.ArrayList;
@@ -48,7 +45,7 @@ public final class RentPayment {
             if (property == null) {
                 break;
             }
-            int value = Math.max(1, property.getPrice());
+            int value = property.getPaymentValueM();
             debtor.removeProperty(property);
             if (!collector.addProperty(property)) {
                 debtor.addProperty(property);
@@ -61,6 +58,7 @@ public final class RentPayment {
     }
 
     /** @deprecated Use {@link #collectUpTo}. */
+    @Deprecated
     public static int collect(Player collector, Player debtor, int amountM) {
         return collectUpTo(collector, debtor, amountM);
     }
@@ -76,7 +74,7 @@ public final class RentPayment {
         }
 
         for (PropertyCard property : PropertyRules.getPayableProperties(player)) {
-            int value = Math.max(1, property.getPrice());
+            int value = property.getPaymentValueM();
             if (value > 0) {
                 min = Math.min(min, value);
             }
@@ -103,19 +101,13 @@ public final class RentPayment {
         if (list.isEmpty()) {
             return null;
         }
-        list.sort(Comparator.comparingInt(p -> Math.max(1, p.getPrice())));
+        list.sort(Comparator.comparingInt(PropertyCard::getPaymentValueM));
         return list.get(0);
     }
 
     private static int getCardValue(Card card) {
-        if (card instanceof MoneyCard moneyCard) {
-            return moneyCard.getMoney();
-        }
-        if (card instanceof ActionCard actionCard) {
-            return actionCard.getBankValueM();
-        }
-        if (card instanceof WildpropertyCard wildCard) {
-            return wildCard.getBankValueM();
+        if (card instanceof PayableAsset payableAsset) {
+            return payableAsset.getPaymentValueM();
         }
         return 0;
     }

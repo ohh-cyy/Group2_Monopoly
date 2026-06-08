@@ -43,6 +43,11 @@ public class WildpropertyCard extends PropertyCard {
         return bankValueM;
     }
 
+    @Override
+    public int getPaymentValueM() {
+        return bankValueM;
+    }
+
     public Color getChosenColor() {
         return chosenColor;
     }

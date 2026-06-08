@@ -4,7 +4,7 @@ import engine.GameEngine;
 import model.enums.CardType;
 import model.player.Player;
 
-public class MoneyCard extends Card {
+public class MoneyCard extends Card implements PayableAsset {
     private final int money;
 
     public MoneyCard(String name, String description, int money) {
@@ -18,6 +18,11 @@ public class MoneyCard extends Card {
     }
 
     public int getMoney() {
+        return money;
+    }
+
+    @Override
+    public int getPaymentValueM() {
         return money;
     }
 

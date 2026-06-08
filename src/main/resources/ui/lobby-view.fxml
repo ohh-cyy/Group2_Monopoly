@@ -33,7 +33,7 @@
                             <Label text="🎮" styleClass="lobby-card-icon"/>
                             <VBox spacing="2">
                                 <Label text="Player Setup" styleClass="lobby-section-title"/>
-                                <Label text="Keep the original online and local entry points, only upgrade the lobby display layer." styleClass="lobby-section-subtitle"/>
+                                <Label text="Enter your name, host a room, or join your friends online." styleClass="lobby-section-subtitle"/>
                             </VBox>
                         </HBox>
 
@@ -127,9 +127,9 @@
                 </HBox>
 
                 <HBox spacing="10" alignment="CENTER" styleClass="lobby-feature-row">
-                    <Label text="Solo-game Lobby Feel" styleClass="lobby-feature-chip"/>
-                    <Label text="Original Network Flow Kept" styleClass="lobby-feature-chip"/>
-                    <Label text="Achievement Progress Saved" styleClass="lobby-feature-chip"/>
+                    <Label text="Local Play" styleClass="lobby-feature-chip"/>
+                    <Label text="Online Multiplayer" styleClass="lobby-feature-chip"/>
+                    <Label text="Achievements Saved" styleClass="lobby-feature-chip"/>
                 </HBox>
             </VBox>
         </StackPane>
