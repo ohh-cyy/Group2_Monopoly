@@ -12,6 +12,7 @@ public final class GameSettings {
     private static Stage primaryStage;
     private static MediaPlayer musicPlayer;
     private static boolean musicEnabled = true;
+    private static boolean soundEffectsEnabled = true;
     private static boolean fullscreenEnabled = false;
 
     private GameSettings() {
@@ -23,6 +24,9 @@ public final class GameSettings {
             primaryStage.setFullScreen(fullscreenEnabled);
             primaryStage.fullScreenProperty().addListener((obs, wasFullScreen, isFullScreen) ->
                     fullscreenEnabled = isFullScreen);
+            primaryStage.sceneProperty().addListener((obs, oldScene, newScene) ->
+                    GameAudio.installButtonSounds(newScene));
+            GameAudio.installButtonSounds(primaryStage.getScene());
         }
         applyMusicState();
     }
@@ -34,6 +38,14 @@ public final class GameSettings {
     public static void setMusicEnabled(boolean enabled) {
         musicEnabled = enabled;
         applyMusicState();
+    }
+
+    public static boolean isSoundEffectsEnabled() {
+        return soundEffectsEnabled;
+    }
+
+    public static void setSoundEffectsEnabled(boolean enabled) {
+        soundEffectsEnabled = enabled;
     }
 
     public static boolean isFullscreenEnabled() {
@@ -53,6 +65,7 @@ public final class GameSettings {
             musicPlayer.dispose();
             musicPlayer = null;
         }
+        GameAudio.clear();
     }
 
     private static void applyMusicState() {

@@ -487,7 +487,11 @@ public class GameSession {
         }
         card.use(player, engine);
         player.removeFromHand(card);
-        appendLog(player.getName() + " played " + propertyPlayDetail(card));
+        if (card instanceof model.card.MoneyCard) {
+            appendLog(player.getName() + " banked " + card.getName());
+        } else {
+            appendLog(player.getName() + " played " + propertyPlayDetail(card));
+        }
         return true;
     }
 

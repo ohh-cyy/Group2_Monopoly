@@ -16,6 +16,7 @@ import ui.StatusMessageDisplay;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
@@ -28,6 +29,7 @@ public final class NetworkMatchCoordinator {
     private final Runnable disableActionButtons;
     private final IntSupplier localSeatSupplier;
     private final Supplier<NetworkClient> clientSupplier;
+    private final Consumer<String> onNewLogLine;
 
     private int mergedLogSize;
     private boolean victoryScreenShown;
@@ -43,7 +45,8 @@ public final class NetworkMatchCoordinator {
                                    Runnable onBoardRefresh,
                                    Runnable disableActionButtons,
                                    IntSupplier localSeatSupplier,
-                                   Supplier<NetworkClient> clientSupplier) {
+                                   Supplier<NetworkClient> clientSupplier,
+                                   Consumer<String> onNewLogLine) {
         this.statusAnchor = statusAnchor;
         this.gameLog = gameLog;
         this.statusDisplay = statusDisplay;
@@ -51,6 +54,7 @@ public final class NetworkMatchCoordinator {
         this.disableActionButtons = disableActionButtons;
         this.localSeatSupplier = localSeatSupplier;
         this.clientSupplier = clientSupplier;
+        this.onNewLogLine = onNewLogLine;
     }
 
     public boolean isPendingEndTurnAfterDiscard() {
@@ -147,7 +151,11 @@ public final class NetworkMatchCoordinator {
             return;
         }
         for (int i = mergedLogSize; i < lines.size(); i++) {
-            gameLog.append(lines.get(i));
+            String line = lines.get(i);
+            gameLog.append(line);
+            if (onNewLogLine != null) {
+                onNewLogLine.accept(line);
+            }
         }
         mergedLogSize = lines.size();
     }

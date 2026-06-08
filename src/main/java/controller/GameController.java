@@ -25,6 +25,7 @@ import ui.AchievementUi;
 import ui.CardView;
 import ui.EmojiReactionOverlay;
 import ui.GameAlertDialogs;
+import ui.GameAudio;
 import ui.GameLogPane;
 import ui.GameVictoryScreen;
 import ui.PublicPropertyBoardLayout;
@@ -278,6 +279,7 @@ public class GameController {
         if (gameEngine == null || currentPlayer == null) {
             return;
         }
+        GameAudio.play(GameAudio.Cue.EMOJI);
         emojiReactionOverlay.show(gameEngine.getCurrentPlayerIndex(), emoji);
     }
 
@@ -331,6 +333,7 @@ public class GameController {
             logMessage(skipped.getName() + " auto-discarded " + card.getName() + " (hand size limit)");
         }
         gameEngine.nextTurn();
+        GameAudio.play(GameAudio.Cue.TURN);
         currentPlayer = gameEngine.getCurrentPlayer();
         logMessage(skipped.getName() + " ran out of time and was skipped → " + currentPlayer.getName() + "'s turn");
         showStatus(skipped.getName() + " ran out of time. Skipped to " + currentPlayer.getName(), false);
@@ -503,6 +506,7 @@ private void maybeRescalePropertyCards() {
             showStatus("Fail to draw cards!", true);
             return;
         }
+        GameAudio.play(GameAudio.Cue.DRAW);
         logMessage(player.getName() + " drew 2 cards");
         unlockAchievement(AchievementManager.FIRST_DRAW);
         showStatus("Two cards have already been drawn (cannot be drawn again in this round). Remaining number of available card games: "
@@ -589,19 +593,38 @@ private void maybeRescalePropertyCards() {
                 updateUI();
                 return;
             }
-            completePlayStep(player, played, outcome.depositedToBank, outcome.consumesExtraPlay);
+            completePlayStep(player, played, outcome);
         } catch (Exception e) {
             showStatus("Error playing card: " + e.getMessage(), true);
             logMessage("Error playing card: " + e.getMessage());
         }
     }
 
-    private void completePlayStep(Player player, Card played, boolean depositedToBank, boolean extraPlay) {
+    private void completePlayStep(Player player, Card played, CardPlayOutcome outcome) {
         localSession.recordCardPlayed();
-        if (extraPlay) {
+        if (outcome.consumesExtraPlay) {
             localSession.recordCardPlayed();
         }
-        runAfterPlayAnimation(played, depositedToBank, () -> finishPlayStep(player, played, depositedToBank));
+        playAcceptedCardSound(played, outcome);
+        runAfterPlayAnimation(played, outcome.depositedToBank,
+                () -> finishPlayStep(player, played, outcome.depositedToBank));
+    }
+
+    private void playAcceptedCardSound(Card played, CardPlayOutcome outcome) {
+        if (outcome.result == ActionEffectResult.BLOCKED) {
+            return;
+        }
+        if (outcome.depositedToBank || played instanceof MoneyCard) {
+            GameAudio.play(GameAudio.Cue.BANK);
+        } else if (played instanceof RentCard || played instanceof DoubleTheRent) {
+            GameAudio.play(GameAudio.Cue.RENT);
+        } else if (played instanceof SlyDeal
+                || played instanceof ForcedDeal
+                || played instanceof DealBreaker) {
+            GameAudio.play(GameAudio.Cue.DRAW);
+        } else {
+            GameAudio.play(GameAudio.Cue.PLAY);
+        }
     }
 
     private void finishPlayStep(Player player, Card played, boolean depositedToBank) {
@@ -733,6 +756,7 @@ private void forceEndTurn() {
                 return;
             }
             gameEngine.nextTurn();
+            GameAudio.play(GameAudio.Cue.TURN);
             resetTurnTimerForCurrentPlayer();
             currentPlayer = gameEngine.getCurrentPlayer();
             logMessage(ending.getName() + " turn ends → " + currentPlayer.getName() + "'s turn");
@@ -759,6 +783,7 @@ private void forceEndTurn() {
         }
         logMessage(player.getName() + " ended turn voluntarily");
         gameEngine.nextTurn();
+        GameAudio.play(GameAudio.Cue.TURN);
         resetTurnTimerForCurrentPlayer();
         currentPlayer = gameEngine.getCurrentPlayer();
         showStatus("Now " + currentPlayer.getName() + "'s turn, please draw 2 cards first", false);

@@ -23,6 +23,7 @@ public final class GameAlertDialogs {
     }
 
     public static void showError(Node owner, String title, String message) {
+        GameAudio.play(GameAudio.Cue.ERROR);
         Platform.runLater(() -> showErrorNow(owner, title, message));
     }
 

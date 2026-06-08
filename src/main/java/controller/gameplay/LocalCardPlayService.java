@@ -83,7 +83,7 @@ public final class LocalCardPlayService {
             status.accept("Effect has been successfully used: " + actionCard.getName(), false);
         } else if (result == ActionEffectResult.BLOCKED) {
             log.accept(player.getName() + " used " + actionCard.getName() + " but was blocked by Just Say No");
-            status.accept("The effect was blocked by Just Say No", true);
+            status.accept("The effect was blocked by Just Say No", false);
         } else {
             log.accept(player.getName() + " failed to use " + actionCard.getName() + "; card discarded");
             status.accept("The effect did not take effect (invalid target, etc.)", true);

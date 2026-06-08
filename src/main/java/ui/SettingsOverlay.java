@@ -212,13 +212,19 @@ public final class SettingsOverlay {
         musicToggle.selectedProperty().addListener((obs, oldValue, selected) ->
                 GameSettings.setMusicEnabled(selected));
 
+        CheckBox soundToggle = new CheckBox("Sound Effects");
+        soundToggle.getStyleClass().add("settings-checkbox");
+        soundToggle.setSelected(GameSettings.isSoundEffectsEnabled());
+        soundToggle.selectedProperty().addListener((obs, oldValue, selected) ->
+                GameSettings.setSoundEffectsEnabled(selected));
+
         CheckBox fullscreenToggle = new CheckBox("Fullscreen");
         fullscreenToggle.getStyleClass().add("settings-checkbox");
         fullscreenToggle.setSelected(GameSettings.isFullscreenEnabled());
         fullscreenToggle.selectedProperty().addListener((obs, oldValue, selected) ->
                 GameSettings.setFullscreenEnabled(selected));
 
-        VBox body = new VBox(14, title, subtitle, musicToggle, fullscreenToggle);
+        VBox body = new VBox(14, title, subtitle, musicToggle, soundToggle, fullscreenToggle);
         body.getStyleClass().add("settings-dialog-body");
         return body;
     }

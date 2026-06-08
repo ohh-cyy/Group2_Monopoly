@@ -18,12 +18,15 @@ import model.card.Card;
 import network.CardMapper;
 import network.client.NetworkClient;
 import network.protocol.ClientMessage;
+import network.protocol.EmojiCatalog;
 import network.protocol.GameStateDto;
 import network.protocol.MessageTypes;
 import network.protocol.ServerMessage;
 import ui.AchievementUi;
 import ui.AvatarResources;
 import ui.CardView;
+import ui.EmojiReactionOverlay;
+import ui.GameAudio;
 import ui.GameLogPane;
 import ui.StatusMessageDisplay;
 import ui.layout.GameBoardChrome;
@@ -65,6 +68,8 @@ public class NetworkGameController {
     @FXML private Button endTurnBtn;
     @FXML private Button newGameBtn;
     @FXML private Button achievementBtn;
+    @FXML private FlowPane emojiBar;
+    @FXML private Pane reactionOverlay;
 
     private HandRenderer handRenderer;
     private GameDialogService dialogs;
@@ -85,6 +90,7 @@ public class NetworkGameController {
     private Card selectedCard;
     private CardView selectedCardView;
     private Image avatarImage;
+    private EmojiReactionOverlay emojiReactionOverlay;
 
     @FXML
     public void initialize() {
@@ -93,6 +99,8 @@ public class NetworkGameController {
         dialogs = new GameDialogService(statusMessage);
         onlineCardPlay = new OnlineCardPlayService(dialogs, this::showStatus);
         promptResponder = new NetworkPromptResponder(dialogs, statusDisplay, this::showStatus);
+        emojiReactionOverlay = new EmojiReactionOverlay(reactionOverlay, allPlayersPropertiesPanel);
+        setupEmojiBar();
 
         boardChrome = new GameBoardChrome(
                 leftSidebar, rightSidebar, leftSidebarToggle, rightSidebarToggle,
@@ -103,7 +111,7 @@ public class NetworkGameController {
         matchCoordinator = new NetworkMatchCoordinator(
                 statusMessage, gameLog, statusDisplay, this::updateUi,
                 () -> boardRefresh.disableActionButtons(),
-                () -> localSeat, () -> client);
+                () -> localSeat, () -> client, GameAudio::playForGameLog);
 
         layoutTracker = new PropertyBoardLayoutTracker(
                 allPlayersPropertiesPanel,
@@ -192,6 +200,9 @@ public class NetworkGameController {
                 }
             } else if (MessageTypes.ERROR.equals(message.type)) {
                 showStatus(message.text, true);
+            } else if (MessageTypes.EMOJI.equals(message.type)) {
+                GameAudio.play(GameAudio.Cue.EMOJI);
+                emojiReactionOverlay.show(message.seat, message.emoji);
             } else if (MessageTypes.GAME_STARTED.equals(message.type) && message.state != null) {
                 applyState(message.state);
             }
@@ -331,5 +342,26 @@ public class NetworkGameController {
 
     private void showStatus(String text, boolean error) {
         statusDisplay.show(text, error);
+    }
+
+    private void setupEmojiBar() {
+        if (emojiBar == null) {
+            return;
+        }
+        emojiBar.getChildren().clear();
+        for (String emoji : EmojiCatalog.ALL) {
+            Button button = new Button(emoji);
+            button.getStyleClass().add("emoji-button");
+            button.setFocusTraversable(false);
+            button.setTooltip(new Tooltip(EmojiCatalog.nameFor(emoji)));
+            button.setOnAction(event -> sendEmoji(emoji));
+            emojiBar.getChildren().add(button);
+        }
+    }
+
+    private void sendEmoji(String emoji) {
+        if (client != null && state != null && !state.gameOver) {
+            client.sendEmoji(emoji);
+        }
     }
 }

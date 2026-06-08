@@ -28,6 +28,7 @@ public final class GameVictoryScreen {
     }
 
     public static void show(Node anchor, String winnerName, Runnable onDismissed) {
+        GameAudio.play(GameAudio.Cue.VICTORY);
         Platform.runLater(() -> showOverlay(anchor, winnerName, onDismissed));
     }
 

@@ -7,6 +7,7 @@ import javafx.scene.control.ButtonType;
 import model.card.Card;
 import model.card.actionCard.JustSayNo;
 import model.player.Player;
+import ui.GameAudio;
 
 import java.util.Optional;
 import java.util.function.BiConsumer;
@@ -73,6 +74,7 @@ public class JustSayNoService {
     }
 
     private void logJustSayNoResponse(Player responder, String actionName, int responseDepth, boolean blocked) {
+        GameAudio.play(GameAudio.Cue.ERROR);
         if (responseDepth == 0) {
             log.accept(responder.getName() + " played Just Say No and cancelled \"" + actionName + "\"");
         } else {
