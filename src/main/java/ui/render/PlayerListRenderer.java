@@ -1,0 +1,95 @@
+package ui.render;
+
+import javafx.geometry.Pos;
+import javafx.scene.control.Label;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
+import javafx.scene.shape.Circle;
+import model.player.Player;
+
+import java.util.function.Supplier;
+
+/** Renders the left sidebar player summary cards. */
+public final class PlayerListRenderer {
+    private final Supplier<Image> avatarSupplier;
+
+    public PlayerListRenderer(Supplier<Image> avatarSupplier) {
+        this.avatarSupplier = avatarSupplier;
+    }
+
+    public void render(VBox container, Iterable<Player> players, Player currentPlayer) {
+        if (container == null) {
+            return;
+        }
+        container.getChildren().clear();
+        if (players == null) {
+            return;
+        }
+        for (Player player : players) {
+            boolean current = currentPlayer != null && player.equals(currentPlayer);
+            container.getChildren().add(createPlayerInfoBox(
+                    player.getName(),
+                    player.getHand().size(),
+                    player.getAllProperties().size(),
+                    player.getBankTotalValue(),
+                    current));
+        }
+    }
+
+    public void renderBoardViews(VBox container, Iterable<PlayerBoardView> views, int currentSeat) {
+        if (container == null) {
+            return;
+        }
+        container.getChildren().clear();
+        if (views == null) {
+            return;
+        }
+        for (PlayerBoardView view : views) {
+            container.getChildren().add(createPlayerInfoBox(
+                    view.name,
+                    view.handSize,
+                    view.properties.size(),
+                    view.bankTotal,
+                    view.seat == currentSeat));
+        }
+    }
+
+    private VBox createPlayerInfoBox(String name, int handSize, int propertyCount, int bankTotal, boolean isCurrent) {
+        VBox box = new VBox(7);
+        box.getStyleClass().add("player-info-card");
+        if (isCurrent) {
+            box.getStyleClass().add("player-info-current");
+        }
+
+        HBox header = new HBox(9);
+        header.setAlignment(Pos.CENTER_LEFT);
+        header.getChildren().addAll(createAvatarView(42), new Label(name) {{
+            setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+        }});
+
+        box.getChildren().addAll(
+                header,
+                new Label("Hand: " + handSize + " cards"),
+                new Label("Properties: " + propertyCount),
+                new Label("Bank: " + bankTotal + "M")
+        );
+        return box;
+    }
+
+    private ImageView createAvatarView(double size) {
+        ImageView view = new ImageView();
+        Image avatar = avatarSupplier != null ? avatarSupplier.get() : null;
+        if (avatar != null) {
+            view.setImage(avatar);
+        }
+        view.setFitWidth(size);
+        view.setFitHeight(size);
+        view.setPreserveRatio(true);
+        Circle clip = new Circle(size / 2, size / 2, size / 2);
+        view.setClip(clip);
+        view.getStyleClass().add("player-avatar");
+        return view;
+    }
+}

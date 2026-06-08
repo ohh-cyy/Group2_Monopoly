@@ -7,21 +7,21 @@ import model.card.PropertyCard;
 import model.enums.Color;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 
 public class Player {
     private String name;
     private List<Card> hand;
-    private Map<Object, List<PropertyCard>> properties;
+    private final Map<Color, List<PropertyCard>> properties;
     private List<Card> bank;
     private int money;
 
     public Player(String name) {
         this.name = name;
         this.hand = new ArrayList<>();
-        this.properties = new HashMap<Object, List<PropertyCard>>();
+        this.properties = new EnumMap<>(Color.class);
         this.bank = new ArrayList<>();
         this.money = 0;
     }

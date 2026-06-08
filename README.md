@@ -222,10 +222,10 @@ modules are:
 | Model | Stores the core game objects and card hierarchy. | `Card`, `MoneyCard`, `PropertyCard`, `WildpropertyCard`, `RentCard`, `ActionCard`, `Player`, `AchievementManager` |
 | Engine | Contains the core Monopoly Deal rules that should not depend on JavaFX. | `GameEngine`, `Deck`, `DeckFactory`, `DiscardPile`, `RentTable`, `PropertyRules`, `PaymentTransfer`, `RentPayment` |
 | Gameplay services | Keeps complex gameplay workflows out of the UI controller. | `ActionEffectResolver`, `PaymentService`, `JustSayNoService`, `HandDiscardDialogService` |
-| Controllers | Connects user actions to the game engine and updates screens. | `LobbyController`, `GameController`, `NetworkGameController`, `GameOverController` |
+| Controllers | Connects user actions to the game engine and updates screens. | `LobbyController`, `GameController`, `NetworkGameController` |
 | Network | Supports online lobby, client/server messages, and player-specific game state. | `GameServer`, `GameSession`, `ClientHandler`, `NetworkClient`, `ServerPlayHandler` |
 | Protocol and mapping | Converts game objects to data objects that can be sent over the network. | `ClientMessage`, `ServerMessage`, `GameStateDto`, `PlayerViewDto`, `CardMapper`, `GameStateMapper` |
-| UI | Handles JavaFX application setup, card display, settings, achievements, and victory effects. | `MonopolyDealApp`, `CardView`, `CardImageLoader`, `SettingsOverlay`, `GameVictoryScreen` |
+| UI | Handles JavaFX application setup, card display, settings, scene navigation, achievements, and victory effects. | `MonopolyDealApp`, `SettingsOverlay`, `CardView`, `GameVictoryScreen`, `GameAlertDialogs` |
 | Resources | Stores FXML screens, CSS, card images, avatar image, and background music. | `game-view.fxml`, `network-game-view.fxml`, `lobby-view.fxml`, `game-theme.css` |
 | Tests | Verifies the important behaviours of the game. | Engine tests, card/action-card tests, payment tests, network tests, image loading tests |
 
@@ -265,13 +265,16 @@ transfer code.
 
 | Pattern or technique | Where it appears |
 | --- | --- |
-| MVC-style structure | `model`, `engine`, `controller`, `ui` packages |
-| Factory | `DeckFactory`, `RentCard.allColors`, `RentCard.dual` |
-| Facade/service-style classes | `PaymentService`, `ActionEffectResolver`, `JustSayNoService`, `GameDialogService` |
-| Observer/callback style | `NetworkClient` receives server messages through a listener callback |
-| DTO and mapper pattern | `ClientMessage`, `ServerMessage`, `GameStateDto`, `CardMapper`, `GameStateMapper` |
-| Singleton-style static manager | `AchievementManager` stores achievement catalog and progress |
-| Interface-based contract | `PayableAsset` for cards with payment value |
+| **MVC** | `model` + `engine` (Model), `ui` + `ui.render` (View), `controller` (Controller) |
+| **Singleton** | `AchievementManager`, `GameSettings`, `JsonUtil`, `CardImageLoader` |
+| **Facade** | `LocalGameSession`, `LocalCardPlayService`, `GameDialogService`, `PaymentService`, `ActionEffectResolver` |
+| **Observer** | `NetworkClient` listener → `NetworkGameController`; local `afterStateChange()` → `updateUI()` |
+| **Factory** | `DeckFactory`, `RentCard.allColors`, `RentCard.dual` |
+| **Template Method** | `ActionCard.use()` in action card subclasses |
+| DTO and mapper | `GameStateDto`, `CardMapper`, `GameStateMapper` |
+| Interface contract | `PayableAsset` |
+
+See [docs/design_patterns.md](docs/design_patterns.md) for assignment/report notes.
 
 ## Testing Strategy
 

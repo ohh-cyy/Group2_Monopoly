@@ -1,15 +1,12 @@
 package ui;
 
-import controller.LobbyController;
 import javafx.animation.Animation;
 import javafx.animation.Interpolator;
 import javafx.animation.KeyFrame;
 import javafx.animation.KeyValue;
 import javafx.animation.Timeline;
 import javafx.application.Application;
-import javafx.fxml.FXMLLoader;
 import javafx.geometry.Pos;
-import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -20,8 +17,6 @@ import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
 import javafx.util.Duration;
-
-import java.io.IOException;
 
 public class MonopolyDealApp extends Application {
     private static final String THEME_CSS = "/ui/game-theme.css";
@@ -126,19 +121,9 @@ public class MonopolyDealApp extends Application {
             coverAnimation.stop();
             coverAnimation = null;
         }
-
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/ui/lobby-view.fxml"));
-            Parent root = loader.load();
-            LobbyController controller = loader.getController();
-            controller.setStage(primaryStage);
-
-            Scene scene = SettingsOverlay.createScene(root, primaryStage);
-            addTheme(scene);
-            primaryStage.setTitle("Monopoly Deal - Lobby");
-            primaryStage.setScene(scene);
-        } catch (IOException e) {
-            throw new IllegalStateException("Unable to load lobby screen", e);
+        SettingsOverlay.showLobby(primaryStage);
+        if (primaryStage.getScene() != null) {
+            addTheme(primaryStage.getScene());
         }
     }
 

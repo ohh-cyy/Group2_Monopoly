@@ -1,10 +1,15 @@
 package engine;
 
 import model.card.Card;
-import java.util.*;
+
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.List;
 
 public class Deck {
-    private Stack<Card> cards = new Stack<>();
+    private final Deque<Card> cards = new ArrayDeque<>();
 
     public Deck(List<Card> cardList) {
         shuffleAndAdd(cardList);

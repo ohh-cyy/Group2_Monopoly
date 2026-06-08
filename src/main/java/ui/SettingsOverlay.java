@@ -1,6 +1,8 @@
 package ui;
 
 import controller.LobbyController;
+import controller.GameController;
+import controller.NetworkGameController;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -16,6 +18,8 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import network.client.NetworkClient;
+import network.protocol.GameStateDto;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -72,6 +76,38 @@ public final class SettingsOverlay {
         } catch (IOException e) {
             throw new IllegalStateException("Unable to load lobby screen", e);
         }
+    }
+
+    public static GameController openLocalGame(Stage stage) throws IOException {
+        FXMLLoader loader = new FXMLLoader(SettingsOverlay.class.getResource("/ui/game-view.fxml"));
+        loader.load();
+        GameController controller = loader.getController();
+        controller.startLocalGame();
+        stage.setTitle("Monopoly Deal - Local");
+        stage.setScene(createGameScene(loader.getRoot(), stage));
+        return controller;
+    }
+
+    public static NetworkGameController openNetworkGame(Stage stage,
+                                                          NetworkClient client,
+                                                          int localSeat,
+                                                          GameStateDto initialState,
+                                                          Runnable beforeReturnToLobby) throws IOException {
+        var resource = SettingsOverlay.class.getResource("/ui/network-game-view.fxml");
+        if (resource == null) {
+            throw new IOException("missing network-game-view.fxml");
+        }
+        FXMLLoader loader = new FXMLLoader(resource);
+        Parent root = loader.load();
+        NetworkGameController controller = loader.getController();
+        if (controller == null) {
+            throw new IllegalStateException("NetworkGameController not loaded");
+        }
+        stage.setTitle("Monopoly Deal - Online");
+        stage.setScene(createGameScene(root, stage, beforeReturnToLobby));
+        stage.show();
+        controller.startOnlineGame(client, localSeat, initialState);
+        return controller;
     }
 
     private static Scene createScene(Parent content, Stage stage, boolean gameScreen) {

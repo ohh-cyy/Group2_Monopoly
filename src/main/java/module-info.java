@@ -26,6 +26,10 @@ module com.example.zyzzs {
     exports model.enums;
     exports model.achievement;
     exports controller;
+    exports controller.gameplay;
+    exports controller.session;
+    exports controller.dialog;
+    exports ui.render;
     exports network;
     exports network.protocol;
     exports network.server;

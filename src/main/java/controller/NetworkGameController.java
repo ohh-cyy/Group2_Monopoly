@@ -1,26 +1,23 @@
 package controller;
 
+import controller.dialog.GameDialogService;
+import controller.dialog.HandDiscardDialogService;
+import controller.gameplay.OnlineCardPlayService;
 import engine.PaymentTransfer;
-import engine.PropertyRules;
 import engine.GameEngine;
 import javafx.animation.FadeTransition;
 import javafx.animation.Interpolator;
 import javafx.animation.TranslateTransition;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
-import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
-import javafx.scene.input.MouseButton;
 import javafx.scene.layout.*;
-import javafx.scene.shape.Circle;
 import javafx.util.Duration;
 import model.achievement.AchievementManager;
 import model.card.*;
 import model.card.actionCard.*;
 import model.enums.Color;
-import model.player.Player;
 import network.CardMapper;
 import network.client.NetworkClient;
 import network.protocol.ClientMessage;
@@ -30,16 +27,18 @@ import network.protocol.MessageTypes;
 import network.protocol.PlayerViewDto;
 import network.protocol.ServerMessage;
 import network.server.PendingActionResolution;
-import controller.dialog.HandDiscardDialogService;
 import ui.AchievementUi;
 import ui.CardView;
 import ui.GameAlertDialogs;
 import ui.GameVictoryScreen;
 import ui.PublicPropertyBoardLayout;
-import ui.PublicPropertySetView;
+import ui.render.BankBarRenderer;
+import ui.render.HandRenderer;
+import ui.render.PlayerBoardView;
+import ui.render.PlayerListRenderer;
+import ui.render.PublicBoardRenderer;
 
 import java.util.*;
-import java.util.function.Function;
 
 public class NetworkGameController {
     @FXML private Label currentPlayerLabel;
@@ -74,6 +73,14 @@ public class NetworkGameController {
     private static final double HAND_DOCK_PEEK = 54;
     private static final int MAX_PLAYS_PER_TURN = 3;
 
+    private HandRenderer handRenderer;
+    private PlayerListRenderer playerListRenderer;
+    private PublicBoardRenderer publicBoardRenderer;
+    private BankBarRenderer bankBarRenderer;
+    private HandRenderer.SelectionListener handSelectionListener;
+    private GameDialogService dialogs;
+    private OnlineCardPlayService onlineCardPlay;
+
     private NetworkClient client;
     private int localSeat = -1;
     private GameStateDto state;
@@ -95,17 +102,33 @@ public class NetworkGameController {
     private boolean lastStatusError = false;
     private FadeTransition statusFadeTransition;
 
-    private enum ActionPlayChoice {
-        USE_EFFECT, DEPOSIT_BANK
-    }
-
     @FXML
     public void initialize() {
         loadAvatarImage();
+        dialogs = new GameDialogService(statusMessage);
+        onlineCardPlay = new OnlineCardPlayService(dialogs, this::showStatus);
+        handRenderer = new HandRenderer();
+        playerListRenderer = new PlayerListRenderer(() -> avatarImage);
+        publicBoardRenderer = new PublicBoardRenderer(() -> avatarImage);
+        bankBarRenderer = new BankBarRenderer();
+        handSelectionListener = new HandRenderer.SelectionListener() {
+            @Override
+            public void onCardSelected(Card card, CardView cardView) {
+                selectCard(card, cardView);
+            }
+
+            @Override
+            public void onCardDoubleClickPlay(Card card, CardView cardView) {
+                if (!card.equals(selectedCard)) {
+                    selectCard(card, cardView);
+                }
+                cardView.playActivationAnimation(() -> Platform.runLater(NetworkGameController.this::onPlay));
+            }
+        };
         if (playerHandScroll != null) {
             playerHandScroll.widthProperty().addListener((obs, oldW, newW) -> {
                 if (state != null) {
-                    updateHand();
+                    updateHandOnline();
                 }
             });
         }
@@ -217,7 +240,7 @@ public class NetworkGameController {
         }
         allPlayersPropertiesPanel.widthProperty().addListener((obs, oldW, newW) -> {
             if (newW.doubleValue() > 0 && state != null) {
-                updateAllPlayersProperties();
+                updateUi();
             }
         });
         attachTableAreaHeightListener();
@@ -257,12 +280,9 @@ public class NetworkGameController {
             return;
         }
         lastPropertyRowHeight = rowHeight;
-        updateAllPlayersProperties();
+        updateUi();
     }
 
-    private double computePropertyRowHeight(int playerCount) {
-        return PublicPropertyBoardLayout.rowHeightFor(allPlayersPropertiesPanel, playerCount);
-    }
 
     private void handleMessage(ServerMessage message) {
         Platform.runLater(() -> {
@@ -305,7 +325,7 @@ public class NetworkGameController {
         String content = prompt.responseDepth == 0
                 ? prompt.actionName + "\n\nPlaying Just Say No cancels this effect."
                 : prompt.actionName + "\n\nPlaying Just Say No cancels the previous Just Say No.";
-        Optional<ButtonType> choice = showStyledButtonDialog(
+        Optional<ButtonType> choice = dialogs.showButtonDialog(
                 "Just Say No", header, content, playBtn, allowBtn, cancelBtn);
         boolean useJustSayNo = choice.isPresent() && choice.get() == playBtn;
         client.respond(prompt.promptId, useJustSayNo, null);
@@ -326,7 +346,7 @@ public class NetworkGameController {
             showStatus("No assets available to pay.", true);
             return;
         }
-        Optional<Card> chosen = showStyledChoiceDialog(
+        Optional<Card> chosen = dialogs.showChoiceDialog(
                 "Choose Payment Asset",
                 "You must pay " + prompt.remainingDue + "M",
                 prompt.actionName + "\nChoose one bank card or property to pay. Properties in complete sets cannot be used.",
@@ -351,7 +371,7 @@ public class NetworkGameController {
 
     private String paymentCardStyle(Card card) {
         if (card instanceof PropertyCard propertyCard && propertyCard.getColor() != null) {
-            return "-fx-border-color: " + cssColorFor(propertyCard.getColor()) + ";";
+            return "-fx-border-color: " + dialogs.cssColorFor(propertyCard.getColor()) + ";";
         }
         if (card instanceof model.card.MoneyCard) {
             return "-fx-border-color: #27ae60;";
@@ -497,7 +517,7 @@ public class NetworkGameController {
         }
         int excess = myHand.size() - GameEngine.MAX_HAND_SIZE;
         Optional<Card> choice = HandDiscardDialogService.promptDiscardOne(
-                helper -> showStyledChoiceDialog(
+                helper -> dialogs.showChoiceDialog(
                         helper.title(),
                         helper.header(),
                         helper.prompt(),
@@ -590,18 +610,23 @@ public class NetworkGameController {
         CardView sourceView = selectedCardView;
         selectedCard = null;
         selectedCardView = null;
-        ClientMessage msg = new ClientMessage();
-        msg.cardId = card.getInstanceId();
+        Optional<ClientMessage> built = onlineCardPlay.buildPlayMessage(state, localSeat, myHand, card);
+        if (built.isEmpty()) {
+            restoreSelectedCard(card, sourceView);
+            return;
+        }
+        sendPlayCard(built.get());
+    }
 
-        if (card instanceof WildpropertyCard wild) {
-            playWild(wild, msg, sourceView);
+    private void restoreSelectedCard(Card card, CardView sourceView) {
+        selectedCard = card;
+        selectedCardView = sourceView;
+        if (sourceView != null && sourceView.getScene() != null) {
+            handRenderer.clearSelection(playerHand);
+            sourceView.setSelected(true);
             return;
         }
-        if (card instanceof ActionCard action) {
-            playAction(action, msg, sourceView);
-            return;
-        }
-        sendPlayCard(msg);
+        handRenderer.applySelection(playerHand, card, (c, view) -> selectedCardView = view);
     }
 
     private void sendPlayCard(ClientMessage msg) {
@@ -609,709 +634,83 @@ public class NetworkGameController {
         AchievementUi.unlockAndShow(AchievementManager.FIRST_PLAY, statusMessage);
     }
 
-    private void playWild(WildpropertyCard wild, ClientMessage msg, CardView sourceView) {
-        if (wild.isBankable()) {
-            Optional<ActionPlayChoice> choice = promptWildPropertyChoice(wild);
-            if (choice.isEmpty()) {
-                restoreSelectedCard(wild, sourceView);
-                return;
-            }
-            if (choice.get() == ActionPlayChoice.DEPOSIT_BANK) {
-                msg.mode = "BANK";
-                sendPlayCard(msg);
-                return;
-            }
-        }
-        List<Color> colors = wild.getAvailableColors();
-        if (colors.isEmpty()) {
-            showStatus("No color available", true);
-            restoreSelectedCard(wild, sourceView);
-            return;
-        }
-        Player localView = playerViewFromSeat(localSeat);
-        List<Color> playableColors = colors.stream()
-                .filter(color -> PropertyRules.canAddBillableProperty(localView, color))
-                .toList();
-        if (playableColors.isEmpty()) {
-            showStatus("All available colors are already complete. Deposit to bank if you can.", true);
-            restoreSelectedCard(wild, sourceView);
-            return;
-        }
-        Optional<Color> color = promptSelectWildColor(wild, playableColors);
-        if (color.isEmpty()) {
-            restoreSelectedCard(wild, sourceView);
-            showStatus("Cancelled, wild card kept in hand", false);
-            return;
-        }
-        msg.mode = "PROPERTY";
-        msg.color = color.get().name();
-        sendPlayCard(msg);
-    }
-
-    private void playAction(ActionCard action, ClientMessage msg, CardView sourceView) {
-        Optional<ActionPlayChoice> choice = promptActionCardChoice(action);
-        if (choice.isEmpty()) {
-            restoreSelectedCard(action, sourceView);
-            return;
-        }
-        if (choice.get() == ActionPlayChoice.DEPOSIT_BANK) {
-            msg.mode = "BANK";
-            sendPlayCard(msg);
-            return;
-        }
-
-        msg.mode = "EFFECT";
-        if (!fillActionEffectMessage(action, msg)) {
-            restoreSelectedCard(action, sourceView);
-            return;
-        }
-        sendPlayCard(msg);
-    }
-
-    private void restoreSelectedCard(Card card, CardView sourceView) {
-        selectedCard = card;
-        selectedCardView = sourceView;
-        if (sourceView != null) {
-            sourceView.setSelected(true);
-        }
-        updateButtons();
-    }
-
-    private boolean fillActionEffectMessage(ActionCard action, ClientMessage msg) {
-        if (action instanceof RentCard rentCard) {
-            Optional<Color> color = promptRentColor(rentCard);
-            if (color.isEmpty()) {
-                return false;
-            }
-            msg.color = color.get().name();
-            return true;
-        }
-        if (action instanceof DebtCollector) {
-            Optional<Integer> target = promptOpponentSeat("Debt Collector: Select player to collect 5M from");
-            if (target.isEmpty()) {
-                return false;
-            }
-            msg.targetSeat = target.get();
-            return true;
-        }
-        if (action instanceof House) {
-            List<Color> options = getHouseEligibleColors();
-            if (options.isEmpty()) {
-                showStatus("No complete set available for a House", true);
-                return false;
-            }
-            Optional<Color> color = showColorChoiceDialog(
-                    "Select a complete set to add House",
-                    "Select a complete set to add House",
-                    "Select color set:", options);
-            if (color.isEmpty()) {
-                return false;
-            }
-            msg.color = color.get().name();
-            return true;
-        }
-        if (action instanceof Hotel) {
-            List<Color> options = getHotelEligibleColors();
-            if (options.isEmpty()) {
-                showStatus("Need a complete set with a House before adding a Hotel", true);
-                return false;
-            }
-            Optional<Color> color = showColorChoiceDialog(
-                    "Select a complete set to add Hotel",
-                    "Select a complete set to add Hotel",
-                    "Select color set:", options);
-            if (color.isEmpty()) {
-                return false;
-            }
-            msg.color = color.get().name();
-            return true;
-        }
-        if (action instanceof SlyDeal) {
-            Optional<Integer> target = promptOpponentSeat("Sly Deal: Select player to steal property from");
-            if (target.isEmpty()) {
-                return false;
-            }
-            List<PropertyCard> stealable = getStealablePropertiesForSeat(target.get());
-            if (stealable.isEmpty()) {
-                showStatus(playerNameAt(target.get()) + " has no stealable properties", true);
-                return false;
-            }
-            Optional<PropertyCard> property = promptSelectProperty(
-                    stealable,
-                    "Select property to steal",
-                    playerNameAt(target.get()) + "'s stealable properties (not in complete sets)");
-            if (property.isEmpty()) {
-                return false;
-            }
-            msg.targetSeat = target.get();
-            msg.targetCardId = property.get().getInstanceId();
-            return true;
-        }
-        if (action instanceof ForcedDeal) {
-            Optional<Integer> target = promptOpponentSeat("Forced Deal: Select player to exchange properties with");
-            if (target.isEmpty()) {
-                return false;
-            }
-            List<PropertyCard> myProps = getPropertiesForSeat(localSeat);
-            if (myProps.isEmpty()) {
-                showStatus("You have no properties to exchange", true);
-                return false;
-            }
-            List<PropertyCard> theirProps = getStealablePropertiesForSeat(target.get());
-            if (theirProps.isEmpty()) {
-                showStatus(playerNameAt(target.get()) + " has no exchangeable properties", true);
-                return false;
-            }
-            Optional<PropertyCard> mine = promptSelectProperty(
-                    myProps, "Select your property to exchange", "Your properties");
-            if (mine.isEmpty()) {
-                return false;
-            }
-            Optional<PropertyCard> theirs = promptSelectProperty(
-                    theirProps,
-                    "Select opponent's property to exchange",
-                    playerNameAt(target.get()) + "'s exchangeable properties");
-            if (theirs.isEmpty()) {
-                return false;
-            }
-            msg.targetSeat = target.get();
-            msg.targetCardId = mine.get().getInstanceId();
-            msg.secondCardId = theirs.get().getInstanceId();
-            return true;
-        }
-        if (action instanceof DealBreaker) {
-            Optional<Integer> target = promptOpponentWithCompleteSets();
-            if (target.isEmpty()) {
-                showStatus("No player currently has a complete property set to steal", true);
-                return false;
-            }
-            List<Color> completeSets = getCompleteSetColorsForSeat(target.get());
-            Optional<Color> color = showColorChoiceDialog(
-                    "Select Set",
-                    playerNameAt(target.get()) + "'s complete sets",
-                    "Which color to steal?", completeSets);
-            if (color.isEmpty()) {
-                return false;
-            }
-            msg.targetSeat = target.get();
-            msg.color = color.get().name();
-            return true;
-        }
-        if (action instanceof DoubleTheRent doubleRent) {
-            return fillDoubleRentMessage(doubleRent, msg);
-        }
-        return true;
-    }
-
-    private boolean fillDoubleRentMessage(DoubleTheRent doubleRent, ClientMessage msg) {
-        if (state == null || state.remainingPlays < 2) {
-            showStatus("You need 2 plays remaining to use Double the Rent with a Rent card", true);
-            return false;
-        }
-        List<RentCard> rentOptions = findPlayableRentCards(doubleRent);
-        if (rentOptions.isEmpty()) {
-            showStatus("No playable Rent card in your hand", true);
-            return false;
-        }
-        Optional<RentCard> rentChoice = showStyledChoiceDialog(
-                "Choose Rent Card",
-                "Double the Rent",
-                "Select a Rent card to play at double value (uses 2 plays):",
-                rentOptions,
-                rent -> rent.getName() + " (bank " + rent.getBankValueM() + "M)",
-                rent -> null);
-        if (rentChoice.isEmpty()) {
-            return false;
-        }
-        Optional<Color> color = promptRentColor(rentChoice.get());
-        if (color.isEmpty()) {
-            return false;
-        }
-        msg.mode = "DOUBLE_RENT";
-        msg.secondCardId = rentChoice.get().getInstanceId();
-        msg.color = color.get().name();
-        return true;
-    }
-
-    private List<RentCard> findPlayableRentCards(ActionCard excluding) {
-        List<RentCard> options = new ArrayList<>();
-        for (Card card : myHand) {
-            if (card == excluding || card == null || !(card instanceof RentCard rent)) {
-                continue;
-            }
-            if (rent.canPlay(playerViewFromSeat(localSeat))) {
-                options.add(rent);
-            }
-        }
-        return options;
-    }
-
-    private Optional<PropertyCard> promptSelectProperty(List<PropertyCard> properties,
-                                                        String title, String header) {
-        return showStyledChoiceDialog(title, header, "Select a property:", properties,
-                p -> p.getName() + " (" + p.getColor() + ", " + p.getPrice() + "M)",
-                p -> "-fx-border-color: " + cssColorFor(
-                        p.getColor() == null ? Color.BROWN : p.getColor()) + ";");
-    }
-
-    private Optional<Integer> promptOpponentWithCompleteSets() {
-        if (state == null) {
-            return Optional.empty();
-        }
-        List<PlayerViewDto> valid = new ArrayList<>();
-        for (PlayerViewDto p : state.players) {
-            if (p.seat != localSeat && hasAnyCompleteSet(p.seat)) {
-                valid.add(p);
-            }
-        }
-        if (valid.isEmpty()) {
-            return Optional.empty();
-        }
-        Optional<PlayerViewDto> picked = showStyledChoiceDialog(
-                "Deal Breaker",
-                "Select player to steal complete set from",
-                "Only showing players with complete sets:",
-                valid,
-                p -> p.name,
-                p -> null);
-        return picked.map(p -> p.seat);
-    }
-
-    private List<PropertyCard> getPropertiesForSeat(int seat) {
-        List<PropertyCard> props = new ArrayList<>();
-        if (state == null) {
-            return props;
-        }
-        for (PlayerViewDto p : state.players) {
-            if (p.seat != seat) {
-                continue;
-            }
-            for (var dto : p.properties) {
-                Card card = CardMapper.fromDto(dto);
-                if (card instanceof PropertyCard property) {
-                    props.add(property);
-                }
-            }
-            break;
-        }
-        return props;
-    }
-
-    private List<PropertyCard> getStealablePropertiesForSeat(int seat) {
-        Player view = playerViewFromSeat(seat);
-        return PropertyRules.getPropertiesOutsideCompleteSets(view);
-    }
-
-    private Player playerViewFromSeat(int seat) {
-        Player view = new Player("view");
-        for (PropertyCard property : getPropertiesForSeat(seat)) {
-            view.addProperty(property);
-        }
-        return view;
-    }
-
-    private boolean hasAnyCompleteSet(int seat) {
-        Player view = playerViewFromSeat(seat);
-        for (Color color : Color.values()) {
-            if (view.hasCompleteSet(color)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private List<Color> getCompleteSetColorsForSeat(int seat) {
-        Player view = playerViewFromSeat(seat);
-        List<Color> complete = new ArrayList<>();
-        for (Color color : Color.values()) {
-            if (view.hasCompleteSet(color)) {
-                complete.add(color);
-            }
-        }
-        return complete;
-    }
-
-    private List<Color> getHouseEligibleColors() {
-        Player view = playerViewFromSeat(localSeat);
-        List<Color> options = new ArrayList<>();
-        for (Color color : Color.values()) {
-            if (view.hasCompleteSet(color) && !hasImprovement(localSeat, "House+", color)) {
-                options.add(color);
-            }
-        }
-        return options;
-    }
-
-    private List<Color> getHotelEligibleColors() {
-        Player view = playerViewFromSeat(localSeat);
-        List<Color> options = new ArrayList<>();
-        for (Color color : Color.values()) {
-            if (view.hasCompleteSet(color)
-                    && hasImprovement(localSeat, "House+", color)
-                    && !hasImprovement(localSeat, "Hotel+", color)) {
-                options.add(color);
-            }
-        }
-        return options;
-    }
-
-    private boolean hasImprovement(int seat, String prefix, Color color) {
-        return getPropertiesForSeat(seat).stream()
-                .anyMatch(p -> (prefix + color).equals(p.getName()));
-    }
-
-    private String playerNameAt(int seat) {
-        if (state == null || state.players == null) {
-            return "Player";
-        }
-        for (PlayerViewDto p : state.players) {
-            if (p.seat == seat) {
-                return p.name;
-            }
-        }
-        return "Player";
-    }
-
-    private Optional<ActionPlayChoice> promptActionCardChoice(ActionCard card) {
-        ButtonType useBtn = new ButtonType("Use Effect");
-        ButtonType bankBtn = new ButtonType("Deposit to Bank (" + card.getBankValueM() + "M)");
-        ButtonType cancelBtn = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
-        Optional<ButtonType> result = showStyledButtonDialog(
-                "Action Card",
-                card.getName() + " — Bank value " + card.getBankValueM() + "M",
-                card.getDescription() + "\n\nChoose 'Use Effect' or 'Deposit to Bank'?",
-                useBtn, bankBtn, cancelBtn);
-        if (result.isEmpty()) {
-            return Optional.empty();
-        }
-        if (result.get() == useBtn) {
-            return Optional.of(ActionPlayChoice.USE_EFFECT);
-        }
-        if (result.get() == bankBtn) {
-            return Optional.of(ActionPlayChoice.DEPOSIT_BANK);
-        }
-        return Optional.empty();
-    }
-
-    private Optional<ActionPlayChoice> promptWildPropertyChoice(WildpropertyCard wild) {
-        ButtonType useBtn = new ButtonType("Play as Property");
-        ButtonType bankBtn = new ButtonType("Deposit to Bank (" + wild.getBankValueM() + "M)");
-        ButtonType cancelBtn = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
-        Optional<ButtonType> result = showStyledButtonDialog(
-                "Wild Property Card",
-                wild.getName() + " — Bank value " + wild.getBankValueM() + "M",
-                "Play as property (choose a color), or deposit to bank for "
-                        + wild.getBankValueM() + "M?",
-                useBtn, bankBtn, cancelBtn);
-        if (result.isEmpty()) {
-            return Optional.empty();
-        }
-        if (result.get() == useBtn) {
-            return Optional.of(ActionPlayChoice.USE_EFFECT);
-        }
-        if (result.get() == bankBtn) {
-            return Optional.of(ActionPlayChoice.DEPOSIT_BANK);
-        }
-        return Optional.empty();
-    }
-
-    private Optional<Color> promptSelectWildColor(WildpropertyCard wild, List<Color> playableColors) {
-        if (playableColors == null || playableColors.isEmpty()) {
-            return Optional.empty();
-        }
-        return showWildPropertyColorDialog(wild, playableColors);
-    }
-
-    private Optional<Color> showWildPropertyColorDialog(WildpropertyCard wild, List<Color> colors) {
-        if (colors.isEmpty()) {
-            return Optional.empty();
-        }
-        int bankValue = wild.getBankValueM();
-        String bankHint = wild.isBankable()
-                ? "Deposit to bank is always " + bankValue + "M (not affected by color chosen)."
-                : "This wild card cannot be deposited to bank.";
-        return showStyledChoiceDialog(
-                "Wild Property Color",
-                wild.getName(),
-                "Choose a color to play as property.\n" + bankHint,
-                colors,
-                color -> color + "  —  play as " + color + " property",
-                color -> "-fx-background-color: " + cssColorFor(color) + ";"
-                        + "-fx-text-fill: " + textColorFor(color) + ";"
-                        + "-fx-border-color: rgba(255,255,255,0.55);");
-    }
-
-    private Optional<Color> promptRentColor(RentCard rentCard) {
-        Map<Color, List<Card>> byColor = propertiesByColorForLocalSeat();
-        List<Color> options = new ArrayList<>();
-        if (rentCard.isAllColors()) {
-            for (Color c : Color.values()) {
-                if (PropertyRules.countBillableProperties(byColor.get(c)) > 0) {
-                    options.add(c);
-                }
-            }
-        } else {
-            for (Color c : rentCard.getApplicableColors()) {
-                if (PropertyRules.countBillableProperties(byColor.get(c)) > 0) {
-                    options.add(c);
-                }
-            }
-        }
-        if (options.isEmpty()) {
-            showStatus("No valid rent color", true);
-            return Optional.empty();
-        }
-        if (options.size() == 1) {
-            return Optional.of(options.get(0));
-        }
-        return showStyledChoiceDialog(
-                "Select Rent Color",
-                "Select which property set to collect rent from",
-                "Color (count → rent):",
-                options,
-                color -> color + "  ·  " + PropertyRules.countBillableProperties(byColor.get(color)) + " cards → "
-                        + PropertyRules.calculateRent(color, byColor.get(color)) + "M",
-                color -> "-fx-background-color: " + cssColorFor(color) + "; -fx-text-fill: " + textColorFor(color) + ";");
-    }
-
-    private Map<Color, List<Card>> propertiesByColorForLocalSeat() {
-        Map<Color, List<Card>> byColor = new EnumMap<>(Color.class);
-        if (state == null) {
-            return byColor;
-        }
-        for (PlayerViewDto p : state.players) {
-            if (p.seat != localSeat) {
-                continue;
-            }
-            for (var dto : p.properties) {
-                Color color = CardMapper.parseColor(dto.color);
-                if (color == null) {
-                    continue;
-                }
-                byColor.computeIfAbsent(color, ignored -> new ArrayList<>()).add(CardMapper.fromDto(dto));
-            }
-        }
-        return byColor;
-    }
-
-    private Optional<Integer> promptOpponentSeat(String title) {
-        if (state == null) return Optional.empty();
-        List<PlayerViewDto> opponents = new ArrayList<>();
-        for (PlayerViewDto p : state.players) {
-            if (p.seat != localSeat) {
-                opponents.add(p);
-            }
-        }
-        if (opponents.isEmpty()) return Optional.empty();
-        Optional<PlayerViewDto> picked = showStyledChoiceDialog(
-                title, title, "Select player:", opponents, p -> p.name, p -> null);
-        return picked.map(p -> p.seat);
-    }
-
     private boolean isMyTurn() {
         return state != null && !state.gameOver && state.currentPlayerIndex == localSeat;
     }
 
     private void updateUi() {
-        if (state == null) return;
-        updatePlayersList();
-        updateAllPlayersProperties();
-        updateHand();
-        updateBank();
-        updateLabels();
+        if (state == null) {
+            return;
+        }
+        List<PlayerBoardView> boardViews = PlayerBoardView.fromDtos(state.players, localSeat);
+        playerListRenderer.renderBoardViews(playersList, boardViews, state.currentPlayerIndex);
+        double rowHeight = publicBoardRenderer.render(
+                publicBoardPanel, allPlayersPropertiesPanel, boardViews, state.currentPlayerIndex);
+        if (rowHeight > 0) {
+            lastPropertyRowHeight = rowHeight;
+        }
+        bankBarRenderer.renderBoardViews(allPlayersBankBar, boardViews, state.currentPlayerIndex);
+        updateHandOnline();
+        updateBankOnline();
+        updateLabelsOnline();
         updateButtons();
     }
 
-    private void updatePlayersList() {
-        if (playersList == null) return;
-        playersList.getChildren().clear();
-        for (PlayerViewDto p : state.players) {
-            boolean current = p.seat == state.currentPlayerIndex;
-            playersList.getChildren().add(createPlayerInfoBox(p, current));
-        }
-    }
-
-    private VBox createPlayerInfoBox(PlayerViewDto player, boolean isCurrent) {
-        VBox box = new VBox(7);
-        box.getStyleClass().add("player-info-card");
-        if (isCurrent) {
-            box.getStyleClass().add("player-info-current");
-        }
-
-        HBox header = new HBox(9);
-        header.setAlignment(Pos.CENTER_LEFT);
-        ImageView avatar = createAvatarView(42);
-        String displayName = player.name + (player.seat == localSeat ? " (You)" : "");
-        Label nameLabel = new Label(displayName);
-        nameLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
-        header.getChildren().addAll(avatar, nameLabel);
-
-        Label handCountLabel = new Label("Hand: " + player.handSize + " cards");
-        Label propertyCountLabel = new Label("Properties: " + player.properties.size());
-        Label bankLabel = new Label("Bank: " + player.bankTotal + "M");
-
-        box.getChildren().addAll(header, handCountLabel, propertyCountLabel, bankLabel);
-        return box;
-    }
-
-    private void updateAllPlayersProperties() {
-        if (allPlayersPropertiesPanel == null) return;
-        allPlayersPropertiesPanel.getChildren().clear();
-
-        if (state.players.isEmpty()) {
-            Label empty = new Label("(No player properties yet)");
-            empty.setStyle("-fx-text-fill: #7f8c8d;");
-            allPlayersPropertiesPanel.getChildren().add(empty);
-            return;
-        }
-
-        double rowHeight = computePropertyRowHeight(state.players.size());
-        lastPropertyRowHeight = rowHeight;
-        CardView.CardMetrics propertyMetrics = PublicPropertyBoardLayout.cardMetricsForRow(rowHeight);
-        double avatarSize = Math.min(38, Math.max(24, rowHeight - 28));
-
-        for (PlayerViewDto p : state.players) {
-            VBox playerBlock = new VBox(6);
-            playerBlock.setMaxWidth(Double.MAX_VALUE);
-            playerBlock.setMinHeight(0);
-            playerBlock.setMaxHeight(Double.MAX_VALUE);
-            boolean isTurn = p.seat == state.currentPlayerIndex;
-            playerBlock.getStyleClass().add("player-public-block");
-            if (isTurn) {
-                playerBlock.getStyleClass().add("player-public-block-current");
-            }
-
-            HBox titleRow = new HBox(9);
-            titleRow.setAlignment(Pos.CENTER_LEFT);
-            ImageView avatar = createAvatarView(avatarSize);
-            Label title = new Label((isTurn ? "▶ " : "") + p.name
-                    + "  |  Hand: " + p.handSize + " cards  |  Bank: " + p.bankTotal + "M");
-            title.setStyle("-fx-font-weight: 900; -fx-font-size: 15px; -fx-text-fill: #103c2a;");
-            titleRow.getChildren().addAll(avatar, title);
-
-            FlowPane props = new FlowPane(10, 10);
-            props.setPrefWrapLength(Math.max(320, resolvePublicBoardRowWidth() - 40));
-            props.setMaxWidth(Double.MAX_VALUE);
-            props.setMaxHeight(propertyMetrics.slotH() + 56);
-
-            List<Card> properties = new ArrayList<>();
-            for (var dto : p.properties) {
-                Card card = CardMapper.fromDto(dto);
-                if (card != null) {
-                    properties.add(card);
-                }
-            }
-            if (properties.isEmpty()) {
-                props.getChildren().add(new Label("(No properties)"));
-            } else {
-                Map<Color, List<Card>> byColor = groupPropertiesByColor(properties);
-                for (Map.Entry<Color, List<Card>> entry : byColor.entrySet()) {
-                    props.getChildren().add(PublicPropertySetView.build(entry.getKey(), entry.getValue(), propertyMetrics));
-                }
-            }
-
-            ScrollPane propsScroll = new ScrollPane(props);
-            propsScroll.setFitToHeight(true);
-            propsScroll.setMinHeight(0);
-            propsScroll.setMaxHeight(Double.MAX_VALUE);
-            propsScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
-            propsScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-            propsScroll.setPannable(true);
-            propsScroll.getStyleClass().add("transparent-scroll");
-            VBox.setVgrow(propsScroll, Priority.ALWAYS);
-
-            playerBlock.getChildren().addAll(titleRow, propsScroll);
-            allPlayersPropertiesPanel.getChildren().add(playerBlock);
-        }
-        PublicPropertyBoardLayout.applyEqualRows(allPlayersPropertiesPanel, state.players.size());
-    }
-
-    private double resolvePublicBoardRowWidth() {
-        if (allPlayersPropertiesPanel == null) {
-            return 640;
-        }
-        double width = allPlayersPropertiesPanel.getWidth();
-        if (width > 0) {
-            return width;
-        }
-        if (publicBoardPanel != null && publicBoardPanel.getWidth() > 0) {
-            return publicBoardPanel.getWidth();
-        }
-        return 640;
-    }
-
-    private Map<Color, List<Card>> groupPropertiesByColor(List<Card> properties) {
-        Map<Color, List<Card>> byColor = new LinkedHashMap<>();
-        for (Card card : properties) {
-            Color color = card.getColor() != null ? card.getColor() : Color.BROWN;
-            byColor.computeIfAbsent(color, k -> new ArrayList<>()).add(card);
-        }
-        return byColor;
-    }
-
-    private void updateHand() {
-        if (playerHand == null) return;
-        playerHand.getChildren().clear();
+    private void updateHandOnline() {
         boolean canSelect = canSelectHandCards();
         boolean canPlay = canPlayFromHand();
-        CardView.CardMetrics metrics = computeHandMetrics(myHand.size());
-
-        for (Card card : myHand) {
-            if (card == null) {
-                continue;
-            }
-            StackPane slot = CardView.wrapInSlot(card, canSelect, metrics);
-            CardView cv = CardView.getCardView(slot);
-            if (selectedCard != null && selectedCard.equals(card) && cv != null) {
-                cv.setSelected(true);
-                selectedCardView = cv;
-            }
-            if (canSelect && cv != null) {
-                slot.setOnMouseClicked(e -> {
-                    if (e.getButton() != MouseButton.PRIMARY) {
-                        return;
-                    }
-                    int clicks = e.getClickCount();
-                    if (clicks == 2 && canPlay) {
-                        e.consume();
-                        if (!card.equals(selectedCard)) {
-                            selectCard(card, cv);
-                        }
-                        cv.playActivationAnimation(() -> playCardFromDoubleClick(card, cv));
-                        return;
-                    }
-                    if (clicks == 1) {
-                        selectCard(card, cv);
-                    }
-                });
-            }
-            playerHand.getChildren().add(slot);
+        handRenderer.render(playerHand, playerHandScroll, myHand, selectedCard,
+                canSelect, canPlay, handSelectionListener);
+        if (selectedCard != null) {
+            handRenderer.applySelection(playerHand, selectedCard, (card, view) -> selectedCardView = view);
         }
     }
 
-    private void playCardFromDoubleClick(Card card, CardView cardView) {
-        if (!myHand.contains(card)) {
+    private void updateBankOnline() {
+        if (playerBank == null) {
             return;
         }
-        // Dialogs must not run inside animation/layout callbacks.
-        Platform.runLater(this::onPlay);
+        playerBank.getChildren().clear();
+        int total = 0;
+        for (PlayerViewDto p : state.players) {
+            if (p.seat == localSeat) {
+                total = p.bankTotal;
+                break;
+            }
+        }
+        if (bankTotalLabel != null) {
+            bankTotalLabel.setText(total + "M");
+        }
+        for (Card card : myBank) {
+            StackPane slot = CardView.wrapInSlot(card, false, CardView.COMPACT);
+            slot.getStyleClass().add("bank-card-slot");
+            playerBank.getChildren().add(slot);
+        }
+        if (playerBank.getChildren().isEmpty()) {
+            Label hint = new Label("(Money cards / action cards played, or rent collected, go into bank)");
+            hint.setStyle("-fx-text-fill: #476272; -fx-font-size: 12px; -fx-wrap-text: true;");
+            playerBank.getChildren().add(hint);
+        }
     }
 
-    private CardView.CardMetrics computeHandMetrics(int cardCount) {
-        if (cardCount <= 0) {
-            return CardView.HAND;
+    private void updateLabelsOnline() {
+        if (currentPlayerLabel != null && state.currentPlayerIndex >= 0
+                && state.currentPlayerIndex < state.players.size()) {
+            String drawStatus = state.hasDrawnThisTurn ? "Drew cards" : "Hasn't drawn";
+            currentPlayerLabel.setText("Current Player: " + state.players.get(state.currentPlayerIndex).name
+                    + " | " + drawStatus
+                    + " | Remaining plays: " + state.remainingPlays + "/" + MAX_PLAYS_PER_TURN);
         }
-        double available = 600;
-        if (playerHandScroll != null && playerHandScroll.getViewportBounds().getWidth() > 0) {
-            available = playerHandScroll.getViewportBounds().getWidth() - 40;
+        if (gameStatusText != null) {
+            if (state.gameOver) {
+                gameStatusText.setText("Draw pile: " + state.drawPileSize
+                        + "  |  Discard pile: " + state.discardPileSize
+                        + "  |  Winner: " + state.winnerName);
+            } else {
+                gameStatusText.setText("Draw pile: " + state.drawPileSize
+                        + "  |  Discard pile: " + state.discardPileSize);
+            }
         }
-        double gap = 10;
-        double total = cardCount * CardView.HAND.slotW() + (cardCount - 1) * gap;
-        if (total <= available) {
-            return CardView.HAND;
-        }
-        double factor = Math.max(0.6, available / total);
-        return CardView.HAND.scaled(factor);
     }
 
     private void selectCard(Card card, CardView cv) {
@@ -1346,73 +745,8 @@ public class NetworkGameController {
         updateButtons();
     }
 
-    private void updateBank() {
-        if (playerBank == null) return;
-        playerBank.getChildren().clear();
-        int total = 0;
-        if (state != null) {
-            for (PlayerViewDto p : state.players) {
-                if (p.seat == localSeat) total = p.bankTotal;
-            }
-        }
-        if (bankTotalLabel != null) bankTotalLabel.setText(total + "M");
-        for (Card card : myBank) {
-            StackPane slot = CardView.wrapInSlot(card, false, CardView.COMPACT);
-            slot.getStyleClass().add("bank-card-slot");
-            playerBank.getChildren().add(slot);
-        }
-        if (playerBank.getChildren().isEmpty()) {
-            Label hint = new Label("(Money cards / action cards played, or rent collected, go into bank)");
-            hint.setStyle("-fx-text-fill: #476272; -fx-font-size: 12px; -fx-wrap-text: true;");
-            playerBank.getChildren().add(hint);
-        }
-    }
 
-    private void updateLabels() {
-        if (state == null || state.players == null || state.players.isEmpty()) {
-            return;
-        }
-        int turnIndex = Math.min(Math.max(state.currentPlayerIndex, 0), state.players.size() - 1);
-        PlayerViewDto current = state.players.get(turnIndex);
-        if (currentPlayerLabel != null) {
-            String drawStatus = state.hasDrawnThisTurn ? "Drew cards" : "Hasn't drawn";
-            currentPlayerLabel.setText("Current Player: " + current.name
-                    + " | " + drawStatus
-                    + " | Remaining plays: " + state.remainingPlays + "/" + MAX_PLAYS_PER_TURN);
-        }
-        if (gameStatusText != null) {
-            if (state.gameOver) {
-                gameStatusText.setText("Draw pile: " + state.drawPileSize
-                        + "  |  Discard pile: " + state.discardPileSize
-                        + "  |  Winner: " + state.winnerName);
-            } else {
-                gameStatusText.setText("Draw pile: " + state.drawPileSize
-                        + "  |  Discard pile: " + state.discardPileSize);
-            }
-        }
-        if (allPlayersBankBar != null) {
-            allPlayersBankBar.getChildren().clear();
-            for (PlayerViewDto player : state.players) {
-                boolean isCurrent = player.seat == state.currentPlayerIndex;
-                String displayName = player.name + (player.seat == localSeat ? " (You)" : "");
-                allPlayersBankBar.getChildren().add(createBankPill(displayName, player.bankTotal, isCurrent));
-            }
-        }
-    }
 
-    private VBox createBankPill(String name, int total, boolean isCurrent) {
-        VBox pill = new VBox(2);
-        pill.getStyleClass().add("bank-pill");
-        if (isCurrent) {
-            pill.getStyleClass().add("bank-pill-current");
-        }
-        Label nameLabel = new Label(name);
-        nameLabel.getStyleClass().add("bank-pill-label");
-        Label valueLabel = new Label(total + "M");
-        valueLabel.getStyleClass().add("bank-pill-value");
-        pill.getChildren().addAll(nameLabel, valueLabel);
-        return pill;
-    }
 
     private boolean canSelectHandCards() {
         return isMyTurn()
@@ -1474,125 +808,5 @@ public class NetworkGameController {
         } catch (Exception ex) {
             avatarImage = null;
         }
-    }
-
-    private ImageView createAvatarView(double size) {
-        ImageView view = new ImageView();
-        if (avatarImage != null) {
-            view.setImage(avatarImage);
-        }
-        view.setFitWidth(size);
-        view.setFitHeight(size);
-        view.setPreserveRatio(true);
-        Circle clip = new Circle(size / 2, size / 2, size / 2);
-        view.setClip(clip);
-        view.getStyleClass().add("player-avatar");
-        return view;
-    }
-
-    private void styleDialog(Dialog<?> dialog) {
-        DialogPane pane = dialog.getDialogPane();
-        try {
-            String css = Objects.requireNonNull(getClass().getResource("/ui/game-theme.css")).toExternalForm();
-            if (!pane.getStylesheets().contains(css)) {
-                pane.getStylesheets().add(css);
-            }
-        } catch (Exception ignored) {
-        }
-        pane.getStyleClass().add("game-dialog");
-        if (statusMessage != null && statusMessage.getScene() != null) {
-            dialog.initOwner(statusMessage.getScene().getWindow());
-        }
-    }
-
-    private Optional<ButtonType> showStyledButtonDialog(String title, String header, String content, ButtonType... buttons) {
-        Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle(title);
-        DialogPane pane = dialog.getDialogPane();
-        pane.getButtonTypes().setAll(buttons);
-        VBox body = new VBox(10);
-        body.getStyleClass().add("dialog-body");
-        Label headerLabel = new Label(header);
-        headerLabel.getStyleClass().add("dialog-header-label");
-        Label contentLabel = new Label(content == null ? "" : content);
-        contentLabel.setWrapText(true);
-        contentLabel.getStyleClass().add("dialog-content-label");
-        body.getChildren().addAll(headerLabel, contentLabel);
-        pane.setContent(body);
-        dialog.setResultConverter(button -> button);
-        styleDialog(dialog);
-        return dialog.showAndWait();
-    }
-
-    private <T> Optional<T> showStyledChoiceDialog(String title, String header, String prompt,
-                                                    List<T> options, Function<T, String> labeler,
-                                                    Function<T, String> colorStyleProvider) {
-        if (options == null || options.isEmpty()) {
-            return Optional.empty();
-        }
-        Dialog<T> dialog = new Dialog<>();
-        dialog.setTitle(title);
-        ButtonType cancel = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
-        DialogPane pane = dialog.getDialogPane();
-        pane.getButtonTypes().add(cancel);
-        dialog.setResultConverter(button -> null);
-
-        VBox body = new VBox(12);
-        body.getStyleClass().add("dialog-body");
-        Label headerLabel = new Label(header);
-        headerLabel.getStyleClass().add("dialog-header-label");
-        Label promptLabel = new Label(prompt == null ? "" : prompt);
-        promptLabel.setWrapText(true);
-        promptLabel.getStyleClass().add("dialog-content-label");
-        VBox choices = new VBox(8);
-        choices.getStyleClass().add("dialog-choice-list");
-        for (T option : options) {
-            Button button = new Button(labeler.apply(option));
-            button.setMaxWidth(Double.MAX_VALUE);
-            button.getStyleClass().add("dialog-choice-button");
-            String extraStyle = colorStyleProvider == null ? null : colorStyleProvider.apply(option);
-            if (extraStyle != null && !extraStyle.isBlank()) {
-                button.setStyle(extraStyle);
-            }
-            button.setOnAction(e -> {
-                dialog.setResult(option);
-                dialog.close();
-            });
-            choices.getChildren().add(button);
-        }
-        body.getChildren().addAll(headerLabel, promptLabel, choices);
-        pane.setContent(body);
-        styleDialog(dialog);
-        return dialog.showAndWait();
-    }
-
-    private Optional<Color> showColorChoiceDialog(String title, String header, String prompt, List<Color> colors) {
-        return showStyledChoiceDialog(title, header, prompt, colors,
-                color -> color + "  -  " + color.getSetSize() + " cards to complete",
-                color -> "-fx-background-color: " + cssColorFor(color) + ";"
-                        + "-fx-text-fill: " + textColorFor(color) + ";"
-                        + "-fx-border-color: rgba(255,255,255,0.55);");
-    }
-
-    private String cssColorFor(Color color) {
-        return switch (color) {
-            case BROWN -> "#8B5A2B";
-            case DARK_BLUE -> "#174EA6";
-            case GREEN -> "#1B7F43";
-            case ORANGE -> "#F2994A";
-            case RED -> "#D64545";
-            case YELLOW -> "#F2C94C";
-            case BLACK -> "#2D3436";
-            case LIGHT_BLUE -> "#7EC8E3";
-            case LIGHT_GREEN -> "#6FCF97";
-            case PINK -> "#E84393";
-        };
-    }
-
-    private String textColorFor(Color color) {
-        return switch (color) {
-            case YELLOW, LIGHT_BLUE, LIGHT_GREEN, ORANGE -> "#1F2A2E";
-            default -> "white";
-        };
     }
 }

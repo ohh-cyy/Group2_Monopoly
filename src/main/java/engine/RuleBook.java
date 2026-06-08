@@ -1,7 +1,7 @@
 package engine;
 
 import model.enums.Color;
-import java.util.HashMap;
+import java.util.EnumMap;
 import java.util.Map;
 
 public class RuleBook {
@@ -11,7 +11,7 @@ public class RuleBook {
     private static final int WINNING_SET_COUNT;
 
     static {
-        PROPERTY_SET_REQUIREMENTS = new HashMap<>();
+        PROPERTY_SET_REQUIREMENTS = new EnumMap<>(Color.class);
         PROPERTY_SET_REQUIREMENTS.put(Color.BROWN, 2);
         PROPERTY_SET_REQUIREMENTS.put(Color.LIGHT_BLUE, 3);
         PROPERTY_SET_REQUIREMENTS.put(Color.PINK, 3);

@@ -4,8 +4,6 @@ import javafx.application.Platform;
 import model.achievement.AchievementManager;
 import ui.AchievementUi;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
@@ -122,12 +120,7 @@ public class LobbyController {
         unlockNameAchievementIfReady();
         unlockAchievement(AchievementManager.CHOOSE_MODE);
         try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/ui/game-view.fxml"));
-            loader.load();
-            GameController controller = loader.getController();
-            controller.startLocalGame();
-            stage.setTitle("Monopoly Deal - Local");
-            stage.setScene(SettingsOverlay.createGameScene(loader.getRoot(), stage));
+            SettingsOverlay.openLocalGame(stage);
         } catch (IOException e) {
             statusLabel.setText("Unable to open local game: " + e.getMessage());
         }
@@ -200,24 +193,9 @@ public class LobbyController {
     }
 
     private void openNetworkGame(ServerMessage message) {
-        var resource = getClass().getResource("/ui/network-game-view.fxml");
-        if (resource == null) {
-            statusLabel.setText("Unable to open game: missing network-game-view.fxml. Please run mvn compile first");
-            return;
-        }
         try {
-            FXMLLoader loader = new FXMLLoader(resource);
-            var root = loader.load();
-            NetworkGameController controller = loader.getController();
-            if (controller == null) {
-                statusLabel.setText("Unable to open game: controller not loaded");
-                return;
-            }
             NetworkClient gameClient = client;
-            stage.setTitle("Monopoly Deal - Online");
-            stage.setScene(SettingsOverlay.createGameScene((javafx.scene.Parent) root, stage, gameClient::close));
-            stage.show();
-            controller.startOnlineGame(gameClient, localSeat, message.state);
+            SettingsOverlay.openNetworkGame(stage, gameClient, localSeat, message.state, gameClient::close);
             client = null;
         } catch (Exception e) {
             e.printStackTrace();
