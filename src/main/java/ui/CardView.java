@@ -294,9 +294,9 @@ public class CardView extends StackPane {
     }
 
     private String buildInfoText() {
-        return "名称：" + card.getName()
-                + "\n类型：" + getTypeDisplayName()
-                + "\n效果：" + buildEffectText();
+        return "Name: " + card.getName()
+                + "\nType: " + getTypeDisplayName()
+                + "\nEffect: " + buildEffectText();
     }
 
     private String buildEffectText() {

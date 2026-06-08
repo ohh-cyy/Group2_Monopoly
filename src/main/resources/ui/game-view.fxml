@@ -4,6 +4,7 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.text.Font?>
+<?import ui.GameLogPane?>
 
 <BorderPane xmlns:fx="http://javafx.com/fxml"
             fx:controller="controller.GameController"
@@ -127,11 +128,8 @@
                                   styleClass="emoji-bar"/>
 
                         <Label text="Game Log" styleClass="drawer-title drawer-subtitle"/>
-                        <TextArea fx:id="gameLog"
-                                  editable="false"
-                                  wrapText="true"
-                                  VBox.vgrow="ALWAYS"
-                                  styleClass="game-log"/>
+                        <GameLogPane fx:id="gameLog"
+                                     VBox.vgrow="ALWAYS"/>
                     </VBox>
                 </right>
             </BorderPane>

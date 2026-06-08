@@ -5,7 +5,7 @@ import controller.dialog.HandDiscardDialogService;
 import engine.GameEngine;
 import javafx.application.Platform;
 import javafx.scene.control.Label;
-import javafx.scene.control.TextArea;
+import ui.GameLogPane;
 import model.card.Card;
 import network.client.NetworkClient;
 import network.protocol.GameStateDto;
@@ -22,7 +22,7 @@ import java.util.function.Supplier;
 /** Victory, rematch, hand-limit discard, and log merge for online matches. */
 public final class NetworkMatchCoordinator {
     private final Label statusAnchor;
-    private final TextArea gameLog;
+    private final GameLogPane gameLog;
     private final StatusMessageDisplay statusDisplay;
     private final Runnable onBoardRefresh;
     private final Runnable disableActionButtons;
@@ -38,7 +38,7 @@ public final class NetworkMatchCoordinator {
     private boolean pendingEndTurnAfterDiscard;
 
     public NetworkMatchCoordinator(Label statusAnchor,
-                                   TextArea gameLog,
+                                   GameLogPane gameLog,
                                    StatusMessageDisplay statusDisplay,
                                    Runnable onBoardRefresh,
                                    Runnable disableActionButtons,
@@ -122,19 +122,23 @@ public final class NetworkMatchCoordinator {
             rematchPromptShown = false;
             rematchDeclinedNotified = false;
             lastRematchYesCount = -1;
-            statusDisplay.show("新一局已开始，请先抽牌。", false);
+            mergedLogSize = 0;
+            if (gameLog != null) {
+                gameLog.clear();
+            }
+            statusDisplay.show("A new game has started. Please draw your cards first.", false);
         }
         if (state.rematchDeclined && !rematchDeclinedNotified) {
             rematchDeclinedNotified = true;
-            statusDisplay.show("有玩家选择不继续，本局结束。", false);
+            statusDisplay.show("A player chose not to continue. This session has ended.", false);
         }
         if (state.rematchOpen
                 && Boolean.TRUE.equals(state.myRematchVote)
                 && state.rematchYesCount < state.rematchRequired
                 && state.rematchYesCount != lastRematchYesCount) {
             lastRematchYesCount = state.rematchYesCount;
-            statusDisplay.show("已选择再来一局，等待其他玩家（"
-                    + state.rematchYesCount + "/" + state.rematchRequired + "）", false);
+            statusDisplay.show("Rematch vote recorded. Waiting for other players ("
+                    + state.rematchYesCount + "/" + state.rematchRequired + ")", false);
         }
     }
 
@@ -143,10 +147,9 @@ public final class NetworkMatchCoordinator {
             return;
         }
         for (int i = mergedLogSize; i < lines.size(); i++) {
-            gameLog.appendText(lines.get(i) + "\n");
+            gameLog.append(lines.get(i));
         }
         mergedLogSize = lines.size();
-        gameLog.setScrollTop(Double.MAX_VALUE);
     }
 
     private void maybeShowVictory(GameStateDto state) {
@@ -168,7 +171,7 @@ public final class NetworkMatchCoordinator {
         rematchPromptShown = true;
         GameAlertDialogs.askPlayAgain(
                 statusAnchor,
-                "是否和大家再开一局？只有所有玩家都选择再来一局才会重新开始。",
+                "Play another round with everyone? All players must vote yes to start a new game.",
                 accept -> {
                     NetworkClient client = clientSupplier.get();
                     if (client == null) {
@@ -177,9 +180,9 @@ public final class NetworkMatchCoordinator {
                     client.voteRematch(accept);
                     if (accept) {
                         lastRematchYesCount = state.rematchYesCount;
-                        statusDisplay.show("已选择再来一局，等待其他玩家…", false);
+                        statusDisplay.show("Rematch vote recorded. Waiting for other players...", false);
                     } else {
-                        statusDisplay.show("你已选择结束本局", false);
+                        statusDisplay.show("You chose to end this session.", false);
                     }
                 });
     }

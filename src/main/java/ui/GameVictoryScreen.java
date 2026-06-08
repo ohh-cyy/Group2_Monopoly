@@ -53,9 +53,9 @@ public final class GameVictoryScreen {
         content.setMaxWidth(640);
 
         VictoryFireworksView fireworks = new VictoryFireworksView(520, 360);
-        Label winnerLabel = new Label(name + " 赢得本局");
+        Label winnerLabel = new Label(name + " wins this game!");
         winnerLabel.getStyleClass().add("victory-overlay-winner");
-        Label hintLabel = new Label("点击任意处关闭");
+        Label hintLabel = new Label("Click anywhere to close");
         hintLabel.getStyleClass().add("victory-overlay-hint");
 
         content.getChildren().addAll(fireworks, winnerLabel, hintLabel);

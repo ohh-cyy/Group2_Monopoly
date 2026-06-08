@@ -21,4 +21,9 @@ public enum Color {
     public int getSetSize() {
         return setSize;
     }
+
+    /** Lowercase key for game log display, e.g. light_blue. */
+    public String logKey() {
+        return name().toLowerCase();
+    }
 }

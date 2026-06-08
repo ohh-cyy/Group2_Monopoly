@@ -23,7 +23,7 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /** Refreshes all online-game board widgets from server state. */
-public final class NetworkBoardRefreshService {
+public final class NetworkBoardRefreshService implements GameBoardRefreshService {
     private static final int MAX_PLAYS_PER_TURN = 3;
 
     private final Label currentPlayerLabel;
@@ -101,14 +101,17 @@ public final class NetworkBoardRefreshService {
         this.handSelectionListener = handSelectionListener;
     }
 
+    @Override
     public void setSelectedCard(Card selectedCard) {
         this.selectedCard = selectedCard;
     }
 
+    @Override
     public void applySelectionCallback(BiConsumer<Card, ui.CardView> callback) {
         this.selectedViewCallback = callback;
     }
 
+    @Override
     public void refreshAll(VBox playersList, Consumer<Double> rowHeightConsumer) {
         GameStateDto state = stateSupplier.get();
         if (state == null) {
@@ -169,6 +172,7 @@ public final class NetworkBoardRefreshService {
                 state.winnerName);
     }
 
+    @Override
     public void refreshButtons() {
         GameStateDto state = stateSupplier.get();
         if (state == null) {
@@ -179,7 +183,7 @@ public final class NetworkBoardRefreshService {
 
     private void refreshButtons(GameStateDto state) {
         if (state.gameOver) {
-            disableAllActionButtons();
+            disableActionButtons();
             return;
         }
         boolean myTurn = isMyTurn(state);
@@ -194,7 +198,8 @@ public final class NetworkBoardRefreshService {
         }
     }
 
-    public void disableAllActionButtons() {
+    @Override
+    public void disableActionButtons() {
         if (drawCardBtn != null) {
             drawCardBtn.setDisable(true);
         }

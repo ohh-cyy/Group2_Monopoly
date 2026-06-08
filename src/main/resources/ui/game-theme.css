@@ -435,11 +435,19 @@
 }
 
 .game-log {
-    -fx-font-size: 12px;
     -fx-background-radius: 10;
-    -fx-control-inner-background: #fbfdfb;
+    -fx-background-color: #fbfdfb;
     -fx-border-color: rgba(0,0,0,0.08);
     -fx-border-radius: 10;
+    -fx-padding: 10 12;
+}
+
+.game-log .viewport {
+    -fx-background-color: transparent;
+}
+
+.game-log-entry {
+    -fx-padding: 2 0;
 }
 
 .status-bar {

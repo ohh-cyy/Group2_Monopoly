@@ -33,6 +33,7 @@ import java.util.function.Consumer;
  */
 public class ActionEffectResolver {
     private final GameDialogService dialogs;
+    private final StandardCardPlayPrompts prompts;
     private final PaymentService payments;
     private final JustSayNoService justSayNo;
     private final Consumer<String> log;
@@ -40,7 +41,17 @@ public class ActionEffectResolver {
 
     public ActionEffectResolver(GameDialogService dialogs, PaymentService payments, JustSayNoService justSayNo,
                                 Consumer<String> log, BiConsumer<String, Boolean> status) {
+        this(dialogs, new StandardCardPlayPrompts(dialogs), payments, justSayNo, log, status);
+    }
+
+    public ActionEffectResolver(GameDialogService dialogs,
+                                StandardCardPlayPrompts prompts,
+                                PaymentService payments,
+                                JustSayNoService justSayNo,
+                                Consumer<String> log,
+                                BiConsumer<String, Boolean> status) {
         this.dialogs = dialogs;
+        this.prompts = prompts;
         this.payments = payments;
         this.justSayNo = justSayNo;
         this.log = log;
@@ -48,24 +59,7 @@ public class ActionEffectResolver {
     }
 
     public Optional<ActionPlayChoice> promptActionCardChoice(ActionCard card) {
-        ButtonType useBtn = new ButtonType("Use Effect");
-        ButtonType bankBtn = new ButtonType("Bank (" + card.getBankValueM() + "M)");
-        ButtonType cancelBtn = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
-        Optional<ButtonType> result = dialogs.showButtonDialog(
-                "Action Card",
-                card.getName() + " - bank value " + card.getBankValueM() + "M",
-                card.getDescription() + "\n\nUse the effect or bank this card?",
-                useBtn, bankBtn, cancelBtn);
-        if (result.isEmpty()) {
-            return Optional.empty();
-        }
-        if (result.get() == useBtn) {
-            return Optional.of(ActionPlayChoice.USE_EFFECT);
-        }
-        if (result.get() == bankBtn) {
-            return Optional.of(ActionPlayChoice.DEPOSIT_BANK);
-        }
-        return Optional.empty();
+        return prompts.promptActionCardChoice(card);
     }
 
     public ActionEffectResult resolve(GameEngine gameEngine, Player player, ActionCard actionCard) {

@@ -5,6 +5,7 @@ import controller.gameplay.OnlineCardPlayService;
 import controller.network.NetworkMatchCoordinator;
 import controller.network.NetworkPromptResponder;
 import controller.view.CardSelectionFeedback;
+import controller.view.GameBoardRefreshService;
 import controller.view.NetworkBoardRefreshService;
 import engine.GameEngine;
 import javafx.application.Platform;
@@ -23,6 +24,7 @@ import network.protocol.ServerMessage;
 import ui.AchievementUi;
 import ui.AvatarResources;
 import ui.CardView;
+import ui.GameLogPane;
 import ui.StatusMessageDisplay;
 import ui.layout.GameBoardChrome;
 import ui.layout.PropertyBoardLayoutTracker;
@@ -57,7 +59,7 @@ public class NetworkGameController {
     @FXML private HBox playerHand;
     @FXML private FlowPane playerBank;
     @FXML private Label bankTotalLabel;
-    @FXML private TextArea gameLog;
+    @FXML private GameLogPane gameLog;
     @FXML private Button drawCardBtn;
     @FXML private Button discardCardBtn;
     @FXML private Button endTurnBtn;
@@ -69,7 +71,7 @@ public class NetworkGameController {
     private StatusMessageDisplay statusDisplay;
     private GameBoardChrome boardChrome;
     private PropertyBoardLayoutTracker layoutTracker;
-    private NetworkBoardRefreshService boardRefresh;
+    private GameBoardRefreshService boardRefresh;
     private NetworkMatchCoordinator matchCoordinator;
     private NetworkPromptResponder promptResponder;
     private OnlineCardPlayService onlineCardPlay;
@@ -100,7 +102,7 @@ public class NetworkGameController {
         initBoardRefresh();
         matchCoordinator = new NetworkMatchCoordinator(
                 statusMessage, gameLog, statusDisplay, this::updateUi,
-                () -> boardRefresh.disableAllActionButtons(),
+                () -> boardRefresh.disableActionButtons(),
                 () -> localSeat, () -> client);
 
         layoutTracker = new PropertyBoardLayoutTracker(
@@ -149,7 +151,7 @@ public class NetworkGameController {
         this.client = networkClient;
         this.localSeat = seat;
         if (client != null) {
-            client.setListener(this::handleMessage);
+            client.setListener(this::handleServerMessage);
             client.requestSync();
         }
         if (newGameBtn != null) {
@@ -171,8 +173,11 @@ public class NetworkGameController {
         }
     }
 
-    private void handleMessage(ServerMessage message) {
-        Platform.runLater(() -> {
+    private void handleServerMessage(ServerMessage message) {
+        Platform.runLater(() -> dispatchServerMessage(message));
+    }
+
+    private void dispatchServerMessage(ServerMessage message) {
             if (message == null) {
                 return;
             }
@@ -190,7 +195,6 @@ public class NetworkGameController {
             } else if (MessageTypes.GAME_STARTED.equals(message.type) && message.state != null) {
                 applyState(message.state);
             }
-        });
     }
 
     private void applyState(GameStateDto newState) {

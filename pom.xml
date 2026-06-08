@@ -13,6 +13,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <junit.version>5.12.1</junit.version>
         <javafx.version>21.0.6</javafx.version>
+        <exec.mainClass>app.MonopolyDealApp</exec.mainClass>
     </properties>
 
     <dependencies>
@@ -117,7 +118,7 @@
                     <execution>
                         <id>default-cli</id>
                         <configuration>
-                            <mainClass>ui.MonopolyDealApp</mainClass>
+                            <mainClass>app.MonopolyDealApp</mainClass>
                             <launcher>app</launcher>
                             <jlinkZipName>app</jlinkZipName>
                             <jlinkImageName>app</jlinkImageName>

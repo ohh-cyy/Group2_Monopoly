@@ -24,7 +24,7 @@ import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
 /** Refreshes all local-game board widgets from engine state. */
-public final class LocalBoardRefreshService {
+public final class LocalBoardRefreshService implements GameBoardRefreshService {
     private final Label currentPlayerLabel;
     private final Label gameStatusText;
     private final VBox publicBoardPanel;
@@ -106,14 +106,17 @@ public final class LocalBoardRefreshService {
         this.handSelectionListener = handSelectionListener;
     }
 
+    @Override
     public void setSelectedCard(Card selectedCard) {
         this.selectedCard = selectedCard;
     }
 
+    @Override
     public void applySelectionCallback(BiConsumer<Card, CardView> callback) {
         this.selectedViewCallback = callback;
     }
 
+    @Override
     public void refreshAll(VBox playersList, java.util.function.Consumer<Double> rowHeightConsumer) {
         GameEngine engine = engineSupplier.get();
         Player currentPlayer = currentPlayerSupplier.get();
@@ -176,6 +179,7 @@ public final class LocalBoardRefreshService {
                 currentPlayer.getBank());
     }
 
+    @Override
     public void refreshButtons() {
         refreshButtonStates(engineSupplier.get());
     }

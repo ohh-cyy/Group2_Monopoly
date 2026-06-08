@@ -19,6 +19,7 @@ module com.example.zyzzs {
     opens network to com.google.gson;
     opens network.protocol to com.google.gson;
 
+    exports app to javafx.graphics;
     exports ui;
     exports engine;
     exports model.player;

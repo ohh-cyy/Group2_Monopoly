@@ -28,11 +28,11 @@ public final class GameAlertDialogs {
 
     /** @return true if the player wants another round */
     public static boolean askPlayAgain(Node owner) {
-        return askPlayAgainBlocking(owner, "是否再开一局？");
+        return askPlayAgainBlocking(owner, "Play another round?");
     }
 
     public static void askPlayAgain(Node owner, Consumer<Boolean> onResult) {
-        askPlayAgain(owner, "是否再开一局？", onResult);
+        askPlayAgain(owner, "Play another round?", onResult);
     }
 
     public static void askPlayAgain(Node owner, String message, Consumer<Boolean> onResult) {
@@ -52,19 +52,19 @@ public final class GameAlertDialogs {
     }
 
     private static boolean showPlayAgainDialog(Node owner, String message) {
-        ButtonType yes = new ButtonType("再来一局");
-        ButtonType no = new ButtonType("结束", ButtonBar.ButtonData.CANCEL_CLOSE);
+        ButtonType yes = new ButtonType("Play Again");
+        ButtonType no = new ButtonType("End Game", ButtonBar.ButtonData.CANCEL_CLOSE);
         Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle("再来一局？");
+        dialog.setTitle("Play Again?");
         dialog.getDialogPane().getButtonTypes().setAll(yes, no);
         dialog.setResultConverter(button -> button);
 
         VBox body = new VBox(10);
         body.setAlignment(Pos.CENTER_LEFT);
         body.getStyleClass().add("dialog-body");
-        Label header = new Label("本局已结束");
+        Label header = new Label("Game Over");
         header.getStyleClass().add("dialog-header-label");
-        Label contentLabel = new Label(message == null || message.isBlank() ? "是否再开一局？" : message);
+        Label contentLabel = new Label(message == null || message.isBlank() ? "Play another round?" : message);
         contentLabel.setWrapText(true);
         contentLabel.getStyleClass().add("dialog-content-label");
         body.getChildren().addAll(header, contentLabel);

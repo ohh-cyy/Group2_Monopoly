@@ -1,4 +1,4 @@
-package ui;
+package app;
 
 import javafx.animation.Animation;
 import javafx.animation.Interpolator;
@@ -17,6 +17,8 @@ import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import ui.GameSettings;
+import ui.SettingsOverlay;
 
 public class MonopolyDealApp extends Application {
     private static final String THEME_CSS = "/ui/game-theme.css";

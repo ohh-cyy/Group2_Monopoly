@@ -225,7 +225,8 @@ modules are:
 | Controllers | Connects user actions to the game engine and updates screens. | `LobbyController`, `GameController`, `NetworkGameController` |
 | Network | Supports online lobby, client/server messages, and player-specific game state. | `GameServer`, `GameSession`, `ClientHandler`, `NetworkClient`, `ServerPlayHandler` |
 | Protocol and mapping | Converts game objects to data objects that can be sent over the network. | `ClientMessage`, `ServerMessage`, `GameStateDto`, `PlayerViewDto`, `CardMapper`, `GameStateMapper` |
-| UI | Handles JavaFX application setup, card display, settings, scene navigation, achievements, and victory effects. | `MonopolyDealApp`, `SettingsOverlay`, `CardView`, `GameVictoryScreen`, `GameAlertDialogs` |
+| App | JavaFX application entry point and startup flow. | `app.MonopolyDealApp` |
+| UI | Handles card display, settings, scene navigation, achievements, and victory effects. | `SettingsOverlay`, `CardView`, `GameVictoryScreen`, `GameAlertDialogs` |
 | Resources | Stores FXML screens, CSS, card images, avatar image, and background music. | `game-view.fxml`, `network-game-view.fxml`, `lobby-view.fxml`, `game-theme.css` |
 | Tests | Verifies the important behaviours of the game. | Engine tests, card/action-card tests, payment tests, network tests, image loading tests |
 

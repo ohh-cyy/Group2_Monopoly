@@ -409,7 +409,7 @@ public class GameSession {
         wild.setChosenColor(color);
         player.removeFromHand(wild);
         wild.use(player, engine);
-        appendLog(player.getName() + " played wild property as " + color);
+        appendLog(player.getName() + " played " + color.logKey());
         return true;
     }
 
@@ -487,7 +487,7 @@ public class GameSession {
         }
         card.use(player, engine);
         player.removeFromHand(card);
-        appendLog(player.getName() + " played " + card.getName());
+        appendLog(player.getName() + " played " + propertyPlayDetail(card));
         return true;
     }
 
@@ -572,6 +572,15 @@ public class GameSession {
     private void appendLog(String line) {
         logLines.add("[" + java.time.LocalTime.now().format(
                 java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")) + "] " + line);
+    }
+
+    private static String propertyPlayDetail(Card card) {
+        if (card instanceof model.card.PropertyCard property
+                && !PropertyRules.isSetImprovement(property)
+                && property.getColor() != null) {
+            return property.getColor().logKey();
+        }
+        return card.getName();
     }
 
     private ServerMessage ok(String text) {

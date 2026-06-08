@@ -35,15 +35,23 @@ import java.util.function.BiConsumer;
  */
 public final class OnlineCardPlayService {
     private final GameDialogService dialogs;
+    private final StandardCardPlayPrompts prompts;
     private final BiConsumer<String, Boolean> status;
 
     private GameStateDto state;
     private int localSeat;
     private List<Card> myHand;
 
-    public OnlineCardPlayService(GameDialogService dialogs, BiConsumer<String, Boolean> status) {
+    public OnlineCardPlayService(GameDialogService dialogs,
+                                 StandardCardPlayPrompts prompts,
+                                 BiConsumer<String, Boolean> status) {
         this.dialogs = dialogs;
+        this.prompts = prompts;
         this.status = status;
+    }
+
+    public OnlineCardPlayService(GameDialogService dialogs, BiConsumer<String, Boolean> status) {
+        this(dialogs, new StandardCardPlayPrompts(dialogs), status);
     }
 
     public Optional<ClientMessage> buildPlayMessage(GameStateDto state, int localSeat, List<Card> myHand, Card card) {
@@ -65,7 +73,7 @@ public final class OnlineCardPlayService {
 
     private Optional<ClientMessage> buildWildMessage(WildpropertyCard wild, ClientMessage msg) {
         if (wild.isBankable()) {
-            Optional<ActionPlayChoice> choice = promptWildPropertyChoice(wild);
+            Optional<ActionPlayChoice> choice = prompts.promptWildPropertyChoice(wild);
             if (choice.isEmpty()) {
                 return Optional.empty();
             }
@@ -98,7 +106,7 @@ public final class OnlineCardPlayService {
     }
 
     private Optional<ClientMessage> buildActionMessage(ActionCard action, ClientMessage msg) {
-        Optional<ActionPlayChoice> choice = promptActionCardChoice(action);
+        Optional<ActionPlayChoice> choice = prompts.promptActionCardChoice(action);
         if (choice.isEmpty()) {
             return Optional.empty();
         }
@@ -407,49 +415,6 @@ public final class OnlineCardPlayService {
             }
         }
         return "Player";
-    }
-
-    private Optional<ActionPlayChoice> promptActionCardChoice(ActionCard card) {
-        ButtonType useBtn = new ButtonType("Use Effect");
-        ButtonType bankBtn = new ButtonType("Deposit to Bank (" + card.getBankValueM() + "M)");
-        ButtonType cancelBtn = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
-        Optional<ButtonType> result = dialogs.showButtonDialog(
-                "Action Card",
-                card.getName() + " — Bank value " + card.getBankValueM() + "M",
-                card.getDescription() + "\n\nChoose 'Use Effect' or 'Deposit to Bank'?",
-                useBtn, bankBtn, cancelBtn);
-        if (result.isEmpty()) {
-            return Optional.empty();
-        }
-        if (result.get() == useBtn) {
-            return Optional.of(ActionPlayChoice.USE_EFFECT);
-        }
-        if (result.get() == bankBtn) {
-            return Optional.of(ActionPlayChoice.DEPOSIT_BANK);
-        }
-        return Optional.empty();
-    }
-
-    private Optional<ActionPlayChoice> promptWildPropertyChoice(WildpropertyCard wild) {
-        ButtonType useBtn = new ButtonType("Play as Property");
-        ButtonType bankBtn = new ButtonType("Deposit to Bank (" + wild.getBankValueM() + "M)");
-        ButtonType cancelBtn = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
-        Optional<ButtonType> result = dialogs.showButtonDialog(
-                "Wild Property Card",
-                wild.getName() + " — Bank value " + wild.getBankValueM() + "M",
-                "Play as property (choose a color), or deposit to bank for "
-                        + wild.getBankValueM() + "M?",
-                useBtn, bankBtn, cancelBtn);
-        if (result.isEmpty()) {
-            return Optional.empty();
-        }
-        if (result.get() == useBtn) {
-            return Optional.of(ActionPlayChoice.USE_EFFECT);
-        }
-        if (result.get() == bankBtn) {
-            return Optional.of(ActionPlayChoice.DEPOSIT_BANK);
-        }
-        return Optional.empty();
     }
 
     private Optional<Color> promptSelectWildColor(WildpropertyCard wild, List<Color> playableColors) {

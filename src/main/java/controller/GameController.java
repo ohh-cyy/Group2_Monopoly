@@ -25,6 +25,7 @@ import ui.AchievementUi;
 import ui.CardView;
 import ui.EmojiReactionOverlay;
 import ui.GameAlertDialogs;
+import ui.GameLogPane;
 import ui.GameVictoryScreen;
 import ui.PublicPropertyBoardLayout;
 import ui.render.BankBarRenderer;
@@ -117,7 +118,7 @@ public class GameController {
     private Label bankTotalLabel;
     
     @FXML
-    private TextArea gameLog;
+    private GameLogPane gameLog;
 
     @FXML
     private FlowPane emojiBar;
@@ -472,7 +473,9 @@ private void maybeRescalePropertyCards() {
     }
 
     private void initializeGameWithPlayers(List<String> names) {
-        logMessage("=== Starting New Game ===");
+        if (gameLog != null) {
+            gameLog.clear();
+        }
         localSession.startNewGame(names);
         gameEngine = localSession.getEngine();
         players = localSession.getPlayers();
@@ -480,7 +483,7 @@ private void maybeRescalePropertyCards() {
         selectedCard = null;
         selectedCardView = null;
         pendingPlayedCardView = null;
-        logMessage("Players: " + String.join(", ", names));
+        logMessage("=== Game started with " + names.size() + " players ===");
         resetTurnTimerForCurrentPlayer();
         updateUI();
     }
@@ -570,7 +573,7 @@ private void maybeRescalePropertyCards() {
             return;
         }
         if (selectedCard == null) {
-            showStatus("Please first click on the hand to select a card, then click on「Play」", true);
+            showStatus("Please select a card from your hand, then double-click to play it.", true);
             return;
         }
 
@@ -616,7 +619,7 @@ private void maybeRescalePropertyCards() {
         }
 
         if (!depositedToBank) {
-            showStatus("Already typed. This turn can still be played " + gameEngine.getRemainingPlays() + " cards", false);
+            showStatus("Card played. You can still play " + gameEngine.getRemainingPlays() + " more cards this turn", false);
         } else {
             showStatus("Already deposited into the bank. This turn can still be played " + gameEngine.getRemainingPlays() + " cards", false);
         }
@@ -916,13 +919,9 @@ private void forceEndTurn() {
     }
 
     private void logMessage(String message) {
-        Platform.runLater(() -> {
-            String timestamp = java.time.LocalTime.now().format(
-                    java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss"));
-            String line = "[" + timestamp + "] " + message;
-            gameLog.appendText(line + "\n");
-            gameLog.setScrollTop(Double.MAX_VALUE);
-        });
+        if (gameLog != null) {
+            gameLog.append(message);
+        }
     }
 
     private void showStatus(String message, boolean isError) {

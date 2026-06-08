@@ -4,8 +4,6 @@ import controller.dialog.GameDialogService;
 import controller.session.LocalGameSession;
 import engine.GameEngine;
 import engine.PropertyRules;
-import javafx.scene.control.ButtonBar;
-import javafx.scene.control.ButtonType;
 import model.card.Card;
 import model.card.PropertyCard;
 import model.card.RentCard;
@@ -26,43 +24,35 @@ import java.util.function.Consumer;
 public final class LocalCardPlayService {
     private final GameDialogService dialogs;
     private final ActionEffectResolver actionResolver;
+    private final StandardCardPlayPrompts prompts;
     private final Consumer<String> log;
     private final BiConsumer<String, Boolean> status;
 
     public LocalCardPlayService(GameDialogService dialogs,
                                   ActionEffectResolver actionResolver,
+                                  StandardCardPlayPrompts prompts,
                                   Consumer<String> log,
                                   BiConsumer<String, Boolean> status) {
         this.dialogs = dialogs;
         this.actionResolver = actionResolver;
+        this.prompts = prompts;
         this.log = log;
         this.status = status;
     }
 
+    public LocalCardPlayService(GameDialogService dialogs,
+                                  ActionEffectResolver actionResolver,
+                                  Consumer<String> log,
+                                  BiConsumer<String, Boolean> status) {
+        this(dialogs, actionResolver, new StandardCardPlayPrompts(dialogs), log, status);
+    }
+
     public Optional<ActionPlayChoice> promptActionCardChoice(ActionCard card) {
-        return actionResolver.promptActionCardChoice(card);
+        return prompts.promptActionCardChoice(card);
     }
 
     public Optional<ActionPlayChoice> promptWildPropertyChoice(WildpropertyCard wild) {
-        ButtonType useBtn = new ButtonType("Play as Property");
-        ButtonType bankBtn = new ButtonType("Deposit to Bank (" + wild.getBankValueM() + "M)");
-        ButtonType cancelBtn = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
-        Optional<ButtonType> result = dialogs.showButtonDialog(
-                "Wild Property Card",
-                wild.getName() + " — Bank value " + wild.getBankValueM() + "M",
-                "Play as property (choose a color), or deposit to bank for "
-                        + wild.getBankValueM() + "M?",
-                useBtn, bankBtn, cancelBtn);
-        if (result.isEmpty()) {
-            return Optional.empty();
-        }
-        if (result.get() == useBtn) {
-            return Optional.of(ActionPlayChoice.USE_EFFECT);
-        }
-        if (result.get() == bankBtn) {
-            return Optional.of(ActionPlayChoice.DEPOSIT_BANK);
-        }
-        return Optional.empty();
+        return prompts.promptWildPropertyChoice(wild);
     }
 
     public CardPlayOutcome playActionCard(LocalGameSession session, Player player, ActionCard actionCard) {
@@ -74,8 +64,8 @@ public final class LocalCardPlayService {
         if (choice.get() == ActionPlayChoice.DEPOSIT_BANK) {
             player.removeFromHand(actionCard);
             actionCard.depositToBank(player);
-            log.accept(player.getName() + " deposit「" + actionCard.getName()
-                    + "」into the bank（" + actionCard.getBankValueM() + "M）");
+            log.accept(player.getName() + " banked " + actionCard.getName()
+                    + " (" + actionCard.getBankValueM() + "M)");
             status.accept("Already deposited in the bank " + actionCard.getBankValueM() + "M", false);
             return new CardPlayOutcome(ActionEffectResult.SUCCESS, true, false);
         }
@@ -89,13 +79,13 @@ public final class LocalCardPlayService {
         player.removeFromHand(actionCard);
         engine.getDiscardPile().addCard(actionCard);
         if (result == ActionEffectResult.SUCCESS) {
-            log.accept(player.getName() + " use「" + actionCard.getName() + "」effect");
+            log.accept(player.getName() + " used effect: " + actionCard.getName());
             status.accept("Effect has been successfully used: " + actionCard.getName(), false);
         } else if (result == ActionEffectResult.BLOCKED) {
-            log.accept(player.getName() + " use「" + actionCard.getName() + "」but was blocked by Just Say No");
+            log.accept(player.getName() + " used " + actionCard.getName() + " but was blocked by Just Say No");
             status.accept("The effect was blocked by Just Say No", true);
         } else {
-            log.accept(player.getName() + " Fail to use「" + actionCard.getName() + "」,the cards enter the discard pile");
+            log.accept(player.getName() + " failed to use " + actionCard.getName() + "; card discarded");
             status.accept("The effect did not take effect (invalid target, etc.)", true);
         }
 
@@ -149,7 +139,7 @@ public final class LocalCardPlayService {
         wild.setChosenColor(color.get());
         player.removeFromHand(wild);
         wild.use(player, engine);
-        log.accept(player.getName() + " played wild property [" + wild.getName() + "] as " + color.get());
+        log.accept(player.getName() + " played: " + color.get().logKey());
         status.accept("Wild property placed as " + color.get() + " in property area", false);
         return new CardPlayOutcome(ActionEffectResult.SUCCESS, false, false);
     }
@@ -175,7 +165,7 @@ public final class LocalCardPlayService {
             return new CardPlayOutcome(ActionEffectResult.FAILED, false, false);
         }
 
-        log.accept(player.getName() + " played: " + played.getName());
+        log.accept(player.getName() + " played: " + propertyPlayDetail(played));
         played.use(player, engine);
         player.removeFromHand(played);
         return new CardPlayOutcome(ActionEffectResult.SUCCESS, false, false);
@@ -187,5 +177,14 @@ public final class LocalCardPlayService {
                     + wild.getBankValueM() + "M (not affected by color chosen).";
         }
         return "Choose a color to play as property.\nThis wild card cannot be deposited to bank.";
+    }
+
+    private static String propertyPlayDetail(Card card) {
+        if (card instanceof PropertyCard property
+                && !PropertyRules.isSetImprovement(property)
+                && property.getColor() != null) {
+            return property.getColor().logKey();
+        }
+        return card.getName();
     }
 }
