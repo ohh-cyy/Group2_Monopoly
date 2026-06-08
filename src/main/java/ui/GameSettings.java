@@ -7,10 +7,22 @@ import javafx.stage.Stage;
 import java.net.URL;
 
 public final class GameSettings {
-    private static final String BACKGROUND_MUSIC = "/audio/music/background.wav";
+    public enum MusicScene {
+        LOBBY("/audio/music/background.wav", 0.32),
+        GAME("/audio/music/gameplay.wav", 0.14);
+
+        private final String resource;
+        private final double volume;
+
+        MusicScene(String resource, double volume) {
+            this.resource = resource;
+            this.volume = volume;
+        }
+    }
 
     private static Stage primaryStage;
     private static MediaPlayer musicPlayer;
+    private static MusicScene musicScene = MusicScene.LOBBY;
     private static boolean musicEnabled = true;
     private static boolean soundEffectsEnabled = true;
     private static boolean fullscreenEnabled = false;
@@ -38,6 +50,14 @@ public final class GameSettings {
     public static void setMusicEnabled(boolean enabled) {
         musicEnabled = enabled;
         applyMusicState();
+    }
+
+    public static void useLobbyMusic() {
+        setMusicScene(MusicScene.LOBBY);
+    }
+
+    public static void useGameMusic() {
+        setMusicScene(MusicScene.GAME);
     }
 
     public static boolean isSoundEffectsEnabled() {
@@ -85,7 +105,7 @@ public final class GameSettings {
         if (musicPlayer != null) {
             return;
         }
-        URL resource = GameSettings.class.getResource(BACKGROUND_MUSIC);
+        URL resource = GameSettings.class.getResource(musicScene.resource);
         if (resource == null) {
             return;
         }
@@ -93,9 +113,22 @@ public final class GameSettings {
             Media media = new Media(resource.toExternalForm());
             musicPlayer = new MediaPlayer(media);
             musicPlayer.setCycleCount(MediaPlayer.INDEFINITE);
-            musicPlayer.setVolume(0.32);
+            musicPlayer.setVolume(musicScene.volume);
         } catch (RuntimeException ignored) {
             musicPlayer = null;
         }
+    }
+
+    private static void setMusicScene(MusicScene nextScene) {
+        if (nextScene == null || nextScene == musicScene) {
+            return;
+        }
+        musicScene = nextScene;
+        if (musicPlayer != null) {
+            musicPlayer.stop();
+            musicPlayer.dispose();
+            musicPlayer = null;
+        }
+        applyMusicState();
     }
 }

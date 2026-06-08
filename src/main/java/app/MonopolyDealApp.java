@@ -36,6 +36,7 @@ public class MonopolyDealApp extends Application {
     }
 
     private void showCover(Stage primaryStage) {
+        GameSettings.useLobbyMusic();
         StackPane root = new StackPane();
         root.getStyleClass().add("cover-root");
 

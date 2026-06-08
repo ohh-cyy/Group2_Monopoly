@@ -73,6 +73,7 @@ public final class SettingsOverlay {
             controller.setStage(stage);
             stage.setTitle("Monopoly Deal - Lobby");
             stage.setScene(createScene(root, stage));
+            GameSettings.useLobbyMusic();
         } catch (IOException e) {
             throw new IllegalStateException("Unable to load lobby screen", e);
         }
@@ -89,6 +90,7 @@ public final class SettingsOverlay {
         controller.startLocalGame(playerCount);
         stage.setTitle("Monopoly Deal - Local");
         stage.setScene(createGameScene(loader.getRoot(), stage));
+        GameSettings.useGameMusic();
         return controller;
     }
 
@@ -109,6 +111,7 @@ public final class SettingsOverlay {
         }
         stage.setTitle("Monopoly Deal - Online");
         stage.setScene(createGameScene(root, stage, beforeReturnToLobby));
+        GameSettings.useGameMusic();
         stage.show();
         controller.startOnlineGame(client, localSeat, initialState);
         return controller;
