@@ -24,7 +24,7 @@ assessment areas as follows:
 | GUI | JavaFX and FXML are used for the lobby, game board, card display, settings, achievements, and victory screen. |
 | Team repository | The project is maintained in GitHub and uses a standard Maven project structure. |
 | Testing | The test suite covers game engine rules, card behaviour, payment logic, DTO mapping, and online session flow. |
-| Documentation | Supporting documents and revised UML materials are stored in the `docs` folder. |
+| Documentation | This README documents the project structure, rules, architecture, tests, and demo route. Final report materials are kept outside the repository. |
 
 ## Quick Start
 
@@ -299,12 +299,10 @@ Skipped: 0
 
 ## Documentation
 
-- [Phase 1 feedback response](docs/phase1_feedback_response.md)
-- [Revised UML use case diagram](docs/use_case_diagram_revised_final.png)
-
-The feedback response document explains how the team responded to Phase 1
-comments, including the revised use case diagram and the reasoning behind the
-updated UML structure.
+This repository keeps project-facing documentation in this README so the code
+submission stays focused and easy to review. The final report, UML screenshots,
+and feedback-response writing are prepared as separate submission materials
+outside the GitHub repository.
 
 ## Demo Route
 

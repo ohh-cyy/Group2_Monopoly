@@ -1087,3 +1087,57 @@
     -fx-background-color: rgba(16, 60, 42, 0.13);
     -fx-text-fill: #526a61;
 }
+
+.emoji-bar {
+    -fx-padding: 0 0 4 0;
+}
+
+.emoji-button {
+    -fx-min-width: 48;
+    -fx-pref-width: 48;
+    -fx-max-width: 48;
+    -fx-min-height: 40;
+    -fx-pref-height: 40;
+    -fx-max-height: 40;
+    -fx-background-color: rgba(255, 246, 214, 0.18);
+    -fx-background-radius: 999;
+    -fx-border-color: rgba(242, 198, 111, 0.32);
+    -fx-border-radius: 999;
+    -fx-font-family: "Segoe UI Emoji";
+    -fx-font-size: 19px;
+    -fx-padding: 3;
+    -fx-content-display: center;
+    -fx-text-overrun: clip;
+    -fx-cursor: hand;
+}
+
+.emoji-button:hover {
+    -fx-background-color: rgba(255, 246, 214, 0.34);
+}
+
+.emoji-reaction-bubble {
+    -fx-min-width: 64;
+    -fx-min-height: 64;
+    -fx-alignment: center;
+    -fx-padding: 7 11;
+    -fx-background-color: rgba(255, 250, 225, 0.96);
+    -fx-background-radius: 24;
+    -fx-border-color: rgba(210, 161, 58, 0.85);
+    -fx-border-width: 2;
+    -fx-border-radius: 24;
+    -fx-effect: dropshadow(gaussian, rgba(8, 42, 29, 0.42), 18, 0.25, 0, 6);
+    -fx-font-size: 34px;
+}
+
+.public-board-scroll {
+    -fx-padding: 0 4 0 0;
+}
+
+.lobby-player-count {
+    -fx-background-color: rgba(255, 252, 239, 0.96);
+    -fx-background-radius: 10;
+    -fx-border-color: rgba(57, 102, 76, 0.26);
+    -fx-border-radius: 10;
+    -fx-font-size: 14px;
+    -fx-font-weight: 800;
+}

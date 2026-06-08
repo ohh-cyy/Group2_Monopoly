@@ -7,6 +7,7 @@ import javafx.scene.layout.VBox;
 /** Fixed equal vertical splits for each player's public property row. */
 public final class PublicPropertyBoardLayout {
     private static final double ABSOLUTE_MIN_ROW_HEIGHT = 40;
+    private static final double SCROLLABLE_MIN_ROW_HEIGHT = 126;
     private static final double TITLE_OVERHEAD = 62;
     private static final double DEFAULT_HEADER_HEIGHT = 56;
     private static final double BOARD_PADDING = 32;
@@ -54,7 +55,9 @@ public final class PublicPropertyBoardLayout {
         if (usable <= 0) {
             return estimateRowHeight(propertyPanel, playerCount);
         }
-        return divideStackHeight(usable, propertyPanel.getSpacing(), playerCount);
+        return Math.max(
+                SCROLLABLE_MIN_ROW_HEIGHT,
+                divideStackHeight(usable, propertyPanel.getSpacing(), playerCount));
     }
 
     public static double estimateRowHeight(VBox propertyPanel, int playerCount) {
@@ -65,7 +68,9 @@ public final class PublicPropertyBoardLayout {
         if (usable <= 0) {
             return ABSOLUTE_MIN_ROW_HEIGHT;
         }
-        return divideStackHeight(usable, propertyPanel.getSpacing(), playerCount);
+        return Math.max(
+                SCROLLABLE_MIN_ROW_HEIGHT,
+                divideStackHeight(usable, propertyPanel.getSpacing(), playerCount));
     }
 
     public static CardView.CardMetrics cardMetricsForRow(double rowHeight) {

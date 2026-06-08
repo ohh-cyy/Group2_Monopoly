@@ -5,7 +5,9 @@ import model.player.Player;
 import network.CardMapper;
 import network.GameStateMapper;
 import network.JsonUtil;
+import network.protocol.MessageTypes;
 import network.protocol.ServerMessage;
+import network.server.GameSession;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -30,5 +32,20 @@ class GsonRoundTripTest {
         assertFalse(parsed.state.myHand.isEmpty());
         assertNotNull(parsed.state.myHand.get(0).type);
         assertNotNull(CardMapper.fromDto(parsed.state.myHand.get(0)));
+    }
+
+    @Test
+    void emojiEventRoundTripPreservesReactionAndSeat() {
+        ServerMessage message = new ServerMessage();
+        message.type = MessageTypes.EMOJI;
+        message.seat = 4;
+        message.emoji = "🎲";
+
+        ServerMessage parsed = JsonUtil.parseServer(JsonUtil.toJson(message));
+
+        assertEquals(MessageTypes.EMOJI, parsed.type);
+        assertEquals(4, parsed.seat);
+        assertEquals("🎲", parsed.emoji);
+        assertEquals(5, GameSession.MAX_PLAYERS);
     }
 }

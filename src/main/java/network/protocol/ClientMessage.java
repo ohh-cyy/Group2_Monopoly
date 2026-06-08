@@ -19,4 +19,6 @@ public class ClientMessage {
     public String paymentCardId;
     /** REMATCH_VOTE: true = play again, false = decline */
     public Boolean acceptRematch;
+    /** SEND_EMOJI: emoji text sent by the player */
+    public String emoji;
 }

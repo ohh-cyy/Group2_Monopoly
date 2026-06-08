@@ -5,6 +5,7 @@ import model.achievement.AchievementManager;
 import ui.AchievementUi;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextField;
@@ -38,6 +39,8 @@ public class LobbyController {
     private Button startBtn;
     @FXML
     private Label achievementProgressLabel;
+    @FXML
+    private ComboBox<Integer> localPlayerCount;
 
     private Stage stage;
     private GameServer gameServer;
@@ -53,6 +56,8 @@ public class LobbyController {
     public void initialize() {
         hostField.setText("127.0.0.1");
         portField.setText("5947");
+        localPlayerCount.getItems().setAll(2, 3, 4, 5);
+        localPlayerCount.setValue(4);
         refreshAchievementProgress();
         Platform.runLater(() -> unlockAchievement(AchievementManager.WELCOME_LOBBY));
     }
@@ -120,7 +125,8 @@ public class LobbyController {
         unlockNameAchievementIfReady();
         unlockAchievement(AchievementManager.CHOOSE_MODE);
         try {
-            SettingsOverlay.openLocalGame(stage);
+            Integer selectedCount = localPlayerCount.getValue();
+            SettingsOverlay.openLocalGame(stage, selectedCount != null ? selectedCount : 4);
         } catch (IOException e) {
             statusLabel.setText("Unable to open local game: " + e.getMessage());
         }

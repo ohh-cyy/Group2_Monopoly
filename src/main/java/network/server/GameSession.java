@@ -12,6 +12,7 @@ import model.enums.Color;
 import model.player.Player;
 import network.GameStateMapper;
 import network.protocol.ClientMessage;
+import network.protocol.EmojiCatalog;
 import network.protocol.InteractionPromptDto;
 import network.protocol.MessageTypes;
 import network.protocol.ServerMessage;
@@ -19,10 +20,15 @@ import network.CardMapper;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 public class GameSession {
     public static final int MIN_PLAYERS = 2;
     public static final int MAX_PLAYERS = 5;
+    public static final int TURN_TIME_SECONDS = 60;
 
     private final ClientHandler[] seats = new ClientHandler[MAX_PLAYERS];
     private final String[] names = new String[MAX_PLAYERS];
@@ -35,6 +41,13 @@ public class GameSession {
     private boolean rematchOpen;
     private boolean rematchDeclined;
     private final Boolean[] rematchVotes = new Boolean[MAX_PLAYERS];
+    private final ScheduledExecutorService turnTimerExecutor = Executors.newSingleThreadScheduledExecutor(runnable -> {
+        Thread thread = new Thread(runnable, "game-session-turn-timer");
+        thread.setDaemon(true);
+        return thread;
+    });
+    private ScheduledFuture<?> turnTimeoutTask;
+    private long turnDeadlineEpochMillis;
 
     public synchronized void bindPlayer(int seat, ClientHandler handler, String name) {
         if (seat < 0 || seat >= MAX_PLAYERS) {
@@ -58,6 +71,7 @@ public class GameSession {
         logLines.clear();
         clearRematchState();
         appendLog("=== Game started with " + activePlayers + " players ===");
+        startTurnClockLocked();
         broadcastState();
     }
 
@@ -73,6 +87,7 @@ public class GameSession {
             case MessageTypes.SYNC -> buildStateMessage(seat);
             case MessageTypes.RESPOND -> handleRespond(seat, message);
             case MessageTypes.REMATCH_VOTE -> handleRematchVote(seat, message);
+            case MessageTypes.SEND_EMOJI -> handleEmoji(seat, message);
             default -> error("Unknown command: " + message.type);
         };
     }
@@ -85,6 +100,7 @@ public class GameSession {
         msg.type = MessageTypes.PROMPT;
         msg.prompt = prompt;
         msg.state = GameStateMapper.buildForSeat(engine, seat, logLines);
+        msg.state.turnDeadlineEpochMillis = turnDeadlineEpochMillis;
         enrichRematchState(msg.state, seat);
         seats[seat].send(msg);
         broadcastStateExceptPrompt(seat);
@@ -125,7 +141,7 @@ public class GameSession {
             return;
         }
         appendLog(player.getName() + " played 3 cards, turn ending");
-        engine.nextTurn();
+        advanceTurnLocked();
     }
 
     public synchronized void broadcastState() {
@@ -142,6 +158,7 @@ public class GameSession {
         msg.type = MessageTypes.STATE;
         if (engine != null) {
             msg.state = GameStateMapper.buildForSeat(engine, seat, logLines);
+            msg.state.turnDeadlineEpochMillis = turnDeadlineEpochMillis;
             enrichRematchState(msg.state, seat);
         }
         return msg;
@@ -179,6 +196,7 @@ public class GameSession {
 
     private void markGameWon(Player winner) {
         engine.setGameOver(true);
+        cancelTurnClockLocked();
         appendLog("=== " + winner.getName() + " wins! ===");
         openRematchPhase();
     }
@@ -268,7 +286,7 @@ public class GameSession {
             return error("Discard down to " + GameEngine.MAX_HAND_SIZE + " cards before ending turn");
         }
         appendLog(ending.getName() + " ended turn");
-        engine.nextTurn();
+        advanceTurnLocked();
         broadcastState();
         return ok("Turn ended");
     }
@@ -300,7 +318,7 @@ public class GameSession {
         appendLog(player.getName() + " discarded " + card.getName());
         if (engine.isTurnOver() && engine.canEndTurn(player)) {
             appendLog(player.getName() + " played 3 cards, turn ending");
-            engine.nextTurn();
+            advanceTurnLocked();
         }
         broadcastState();
         return ok("Card discarded");
@@ -471,6 +489,84 @@ public class GameSession {
         player.removeFromHand(card);
         appendLog(player.getName() + " played " + card.getName());
         return true;
+    }
+
+
+    private ServerMessage handleEmoji(int seat, ClientMessage message) {
+        if (engine == null) {
+            return error("Game not started");
+        }
+        if (seat < 0 || seat >= playerCount) {
+            return error("Invalid seat");
+        }
+        String emoji = message.emoji == null ? "" : message.emoji.trim();
+        if (!EmojiCatalog.contains(emoji)) {
+            return error("Choose an emoji to send");
+        }
+        ServerMessage reaction = new ServerMessage();
+        reaction.type = MessageTypes.EMOJI;
+        reaction.seat = seat;
+        reaction.emoji = emoji;
+        for (int i = 0; i < playerCount; i++) {
+            ClientHandler handler = seats[i];
+            if (handler != null && handler.isConnected()) {
+                handler.send(reaction);
+            }
+        }
+        return ok("Emoji sent");
+    }
+
+    private void advanceTurnLocked() {
+        if (engine == null || engine.isGameOver()) {
+            return;
+        }
+        engine.nextTurn();
+        startTurnClockLocked();
+    }
+
+    private void startTurnClockLocked() {
+        cancelTurnClockLocked();
+        if (engine == null || engine.isGameOver()) {
+            turnDeadlineEpochMillis = 0;
+            return;
+        }
+        turnDeadlineEpochMillis = System.currentTimeMillis() + TURN_TIME_SECONDS * 1000L;
+        turnTimeoutTask = turnTimerExecutor.schedule(this::handleTurnTimeout, TURN_TIME_SECONDS, TimeUnit.SECONDS);
+    }
+
+    private void cancelTurnClockLocked() {
+        if (turnTimeoutTask != null) {
+            turnTimeoutTask.cancel(false);
+            turnTimeoutTask = null;
+        }
+        turnDeadlineEpochMillis = 0;
+    }
+
+    private void handleTurnTimeout() {
+        synchronized (this) {
+            if (engine == null || engine.isGameOver()) {
+                return;
+            }
+            if (pendingResolution != null) {
+                startTurnClockLocked();
+                broadcastState();
+                return;
+            }
+            Player skipped = engine.getCurrentPlayer();
+            List<Card> discarded = engine.enforceHandSizeLimit(skipped);
+            for (Card card : discarded) {
+                appendLog(skipped.getName() + " auto-discarded " + card.getName() + " (hand size limit)");
+            }
+            appendLog(skipped.getName() + " ran out of time and was skipped");
+            engine.nextTurn();
+            startTurnClockLocked();
+            broadcastState();
+        }
+    }
+
+    public synchronized void shutdown() {
+        cancelTurnClockLocked();
+        turnTimerExecutor.shutdownNow();
     }
 
     private void appendLog(String line) {

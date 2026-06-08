@@ -72,12 +72,20 @@
                                 <HBox fx:id="allPlayersBankBar" spacing="8" alignment="CENTER_RIGHT"/>
                             </VBox>
                         </HBox>
-                        <VBox fx:id="allPlayersPropertiesPanel"
-                              spacing="4"
-                              VBox.vgrow="ALWAYS"
-                              minHeight="0"
-                              maxHeight="Infinity"
-                              styleClass="public-properties-stack"/>
+                        <ScrollPane fx:id="publicBoardScroll"
+                                    fitToWidth="true"
+                                    hbarPolicy="NEVER"
+                                    vbarPolicy="AS_NEEDED"
+                                    pannable="true"
+                                    VBox.vgrow="ALWAYS"
+                                    minHeight="0"
+                                    styleClass="transparent-scroll public-board-scroll">
+                            <VBox fx:id="allPlayersPropertiesPanel"
+                                  spacing="4"
+                                  minHeight="0"
+                                  maxWidth="Infinity"
+                                  styleClass="public-properties-stack"/>
+                        </ScrollPane>
                     </VBox>
                 </center>
 
@@ -110,6 +118,14 @@
                                     styleClass="control-button"/>
                         </VBox>
 
+                        <Label text="Emoji" styleClass="drawer-title drawer-subtitle"/>
+                        <FlowPane fx:id="emojiBar"
+                                  hgap="7"
+                                  vgap="7"
+                                  prefWrapLength="270"
+                                  alignment="CENTER_LEFT"
+                                  styleClass="emoji-bar"/>
+
                         <Label text="Game Log" styleClass="drawer-title drawer-subtitle"/>
                         <TextArea fx:id="gameLog"
                                   editable="false"
@@ -119,6 +135,12 @@
                     </VBox>
                 </right>
             </BorderPane>
+
+            <Pane fx:id="reactionOverlay"
+                  mouseTransparent="true"
+                  pickOnBounds="false"
+                  maxWidth="Infinity"
+                  maxHeight="Infinity"/>
 
             <Button fx:id="leftSidebarHandle"
                     text="Players ›"
