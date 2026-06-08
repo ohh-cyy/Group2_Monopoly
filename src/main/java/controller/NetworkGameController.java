@@ -1,44 +1,39 @@
 package controller;
 
 import controller.dialog.GameDialogService;
-import controller.dialog.HandDiscardDialogService;
 import controller.gameplay.OnlineCardPlayService;
-import engine.PaymentTransfer;
+import controller.network.NetworkMatchCoordinator;
+import controller.network.NetworkPromptResponder;
+import controller.view.CardSelectionFeedback;
+import controller.view.NetworkBoardRefreshService;
 import engine.GameEngine;
-import javafx.animation.FadeTransition;
-import javafx.animation.Interpolator;
-import javafx.animation.TranslateTransition;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.layout.*;
-import javafx.util.Duration;
 import model.achievement.AchievementManager;
-import model.card.*;
-import model.card.actionCard.*;
-import model.enums.Color;
+import model.card.Card;
 import network.CardMapper;
 import network.client.NetworkClient;
 import network.protocol.ClientMessage;
 import network.protocol.GameStateDto;
-import network.protocol.InteractionPromptDto;
 import network.protocol.MessageTypes;
-import network.protocol.PlayerViewDto;
 import network.protocol.ServerMessage;
-import network.server.PendingActionResolution;
 import ui.AchievementUi;
+import ui.AvatarResources;
 import ui.CardView;
-import ui.GameAlertDialogs;
-import ui.GameVictoryScreen;
-import ui.PublicPropertyBoardLayout;
+import ui.StatusMessageDisplay;
+import ui.layout.GameBoardChrome;
+import ui.layout.PropertyBoardLayoutTracker;
 import ui.render.BankBarRenderer;
 import ui.render.HandRenderer;
-import ui.render.PlayerBoardView;
 import ui.render.PlayerListRenderer;
 import ui.render.PublicBoardRenderer;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 
 public class NetworkGameController {
     @FXML private Label currentPlayerLabel;
@@ -69,17 +64,16 @@ public class NetworkGameController {
     @FXML private Button newGameBtn;
     @FXML private Button achievementBtn;
 
-    private static final double HAND_DOCK_HEIGHT = 266;
-    private static final double HAND_DOCK_PEEK = 54;
-    private static final int MAX_PLAYS_PER_TURN = 3;
-
     private HandRenderer handRenderer;
-    private PlayerListRenderer playerListRenderer;
-    private PublicBoardRenderer publicBoardRenderer;
-    private BankBarRenderer bankBarRenderer;
-    private HandRenderer.SelectionListener handSelectionListener;
     private GameDialogService dialogs;
+    private StatusMessageDisplay statusDisplay;
+    private GameBoardChrome boardChrome;
+    private PropertyBoardLayoutTracker layoutTracker;
+    private NetworkBoardRefreshService boardRefresh;
+    private NetworkMatchCoordinator matchCoordinator;
+    private NetworkPromptResponder promptResponder;
     private OnlineCardPlayService onlineCardPlay;
+    private HandRenderer.SelectionListener handSelectionListener;
 
     private NetworkClient client;
     private int localSeat = -1;
@@ -88,29 +82,44 @@ public class NetworkGameController {
     private List<Card> myBank = new ArrayList<>();
     private Card selectedCard;
     private CardView selectedCardView;
-    private int mergedLogSize;
-    private boolean handDockExpanded = false;
-    private boolean victoryScreenShown = false;
-    private boolean rematchPromptShown = false;
-    private boolean rematchDeclinedNotified = false;
-    private int lastRematchYesCount = -1;
-    private boolean previousGameOver = false;
-    private double lastPropertyRowHeight = -1;
-    private boolean pendingEndTurnAfterDiscard = false;
     private Image avatarImage;
-    private String lastStatusMessage = "";
-    private boolean lastStatusError = false;
-    private FadeTransition statusFadeTransition;
 
     @FXML
     public void initialize() {
-        loadAvatarImage();
+        avatarImage = AvatarResources.loadDefaultAvatar(getClass());
+        statusDisplay = new StatusMessageDisplay(statusMessage);
         dialogs = new GameDialogService(statusMessage);
         onlineCardPlay = new OnlineCardPlayService(dialogs, this::showStatus);
+        promptResponder = new NetworkPromptResponder(dialogs, statusDisplay, this::showStatus);
+
+        boardChrome = new GameBoardChrome(
+                leftSidebar, rightSidebar, leftSidebarToggle, rightSidebarToggle,
+                leftSidebarHandle, rightSidebarHandle, handDock, handDockHint, handDockToggle);
+        boardChrome.setup();
+
+        initBoardRefresh();
+        matchCoordinator = new NetworkMatchCoordinator(
+                statusMessage, gameLog, statusDisplay, this::updateUi,
+                () -> boardRefresh.disableAllActionButtons(),
+                () -> localSeat, () -> client);
+
+        layoutTracker = new PropertyBoardLayoutTracker(
+                allPlayersPropertiesPanel,
+                () -> state != null ? state.players.size() : 0,
+                this::updateUi);
+        layoutTracker.attach();
+
+        if (playerHandScroll != null) {
+            playerHandScroll.widthProperty().addListener((obs, oldW, newW) -> {
+                if (state != null) {
+                    updateUi();
+                }
+            });
+        }
+    }
+
+    private void initBoardRefresh() {
         handRenderer = new HandRenderer();
-        playerListRenderer = new PlayerListRenderer(() -> avatarImage);
-        publicBoardRenderer = new PublicBoardRenderer(() -> avatarImage);
-        bankBarRenderer = new BankBarRenderer();
         handSelectionListener = new HandRenderer.SelectionListener() {
             @Override
             public void onCardSelected(Card card, CardView cardView) {
@@ -125,16 +134,15 @@ public class NetworkGameController {
                 cardView.playActivationAnimation(() -> Platform.runLater(NetworkGameController.this::onPlay));
             }
         };
-        if (playerHandScroll != null) {
-            playerHandScroll.widthProperty().addListener((obs, oldW, newW) -> {
-                if (state != null) {
-                    updateHandOnline();
-                }
-            });
-        }
-        setupCollapsibleSidebars();
-        setupHandDockInteractions();
-        setupPublicBoardSizing();
+
+        boardRefresh = new NetworkBoardRefreshService(
+                currentPlayerLabel, gameStatusText, publicBoardPanel, allPlayersPropertiesPanel,
+                allPlayersBankBar, playerHandScroll, playerHand, playerBank, bankTotalLabel,
+                drawCardBtn, discardCardBtn, endTurnBtn,
+                handRenderer, new PlayerListRenderer(() -> avatarImage),
+                new PublicBoardRenderer(() -> avatarImage), new BankBarRenderer(),
+                () -> state, () -> myHand, () -> myBank, () -> localSeat, handSelectionListener);
+        boardRefresh.applySelectionCallback((card, view) -> selectedCardView = view);
     }
 
     public void startOnlineGame(NetworkClient networkClient, int seat, GameStateDto initialState) {
@@ -158,135 +166,16 @@ public class NetworkGameController {
         if (drawCardBtn != null) drawCardBtn.setOnAction(e -> onDraw());
         if (discardCardBtn != null) discardCardBtn.setOnAction(e -> onDiscard());
         if (endTurnBtn != null) endTurnBtn.setOnAction(e -> onEndTurn());
-        if (achievementBtn != null) achievementBtn.setOnAction(e -> AchievementUi.showLibraryDialog(statusMessage));
-    }
-
-    private void setupCollapsibleSidebars() {
-        setLeftSidebarOpen(false);
-        setRightSidebarOpen(false);
-        if (leftSidebarToggle != null) {
-            leftSidebarToggle.setOnAction(e -> setLeftSidebarOpen(false));
-        }
-        if (leftSidebarHandle != null) {
-            leftSidebarHandle.setOnAction(e -> setLeftSidebarOpen(true));
-        }
-        if (rightSidebarToggle != null) {
-            rightSidebarToggle.setOnAction(e -> setRightSidebarOpen(false));
-        }
-        if (rightSidebarHandle != null) {
-            rightSidebarHandle.setOnAction(e -> setRightSidebarOpen(true));
+        if (achievementBtn != null) {
+            achievementBtn.setOnAction(e -> AchievementUi.showLibraryDialog(statusMessage));
         }
     }
-
-    private void setLeftSidebarOpen(boolean open) {
-        setNodeLayoutVisible(leftSidebar, open);
-        setNodeLayoutVisible(leftSidebarHandle, !open);
-    }
-
-    private void setRightSidebarOpen(boolean open) {
-        setNodeLayoutVisible(rightSidebar, open);
-        setNodeLayoutVisible(rightSidebarHandle, !open);
-    }
-
-    private void setNodeLayoutVisible(javafx.scene.Node node, boolean visible) {
-        if (node == null) {
-            return;
-        }
-        node.setVisible(visible);
-        node.setManaged(visible);
-    }
-
-    private void setupHandDockInteractions() {
-        if (handDock == null) {
-            return;
-        }
-        setHandDockExpanded(false, false);
-        if (handDockToggle != null) {
-            handDockToggle.setOnAction(e -> setHandDockExpanded(!handDockExpanded, true));
-        }
-    }
-
-    private void setHandDockExpanded(boolean expanded, boolean animate) {
-        if (handDock == null || (handDockExpanded == expanded && animate)) {
-            return;
-        }
-        handDockExpanded = expanded;
-        double collapsedY = HAND_DOCK_HEIGHT - HAND_DOCK_PEEK;
-        double targetY = expanded ? 0 : collapsedY;
-        if (handDockToggle != null) {
-            handDockToggle.setText(expanded ? "Hide Hand ▼" : "Show Hand ▲");
-        }
-        if (handDockHint != null) {
-            handDockHint.setText(expanded
-                    ? "Double-click a card to play"
-                    : "Click Show Hand to view your cards");
-        }
-        if (expanded) {
-            handDock.toFront();
-        }
-        if (!animate) {
-            handDock.setTranslateY(targetY);
-            return;
-        }
-        TranslateTransition transition = new TranslateTransition(Duration.millis(280), handDock);
-        transition.setToY(targetY);
-        transition.setInterpolator(Interpolator.EASE_BOTH);
-        transition.play();
-    }
-
-    private void setupPublicBoardSizing() {
-        if (allPlayersPropertiesPanel == null) {
-            return;
-        }
-        allPlayersPropertiesPanel.widthProperty().addListener((obs, oldW, newW) -> {
-            if (newW.doubleValue() > 0 && state != null) {
-                updateUi();
-            }
-        });
-        attachTableAreaHeightListener();
-    }
-
-    private void attachTableAreaHeightListener() {
-        javafx.scene.Parent node = allPlayersPropertiesPanel;
-        while (node != null && !node.getStyleClass().contains("table-area")) {
-            node = node.getParent();
-        }
-        if (!(node instanceof Region tableArea)) {
-            return;
-        }
-        tableArea.heightProperty().addListener((obs, oldH, newH) -> {
-            if (newH.doubleValue() <= 0) {
-                return;
-            }
-            refreshPropertyAreaLayout();
-        });
-    }
-
-    private void refreshPropertyAreaLayout() {
-        if (state == null) {
-            PublicPropertyBoardLayout.applyEqualRows(allPlayersPropertiesPanel);
-            return;
-        }
-        PublicPropertyBoardLayout.applyEqualRows(allPlayersPropertiesPanel, state.players.size());
-        maybeRescalePropertyCards();
-    }
-
-    private void maybeRescalePropertyCards() {
-        if (allPlayersPropertiesPanel == null || state == null) {
-            return;
-        }
-        double rowHeight = PublicPropertyBoardLayout.rowHeightFor(allPlayersPropertiesPanel, state.players.size());
-        if (rowHeight <= 0 || Math.abs(rowHeight - lastPropertyRowHeight) <= 2) {
-            return;
-        }
-        lastPropertyRowHeight = rowHeight;
-        updateUi();
-    }
-
 
     private void handleMessage(ServerMessage message) {
         Platform.runLater(() -> {
-            if (message == null) return;
+            if (message == null) {
+                return;
+            }
             if (MessageTypes.STATE.equals(message.type) && message.state != null) {
                 applyState(message.state);
             } else if (MessageTypes.PROMPT.equals(message.type)) {
@@ -294,7 +183,7 @@ public class NetworkGameController {
                     applyState(message.state);
                 }
                 if (message.prompt != null && message.prompt.responderSeat == localSeat) {
-                    handleInteractionPrompt(message.prompt);
+                    promptResponder.handle(client, message.prompt);
                 }
             } else if (MessageTypes.ERROR.equals(message.type)) {
                 showStatus(message.text, true);
@@ -304,234 +193,24 @@ public class NetworkGameController {
         });
     }
 
-    private void handleInteractionPrompt(InteractionPromptDto prompt) {
-        if (client == null || prompt == null || prompt.promptId == null) {
-            return;
-        }
-        if (PendingActionResolution.PROMPT_JUST_SAY_NO.equals(prompt.promptType)) {
-            respondJustSayNo(prompt);
-        } else if (PendingActionResolution.PROMPT_PAYMENT.equals(prompt.promptType)) {
-            respondPayment(prompt);
-        }
-    }
-
-    private void respondJustSayNo(InteractionPromptDto prompt) {
-        ButtonType playBtn = new ButtonType("Play Just Say No");
-        ButtonType allowBtn = new ButtonType("Allow Effect");
-        ButtonType cancelBtn = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
-        String header = prompt.responseDepth == 0
-                ? "Block " + prompt.attackerName + "'s action?"
-                : "Counter the previous Just Say No?";
-        String content = prompt.responseDepth == 0
-                ? prompt.actionName + "\n\nPlaying Just Say No cancels this effect."
-                : prompt.actionName + "\n\nPlaying Just Say No cancels the previous Just Say No.";
-        Optional<ButtonType> choice = dialogs.showButtonDialog(
-                "Just Say No", header, content, playBtn, allowBtn, cancelBtn);
-        boolean useJustSayNo = choice.isPresent() && choice.get() == playBtn;
-        client.respond(prompt.promptId, useJustSayNo, null);
-        showStatus(useJustSayNo ? "You played Just Say No." : "You allowed the effect.", false);
-    }
-
-    private void respondPayment(InteractionPromptDto prompt) {
-        List<Card> options = new ArrayList<>();
-        if (prompt.payableCards != null) {
-            for (var dto : prompt.payableCards) {
-                Card card = CardMapper.fromDto(dto);
-                if (card != null) {
-                    options.add(card);
-                }
-            }
-        }
-        if (options.isEmpty()) {
-            showStatus("No assets available to pay.", true);
-            return;
-        }
-        Optional<Card> chosen = dialogs.showChoiceDialog(
-                "Choose Payment Asset",
-                "You must pay " + prompt.remainingDue + "M",
-                prompt.actionName + "\nChoose one bank card or property to pay. Properties in complete sets cannot be used.",
-                options,
-                this::describePaymentCard,
-                this::paymentCardStyle);
-        if (chosen.isEmpty()) {
-            respondPayment(prompt);
-            return;
-        }
-        client.respond(prompt.promptId, null, chosen.get().getInstanceId());
-        showStatus("Paid with " + chosen.get().getName(), false);
-    }
-
-    private String describePaymentCard(Card card) {
-        if (card instanceof PropertyCard propertyCard) {
-            Color color = propertyCard.getColor() != null ? propertyCard.getColor() : Color.BROWN;
-            return card.getName() + " (" + color + ", " + PaymentTransfer.getPaymentValue(card) + "M)";
-        }
-        return card.getName() + " (" + PaymentTransfer.getPaymentValue(card) + "M)";
-    }
-
-    private String paymentCardStyle(Card card) {
-        if (card instanceof PropertyCard propertyCard && propertyCard.getColor() != null) {
-            return "-fx-border-color: " + dialogs.cssColorFor(propertyCard.getColor()) + ";";
-        }
-        if (card instanceof model.card.MoneyCard) {
-            return "-fx-border-color: #27ae60;";
-        }
-        return "-fx-border-color: #d64545;";
-    }
-
     private void applyState(GameStateDto newState) {
         if (newState == null) {
-            showStatus("Waiting for server to sync game state...", false);
+            statusDisplay.show("Waiting for server to sync game state...", false);
             if (client != null) {
                 client.requestSync();
             }
             return;
         }
-        if (newState.players == null) {
-            newState.players = new ArrayList<>();
-        }
-        if (newState.myHand == null) {
-            newState.myHand = new ArrayList<>();
-        }
-        if (newState.myBank == null) {
-            newState.myBank = new ArrayList<>();
-        }
-        if (newState.logLines == null) {
-            newState.logLines = new ArrayList<>();
-        }
-        boolean wasGameOver = previousGameOver;
+        matchCoordinator.normalize(newState);
         this.state = newState;
-        previousGameOver = newState.gameOver;
-        if (wasGameOver && !newState.gameOver) {
-            victoryScreenShown = false;
-            rematchPromptShown = false;
-            rematchDeclinedNotified = false;
-            lastRematchYesCount = -1;
-            showStatus("新一局已开始，请先抽牌。", false);
-        }
-        if (newState.rematchDeclined && !rematchDeclinedNotified) {
-            rematchDeclinedNotified = true;
-            showStatus("有玩家选择不继续，本局结束。", false);
-        }
-        if (newState.rematchOpen
-                && Boolean.TRUE.equals(newState.myRematchVote)
-                && newState.rematchYesCount < newState.rematchRequired
-                && newState.rematchYesCount != lastRematchYesCount) {
-            lastRematchYesCount = newState.rematchYesCount;
-            showStatus("已选择再来一局，等待其他玩家（"
-                    + newState.rematchYesCount + "/" + newState.rematchRequired + "）", false);
-        }
         myHand = CardMapper.fromDtos(newState.myHand);
         myBank = CardMapper.fromDtos(newState.myBank);
-        if (selectedCard != null) {
-            String selectedId = selectedCard.getInstanceId();
-            selectedCard = myHand.stream()
-                    .filter(card -> selectedId.equals(card.getInstanceId()))
-                    .findFirst()
-                    .orElse(null);
-            if (selectedCard == null) {
-                selectedCardView = null;
-            }
+        selectedCard = NetworkMatchCoordinator.reconcileSelection(myHand, selectedCard);
+        if (selectedCard == null) {
+            selectedCardView = null;
         }
-        mergeLog(newState.logLines);
-        updateUi();
-        maybeShowVictoryScreen();
-        maybePromptHandLimitDiscard();
-    }
-
-    private void maybeShowVictoryScreen() {
-        if (state == null || !state.gameOver || victoryScreenShown) {
-            return;
-        }
-        if (state.winnerName == null || state.winnerName.isBlank()) {
-            return;
-        }
-        victoryScreenShown = true;
-        GameVictoryScreen.show(statusMessage, state.winnerName, this::promptRematchAfterVictory);
-        if (drawCardBtn != null) {
-            drawCardBtn.setDisable(true);
-        }
-        if (discardCardBtn != null) {
-            discardCardBtn.setDisable(true);
-        }
-        if (endTurnBtn != null) {
-            endTurnBtn.setDisable(true);
-        }
-    }
-
-    private void promptRematchAfterVictory() {
-        if (rematchPromptShown || client == null || state == null) {
-            return;
-        }
-        rematchPromptShown = true;
-        GameAlertDialogs.askPlayAgain(
-                statusMessage,
-                "是否和大家再开一局？只有所有玩家都选择再来一局才会重新开始。",
-                accept -> {
-                    if (client == null || state == null) {
-                        return;
-                    }
-                    client.voteRematch(accept);
-                    if (accept) {
-                        lastRematchYesCount = state.rematchYesCount;
-                        showStatus("已选择再来一局，等待其他玩家…", false);
-                    } else {
-                        showStatus("你已选择结束本局", false);
-                    }
-                });
-    }
-
-    private void maybePromptHandLimitDiscard() {
-        if (!isMyTurn() || state == null) {
-            pendingEndTurnAfterDiscard = false;
-            return;
-        }
-        if (myHand.size() <= GameEngine.MAX_HAND_SIZE) {
-            if (pendingEndTurnAfterDiscard) {
-                pendingEndTurnAfterDiscard = false;
-                client.endTurn();
-            }
-            return;
-        }
-        if (!mustResolveHandLimitDiscard()) {
-            return;
-        }
-        Platform.runLater(this::promptDiscardForHandLimit);
-    }
-
-    private boolean mustResolveHandLimitDiscard() {
-        if (!isMyTurn() || state == null || myHand.size() <= GameEngine.MAX_HAND_SIZE) {
-            return false;
-        }
-        return pendingEndTurnAfterDiscard
-                || (state.hasDrawnThisTurn && state.remainingPlays <= 0);
-    }
-
-    private void promptDiscardForHandLimit() {
-        if (!mustResolveHandLimitDiscard()) {
-            if (pendingEndTurnAfterDiscard && myHand.size() <= GameEngine.MAX_HAND_SIZE) {
-                pendingEndTurnAfterDiscard = false;
-                client.endTurn();
-            }
-            return;
-        }
-        int excess = myHand.size() - GameEngine.MAX_HAND_SIZE;
-        Optional<Card> choice = HandDiscardDialogService.promptDiscardOne(
-                helper -> dialogs.showChoiceDialog(
-                        helper.title(),
-                        helper.header(),
-                        helper.prompt(),
-                        helper.hand(),
-                        Card::getName,
-                        card -> null),
-                myHand,
-                excess,
-                pendingEndTurnAfterDiscard || state.remainingPlays <= 0);
-        if (choice.isEmpty()) {
-            showStatus("You must discard down to " + GameEngine.MAX_HAND_SIZE + " cards before ending your turn", true);
-            return;
-        }
-        client.discardCard(choice.get().getInstanceId());
+        matchCoordinator.onStateApplied(newState);
+        matchCoordinator.checkHandLimitAfterRefresh(newState, myHand, dialogs);
     }
 
     private void onPlay() {
@@ -539,11 +218,11 @@ public class NetworkGameController {
             showStatus("It's not your turn", true);
             return;
         }
-        if (state != null && !state.hasDrawnThisTurn) {
+        if (!state.hasDrawnThisTurn) {
             showStatus("Please click Draw Cards first before playing a card", true);
             return;
         }
-        if (state != null && state.remainingPlays <= 0) {
+        if (state.remainingPlays <= 0) {
             showStatus("No plays remaining this turn", true);
             return;
         }
@@ -552,15 +231,6 @@ public class NetworkGameController {
             return;
         }
         playSelectedCard();
-    }
-
-    private void mergeLog(List<String> lines) {
-        if (lines == null || gameLog == null) return;
-        for (int i = mergedLogSize; i < lines.size(); i++) {
-            gameLog.appendText(lines.get(i) + "\n");
-        }
-        mergedLogSize = lines.size();
-        gameLog.setScrollTop(Double.MAX_VALUE);
     }
 
     private void onDraw() {
@@ -578,8 +248,8 @@ public class NetworkGameController {
             return;
         }
         if (myHand.size() > GameEngine.MAX_HAND_SIZE) {
-            pendingEndTurnAfterDiscard = true;
-            promptDiscardForHandLimit();
+            matchCoordinator.setPendingEndTurnAfterDiscard(true);
+            matchCoordinator.promptDiscardForHandLimit(state, myHand, dialogs);
             return;
         }
         client.endTurn();
@@ -590,7 +260,7 @@ public class NetworkGameController {
             showStatus("It's not your turn", true);
             return;
         }
-        if (state != null && !state.hasDrawnThisTurn) {
+        if (!state.hasDrawnThisTurn) {
             showStatus("Please click Draw Cards first", true);
             return;
         }
@@ -615,7 +285,8 @@ public class NetworkGameController {
             restoreSelectedCard(card, sourceView);
             return;
         }
-        sendPlayCard(built.get());
+        client.playCard(built.get());
+        AchievementUi.unlockAndShow(AchievementManager.FIRST_PLAY, statusMessage);
     }
 
     private void restoreSelectedCard(Card card, CardView sourceView) {
@@ -629,11 +300,6 @@ public class NetworkGameController {
         handRenderer.applySelection(playerHand, card, (c, view) -> selectedCardView = view);
     }
 
-    private void sendPlayCard(ClientMessage msg) {
-        client.playCard(msg);
-        AchievementUi.unlockAndShow(AchievementManager.FIRST_PLAY, statusMessage);
-    }
-
     private boolean isMyTurn() {
         return state != null && !state.gameOver && state.currentPlayerIndex == localSeat;
     }
@@ -642,171 +308,24 @@ public class NetworkGameController {
         if (state == null) {
             return;
         }
-        List<PlayerBoardView> boardViews = PlayerBoardView.fromDtos(state.players, localSeat);
-        playerListRenderer.renderBoardViews(playersList, boardViews, state.currentPlayerIndex);
-        double rowHeight = publicBoardRenderer.render(
-                publicBoardPanel, allPlayersPropertiesPanel, boardViews, state.currentPlayerIndex);
-        if (rowHeight > 0) {
-            lastPropertyRowHeight = rowHeight;
-        }
-        bankBarRenderer.renderBoardViews(allPlayersBankBar, boardViews, state.currentPlayerIndex);
-        updateHandOnline();
-        updateBankOnline();
-        updateLabelsOnline();
-        updateButtons();
-    }
-
-    private void updateHandOnline() {
-        boolean canSelect = canSelectHandCards();
-        boolean canPlay = canPlayFromHand();
-        handRenderer.render(playerHand, playerHandScroll, myHand, selectedCard,
-                canSelect, canPlay, handSelectionListener);
-        if (selectedCard != null) {
-            handRenderer.applySelection(playerHand, selectedCard, (card, view) -> selectedCardView = view);
-        }
-    }
-
-    private void updateBankOnline() {
-        if (playerBank == null) {
-            return;
-        }
-        playerBank.getChildren().clear();
-        int total = 0;
-        for (PlayerViewDto p : state.players) {
-            if (p.seat == localSeat) {
-                total = p.bankTotal;
-                break;
-            }
-        }
-        if (bankTotalLabel != null) {
-            bankTotalLabel.setText(total + "M");
-        }
-        for (Card card : myBank) {
-            StackPane slot = CardView.wrapInSlot(card, false, CardView.COMPACT);
-            slot.getStyleClass().add("bank-card-slot");
-            playerBank.getChildren().add(slot);
-        }
-        if (playerBank.getChildren().isEmpty()) {
-            Label hint = new Label("(Money cards / action cards played, or rent collected, go into bank)");
-            hint.setStyle("-fx-text-fill: #476272; -fx-font-size: 12px; -fx-wrap-text: true;");
-            playerBank.getChildren().add(hint);
-        }
-    }
-
-    private void updateLabelsOnline() {
-        if (currentPlayerLabel != null && state.currentPlayerIndex >= 0
-                && state.currentPlayerIndex < state.players.size()) {
-            String drawStatus = state.hasDrawnThisTurn ? "Drew cards" : "Hasn't drawn";
-            currentPlayerLabel.setText("Current Player: " + state.players.get(state.currentPlayerIndex).name
-                    + " | " + drawStatus
-                    + " | Remaining plays: " + state.remainingPlays + "/" + MAX_PLAYS_PER_TURN);
-        }
-        if (gameStatusText != null) {
-            if (state.gameOver) {
-                gameStatusText.setText("Draw pile: " + state.drawPileSize
-                        + "  |  Discard pile: " + state.discardPileSize
-                        + "  |  Winner: " + state.winnerName);
-            } else {
-                gameStatusText.setText("Draw pile: " + state.drawPileSize
-                        + "  |  Discard pile: " + state.discardPileSize);
-            }
-        }
+        boardRefresh.setSelectedCard(selectedCard);
+        boardRefresh.refreshAll(playersList, layoutTracker::setLastRowHeight);
     }
 
     private void selectCard(Card card, CardView cv) {
         if (card.equals(selectedCard)) {
             return;
         }
-        for (var node : playerHand.getChildren()) {
-            if (node instanceof StackPane sp) {
-                CardView view = CardView.getCardView(sp);
-                if (view != null) view.setSelected(false);
-            }
-        }
+        handRenderer.clearSelection(playerHand);
         selectedCard = card;
         selectedCardView = cv;
         cv.setSelected(true);
-
-        if (card instanceof WildpropertyCard wild) {
-            showStatus("Selected wild property [" + card.getName() + "]"
-                    + (wild.isBankable() ? " (can deposit to bank for " + wild.getBankValueM() + "M)" : " (cannot deposit to bank)")
-                    + ". Play card to choose color or deposit to bank", false);
-        } else if (card instanceof RentCard rentCard) {
-            showStatus("Selected rent card [" + card.getName() + "] (bank " + rentCard.getBankValueM()
-                    + "M). Play card to collect rent or deposit to bank", false);
-        } else if (card instanceof DoubleTheRent) {
-            showStatus("Selected Double the Rent — pick a Rent card and collect double (uses 2 plays)", false);
-        } else if (card instanceof ActionCard actionCard) {
-            showStatus("Selected action card [" + card.getName() + "] (bank " + actionCard.getBankValueM()
-                    + "M). Play card to choose: use effect or deposit to bank", false);
-        } else {
-            showStatus("Selected: " + card.getName() + ". Double-click to play, or click Discard Selected Card to discard", false);
-        }
-        updateButtons();
-    }
-
-
-
-
-    private boolean canSelectHandCards() {
-        return isMyTurn()
-                && state != null
-                && state.hasDrawnThisTurn;
-    }
-
-    private boolean canPlayFromHand() {
-        return canSelectHandCards() && state.remainingPlays > 0;
-    }
-
-    private void updateButtons() {
-        if (state == null) return;
-        if (state.gameOver) {
-            if (drawCardBtn != null) drawCardBtn.setDisable(true);
-            if (discardCardBtn != null) discardCardBtn.setDisable(true);
-            if (endTurnBtn != null) endTurnBtn.setDisable(true);
-            return;
-        }
-        boolean myTurn = isMyTurn();
-        if (drawCardBtn != null) drawCardBtn.setDisable(!myTurn || state.hasDrawnThisTurn);
-        if (discardCardBtn != null) {
-            discardCardBtn.setDisable(!myTurn || !state.hasDrawnThisTurn || selectedCard == null);
-        }
-        if (endTurnBtn != null) endTurnBtn.setDisable(!myTurn);
+        showStatus(CardSelectionFeedback.messageForOnline(card), false);
+        boardRefresh.setSelectedCard(selectedCard);
+        boardRefresh.refreshButtons();
     }
 
     private void showStatus(String text, boolean error) {
-        if (error) {
-            GameAlertDialogs.showError(statusMessage, text);
-            return;
-        }
-        if (statusMessage == null) {
-            return;
-        }
-        if (text.equals(lastStatusMessage) && error == lastStatusError) {
-            return;
-        }
-        lastStatusMessage = text;
-        lastStatusError = error;
-
-        if (statusFadeTransition != null) {
-            statusFadeTransition.stop();
-        }
-        statusMessage.setOpacity(0.4);
-        statusMessage.setText(text);
-        statusMessage.setStyle(error ? "-fx-text-fill: #e74c3c;" : "-fx-text-fill: white;");
-        statusFadeTransition = new FadeTransition(Duration.millis(160), statusMessage);
-        statusFadeTransition.setFromValue(0.4);
-        statusFadeTransition.setToValue(1);
-        statusFadeTransition.setInterpolator(Interpolator.EASE_OUT);
-        statusFadeTransition.play();
-    }
-
-    private void loadAvatarImage() {
-        try {
-            avatarImage = new Image(Objects.requireNonNull(
-                    getClass().getResourceAsStream("/ui/avatar.png")));
-        } catch (Exception ex) {
-            avatarImage = null;
-        }
+        statusDisplay.show(text, error);
     }
 }

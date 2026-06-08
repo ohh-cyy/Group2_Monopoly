@@ -30,6 +30,10 @@ module com.example.zyzzs {
     exports controller.session;
     exports controller.dialog;
     exports ui.render;
+    exports ui.layout;
+    exports ui.animation;
+    exports controller.view;
+    exports controller.network;
     exports network;
     exports network.protocol;
     exports network.server;
