@@ -15,7 +15,7 @@
                 <HBox alignment="CENTER_LEFT" spacing="16" styleClass="lobby-hero">
                     <VBox spacing="5" HBox.hgrow="ALWAYS">
                         <Label text="MONOPOLY DEAL" styleClass="lobby-title"/>
-                        <Label text="Card Room Lobby · 2-4 Online Players · Local Hot Seat Ready"
+                        <Label text="Card Room Lobby · 2-5 Online Players · Local Hot Seat Ready"
                                wrapText="true"
                                styleClass="lobby-subtitle"/>
                     </VBox>
@@ -78,7 +78,7 @@
                         </HBox>
 
                         <Button fx:id="startBtn"
-                                text="Start Game (2-4 players, host only)"
+                                text="Start Game (2-5 players, host only)"
                                 onAction="#onStartClick"
                                 disable="true"
                                 maxWidth="Infinity"

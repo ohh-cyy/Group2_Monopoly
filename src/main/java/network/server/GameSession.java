@@ -22,7 +22,7 @@ import java.util.List;
 
 public class GameSession {
     public static final int MIN_PLAYERS = 2;
-    public static final int MAX_PLAYERS = 4;
+    public static final int MAX_PLAYERS = 5;
 
     private final ClientHandler[] seats = new ClientHandler[MAX_PLAYERS];
     private final String[] names = new String[MAX_PLAYERS];

@@ -86,7 +86,7 @@ Online mode uses a host/join lobby:
 1. The host enters a name and starts a server.
 2. Other players enter the host address and port, then join the lobby.
 3. The host can start once the lobby has at least 2 players.
-4. The online session supports 2 to 4 players.
+4. The online session supports 2 to 5 players.
 5. During the match, clients send commands such as draw, play card, discard,
    respond, and end turn.
 6. The server validates the command, updates the game state, and broadcasts a
@@ -99,7 +99,7 @@ testing.
 
 - Local hot-seat gameplay.
 - Online lobby for hosting and joining multiplayer games.
-- 2 to 4 player online sessions.
+- 2 to 5 player online sessions.
 - Initial dealing of five cards to each player.
 - Drawing two cards at the start of a turn.
 - Maximum of three card plays per turn.
