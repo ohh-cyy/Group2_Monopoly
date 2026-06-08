@@ -234,6 +234,10 @@ public class GameServer implements AutoCloseable {
             }
         }
         synchronized (this) {
+            if (session != null) {
+                session.shutdown();
+                session = null;
+            }
             for (ClientHandler handler : new ArrayList<>(connections)) {
                 handler.disconnect();
             }

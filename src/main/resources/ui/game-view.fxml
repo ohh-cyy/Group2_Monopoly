@@ -110,6 +110,12 @@
                                     styleClass="control-button"/>
                         </VBox>
 
+                        <Label text="Emoji" styleClass="drawer-title drawer-subtitle"/>
+                        <HBox fx:id="emojiBar"
+                              spacing="6"
+                              alignment="CENTER_LEFT"
+                              styleClass="emoji-bar"/>
+
                         <Label text="Game Log" styleClass="drawer-title drawer-subtitle"/>
                         <TextArea fx:id="gameLog"
                                   editable="false"

@@ -14,10 +14,12 @@ import engine.PropertyRules;
 import javafx.application.Platform;
 import javafx.animation.FadeTransition;
 import javafx.animation.Interpolator;
+import javafx.animation.KeyFrame;
 import javafx.animation.ParallelTransition;
 import javafx.animation.RotateTransition;
 import javafx.animation.ScaleTransition;
 import javafx.animation.TranslateTransition;
+import javafx.animation.Timeline;
 import javafx.util.Duration;
 import ui.AchievementUi;
 import ui.CardView;
@@ -115,6 +117,9 @@ public class GameController {
     
     @FXML
     private TextArea gameLog;
+
+    @FXML
+    private HBox emojiBar;
     
     @FXML
     private Button drawCardBtn;
@@ -149,7 +154,13 @@ public class GameController {
 
     private static final double HAND_DOCK_HEIGHT = 266;
     private static final double HAND_DOCK_PEEK = 54;
+    private static final int TURN_TIME_SECONDS = 60;
+    private static final int TURN_WARNING_SECONDS = 10;
+    private static final List<String> EMOJIS = List.of("😀", "😂", "😎", "😮", "👏", "💰", "🎲", "🔥");
     private boolean handDockExpanded = false;
+    private int turnSecondsRemaining = TURN_TIME_SECONDS;
+    private boolean turnWarningShown = false;
+    private Timeline turnTimer;
     private double lastPropertyRowHeight = -1;
     private Image avatarImage;
     private String lastStatusMessage = "";
@@ -169,6 +180,7 @@ public class GameController {
             });
         }
         setupButtonActions();
+        setupEmojiBar();
         setupCollapsibleSidebars();
         setupHandDockInteractions();
         setupPublicBoardSizing();
@@ -232,6 +244,86 @@ public class GameController {
         if (achievementBtn != null) {
             achievementBtn.setOnAction(e -> AchievementUi.showLibraryDialog(statusMessage));
         }
+    }
+
+
+    private void setupEmojiBar() {
+        if (emojiBar == null) {
+            return;
+        }
+        emojiBar.getChildren().clear();
+        for (String emoji : EMOJIS) {
+            Button button = new Button(emoji);
+            button.getStyleClass().add("emoji-button");
+            button.setFocusTraversable(false);
+            button.setOnAction(e -> sendLocalEmoji(emoji));
+            emojiBar.getChildren().add(button);
+        }
+    }
+
+    private void sendLocalEmoji(String emoji) {
+        if (gameEngine == null || currentPlayer == null) {
+            return;
+        }
+        logMessage(currentPlayer.getName() + " sent " + emoji);
+        showStatus(currentPlayer.getName() + " sent " + emoji, false);
+    }
+
+    private void resetTurnTimerForCurrentPlayer() {
+        stopTurnTimer();
+        if (gameEngine == null || gameEngine.isGameOver()) {
+            turnSecondsRemaining = 0;
+            return;
+        }
+        turnSecondsRemaining = TURN_TIME_SECONDS;
+        turnWarningShown = false;
+        turnTimer = new Timeline(new KeyFrame(Duration.seconds(1), e -> tickTurnTimer()));
+        turnTimer.setCycleCount(Timeline.INDEFINITE);
+        turnTimer.play();
+    }
+
+    private void stopTurnTimer() {
+        if (turnTimer != null) {
+            turnTimer.stop();
+            turnTimer = null;
+        }
+    }
+
+    private void tickTurnTimer() {
+        if (gameEngine == null || gameEngine.isGameOver()) {
+            stopTurnTimer();
+            return;
+        }
+        turnSecondsRemaining = Math.max(0, turnSecondsRemaining - 1);
+        if (!turnWarningShown && turnSecondsRemaining == TURN_WARNING_SECONDS) {
+            turnWarningShown = true;
+            showStatus(gameEngine.getCurrentPlayer().getName() + " has 10 seconds left to play", false);
+            logMessage(gameEngine.getCurrentPlayer().getName() + " has 10 seconds left");
+        }
+        updateCurrentPlayerDisplay();
+        if (turnSecondsRemaining == 0) {
+            skipTurnOnTimeout();
+        }
+    }
+
+    private void skipTurnOnTimeout() {
+        if (gameEngine == null || gameEngine.isGameOver()) {
+            return;
+        }
+        stopTurnTimer();
+        Player skipped = gameEngine.getCurrentPlayer();
+        selectedCard = null;
+        selectedCardView = null;
+        pendingPlayedCardView = null;
+        for (Card card : gameEngine.enforceHandSizeLimit(skipped)) {
+            logMessage(skipped.getName() + " auto-discarded " + card.getName() + " (hand size limit)");
+        }
+        gameEngine.nextTurn();
+        currentPlayer = gameEngine.getCurrentPlayer();
+        logMessage(skipped.getName() + " ran out of time and was skipped → " + currentPlayer.getName() + "'s turn");
+        showStatus(skipped.getName() + " ran out of time. Skipped to " + currentPlayer.getName(), false);
+        resetTurnTimerForCurrentPlayer();
+        afterStateChange();
     }
 
 private void setupCollapsibleSidebars() {
@@ -374,6 +466,7 @@ private void maybeRescalePropertyCards() {
         selectedCardView = null;
         pendingPlayedCardView = null;
         logMessage("Players: " + String.join(", ", names));
+        resetTurnTimerForCurrentPlayer();
         updateUI();
     }
     
@@ -622,6 +715,7 @@ private void forceEndTurn() {
                 return;
             }
             gameEngine.nextTurn();
+            resetTurnTimerForCurrentPlayer();
             currentPlayer = gameEngine.getCurrentPlayer();
             logMessage(ending.getName() + " turn ends → " + currentPlayer.getName() + "'s turn");
             showStatus("Played 3 cards, automatically switching to " + currentPlayer.getName()
@@ -647,6 +741,7 @@ private void forceEndTurn() {
         }
         logMessage(player.getName() + " ended turn voluntarily");
         gameEngine.nextTurn();
+        resetTurnTimerForCurrentPlayer();
         currentPlayer = gameEngine.getCurrentPlayer();
         showStatus("Now " + currentPlayer.getName() + "'s turn, please draw 2 cards first", false);
         afterStateChange();
@@ -701,7 +796,8 @@ private void forceEndTurn() {
         currentPlayerLabel.setText("Current Player: " + currentPlayer.getName()
                 + " | " + drawStatus
                 + " | Remaining plays: " + gameEngine.getRemainingPlays() + "/"
-                + GameEngine.MAX_PLAYS_PER_TURN);
+                + GameEngine.MAX_PLAYS_PER_TURN
+                + " | Time: " + turnSecondsRemaining + "s");
     }
     
     private void updatePlayerHand() {
@@ -845,6 +941,7 @@ private void forceEndTurn() {
     }
     
         private void showGameOver(Player winner) {
+        stopTurnTimer();
         Platform.runLater(() -> {
             GameVictoryScreen.show(statusMessage, winner.getName(), () ->
                     GameAlertDialogs.askPlayAgain(statusMessage, accept -> {

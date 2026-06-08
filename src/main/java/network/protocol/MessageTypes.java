@@ -15,6 +15,7 @@ public final class MessageTypes {
     public static final String LEAVE = "LEAVE";
     public static final String RESPOND = "RESPOND";
     public static final String REMATCH_VOTE = "REMATCH_VOTE";
+    public static final String SEND_EMOJI = "SEND_EMOJI";
 
     // server -> client
     public static final String OK = "OK";

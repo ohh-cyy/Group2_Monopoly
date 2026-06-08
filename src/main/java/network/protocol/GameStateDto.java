@@ -17,6 +17,8 @@ public class GameStateDto {
     public Boolean myRematchVote;
     public int drawPileSize;
     public int discardPileSize;
+    /** Server turn deadline. 0 means no active timer. */
+    public long turnDeadlineEpochMillis;
     public List<String> logLines = new ArrayList<>();
     public List<PlayerViewDto> players = new ArrayList<>();
     public List<CardDto> myHand = new ArrayList<>();

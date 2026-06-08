@@ -114,6 +114,13 @@ public class NetworkClient implements AutoCloseable {
         send(msg);
     }
 
+    public void sendEmoji(String emoji) {
+        ClientMessage msg = new ClientMessage();
+        msg.type = MessageTypes.SEND_EMOJI;
+        msg.emoji = emoji;
+        send(msg);
+    }
+
     @Override
     public void close() {
         connected = false;

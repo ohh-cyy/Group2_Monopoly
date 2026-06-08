@@ -7,7 +7,9 @@ import engine.PaymentTransfer;
 import engine.GameEngine;
 import javafx.animation.FadeTransition;
 import javafx.animation.Interpolator;
+import javafx.animation.KeyFrame;
 import javafx.animation.TranslateTransition;
+import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
@@ -63,6 +65,7 @@ public class NetworkGameController {
     @FXML private FlowPane playerBank;
     @FXML private Label bankTotalLabel;
     @FXML private TextArea gameLog;
+    @FXML private HBox emojiBar;
     @FXML private Button drawCardBtn;
     @FXML private Button discardCardBtn;
     @FXML private Button endTurnBtn;
@@ -72,6 +75,8 @@ public class NetworkGameController {
     private static final double HAND_DOCK_HEIGHT = 266;
     private static final double HAND_DOCK_PEEK = 54;
     private static final int MAX_PLAYS_PER_TURN = 3;
+    private static final int TURN_WARNING_SECONDS = 10;
+    private static final List<String> EMOJIS = List.of("😀", "😂", "😎", "😮", "👏", "💰", "🎲", "🔥");
 
     private HandRenderer handRenderer;
     private PlayerListRenderer playerListRenderer;
@@ -89,6 +94,11 @@ public class NetworkGameController {
     private Card selectedCard;
     private CardView selectedCardView;
     private int mergedLogSize;
+    private Timeline countdownTimer;
+    private int turnSecondsRemaining;
+    private boolean turnWarningShown;
+    private int lastTimerTurnIndex = -1;
+    private long lastTurnDeadline = -1;
     private boolean handDockExpanded = false;
     private boolean victoryScreenShown = false;
     private boolean rematchPromptShown = false;
@@ -132,6 +142,7 @@ public class NetworkGameController {
                 }
             });
         }
+        setupEmojiBar();
         setupCollapsibleSidebars();
         setupHandDockInteractions();
         setupPublicBoardSizing();
@@ -159,6 +170,91 @@ public class NetworkGameController {
         if (discardCardBtn != null) discardCardBtn.setOnAction(e -> onDiscard());
         if (endTurnBtn != null) endTurnBtn.setOnAction(e -> onEndTurn());
         if (achievementBtn != null) achievementBtn.setOnAction(e -> AchievementUi.showLibraryDialog(statusMessage));
+    }
+
+
+    private void setupEmojiBar() {
+        if (emojiBar == null) {
+            return;
+        }
+        emojiBar.getChildren().clear();
+        for (String emoji : EMOJIS) {
+            Button button = new Button(emoji);
+            button.getStyleClass().add("emoji-button");
+            button.setFocusTraversable(false);
+            button.setOnAction(e -> sendEmoji(emoji));
+            emojiBar.getChildren().add(button);
+        }
+    }
+
+    private void sendEmoji(String emoji) {
+        if (client == null || state == null || state.gameOver) {
+            return;
+        }
+        client.sendEmoji(emoji);
+        showStatus("Sent " + emoji, false);
+    }
+
+    private void syncTurnCountdown(GameStateDto newState) {
+        if (newState == null || newState.gameOver || newState.turnDeadlineEpochMillis <= 0) {
+            stopCountdownTimer();
+            turnSecondsRemaining = 0;
+            lastTimerTurnIndex = -1;
+            lastTurnDeadline = -1;
+            return;
+        }
+        boolean newTurn = newState.currentPlayerIndex != lastTimerTurnIndex
+                || newState.turnDeadlineEpochMillis != lastTurnDeadline
+                || countdownTimer == null;
+        lastTimerTurnIndex = newState.currentPlayerIndex;
+        lastTurnDeadline = newState.turnDeadlineEpochMillis;
+        updateTurnSecondsFromDeadline();
+        if (newTurn) {
+            turnWarningShown = false;
+            startCountdownTimer();
+        }
+    }
+
+    private void startCountdownTimer() {
+        stopCountdownTimer();
+        countdownTimer = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
+            updateTurnSecondsFromDeadline();
+            maybeWarnForCountdown();
+            updateLabelsOnline();
+            if (turnSecondsRemaining <= 0) {
+                stopCountdownTimer();
+            }
+        }));
+        countdownTimer.setCycleCount(Timeline.INDEFINITE);
+        countdownTimer.play();
+    }
+
+    private void stopCountdownTimer() {
+        if (countdownTimer != null) {
+            countdownTimer.stop();
+            countdownTimer = null;
+        }
+    }
+
+    private void updateTurnSecondsFromDeadline() {
+        if (state == null || state.turnDeadlineEpochMillis <= 0) {
+            turnSecondsRemaining = 0;
+            return;
+        }
+        long millisLeft = state.turnDeadlineEpochMillis - System.currentTimeMillis();
+        turnSecondsRemaining = (int) Math.max(0, Math.ceil(millisLeft / 1000.0));
+    }
+
+    private void maybeWarnForCountdown() {
+        if (state == null || turnWarningShown
+                || turnSecondsRemaining <= 0
+                || turnSecondsRemaining > TURN_WARNING_SECONDS) {
+            return;
+        }
+        turnWarningShown = true;
+        if (state.currentPlayerIndex == localSeat) {
+            showStatus("You have 10 seconds left to play", false);
+        }
     }
 
     private void setupCollapsibleSidebars() {
@@ -402,6 +498,7 @@ public class NetworkGameController {
         boolean wasGameOver = previousGameOver;
         this.state = newState;
         previousGameOver = newState.gameOver;
+        syncTurnCountdown(newState);
         if (wasGameOver && !newState.gameOver) {
             victoryScreenShown = false;
             rematchPromptShown = false;
@@ -699,7 +796,8 @@ public class NetworkGameController {
             String drawStatus = state.hasDrawnThisTurn ? "Drew cards" : "Hasn't drawn";
             currentPlayerLabel.setText("Current Player: " + state.players.get(state.currentPlayerIndex).name
                     + " | " + drawStatus
-                    + " | Remaining plays: " + state.remainingPlays + "/" + MAX_PLAYS_PER_TURN);
+                    + " | Remaining plays: " + state.remainingPlays + "/" + MAX_PLAYS_PER_TURN
+                    + " | Time: " + turnSecondsRemaining + "s");
         }
         if (gameStatusText != null) {
             if (state.gameOver) {
