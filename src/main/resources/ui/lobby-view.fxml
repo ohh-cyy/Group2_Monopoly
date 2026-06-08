@@ -84,10 +84,17 @@
                                 maxWidth="Infinity"
                                 styleClass="lobby-start-button"/>
 
-                        <Button text="Local Hot Seat (4 players)"
-                                onAction="#onLocalGameClick"
-                                maxWidth="Infinity"
-                                styleClass="lobby-local-button"/>
+                        <HBox spacing="10" alignment="CENTER_LEFT">
+                            <Label text="Local players" styleClass="lobby-field-label"/>
+                            <ComboBox fx:id="localPlayerCount"
+                                      prefWidth="92"
+                                      styleClass="lobby-player-count"/>
+                            <Button text="Start Local Hot Seat"
+                                    onAction="#onLocalGameClick"
+                                    HBox.hgrow="ALWAYS"
+                                    maxWidth="Infinity"
+                                    styleClass="lobby-local-button"/>
+                        </HBox>
 
                         <Label fx:id="statusLabel"
                                text="Host starts the server; others join with the host IP."

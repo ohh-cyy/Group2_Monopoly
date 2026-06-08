@@ -23,6 +23,7 @@ import javafx.animation.Timeline;
 import javafx.util.Duration;
 import ui.AchievementUi;
 import ui.CardView;
+import ui.EmojiReactionOverlay;
 import ui.GameAlertDialogs;
 import ui.GameVictoryScreen;
 import ui.PublicPropertyBoardLayout;
@@ -119,7 +120,10 @@ public class GameController {
     private TextArea gameLog;
 
     @FXML
-    private HBox emojiBar;
+    private FlowPane emojiBar;
+
+    @FXML
+    private Pane reactionOverlay;
     
     @FXML
     private Button drawCardBtn;
@@ -143,6 +147,7 @@ public class GameController {
     private PlayerListRenderer playerListRenderer;
     private PublicBoardRenderer publicBoardRenderer;
     private BankBarRenderer bankBarRenderer;
+    private EmojiReactionOverlay emojiReactionOverlay;
 
     private GameEngine gameEngine;
     private List<Player> players;
@@ -156,7 +161,7 @@ public class GameController {
     private static final double HAND_DOCK_PEEK = 54;
     private static final int TURN_TIME_SECONDS = 60;
     private static final int TURN_WARNING_SECONDS = 10;
-    private static final List<String> EMOJIS = List.of("😀", "😂", "😎", "😮", "👏", "💰", "🎲", "🔥");
+    private int localPlayerCount = 4;
     private boolean handDockExpanded = false;
     private int turnSecondsRemaining = TURN_TIME_SECONDS;
     private boolean turnWarningShown = false;
@@ -179,6 +184,7 @@ public class GameController {
                 }
             });
         }
+        emojiReactionOverlay = new EmojiReactionOverlay(reactionOverlay, allPlayersPropertiesPanel);
         setupButtonActions();
         setupEmojiBar();
         setupCollapsibleSidebars();
@@ -225,6 +231,11 @@ public class GameController {
     }
 
     public void startLocalGame() {
+        startLocalGame(localPlayerCount);
+    }
+
+    public void startLocalGame(int playerCount) {
+        localPlayerCount = Math.max(2, Math.min(5, playerCount));
         initializeGame();
     }
     
@@ -252,10 +263,11 @@ public class GameController {
             return;
         }
         emojiBar.getChildren().clear();
-        for (String emoji : EMOJIS) {
+        for (String emoji : network.protocol.EmojiCatalog.ALL) {
             Button button = new Button(emoji);
             button.getStyleClass().add("emoji-button");
             button.setFocusTraversable(false);
+            button.setTooltip(new Tooltip(network.protocol.EmojiCatalog.nameFor(emoji)));
             button.setOnAction(e -> sendLocalEmoji(emoji));
             emojiBar.getChildren().add(button);
         }
@@ -265,8 +277,7 @@ public class GameController {
         if (gameEngine == null || currentPlayer == null) {
             return;
         }
-        logMessage(currentPlayer.getName() + " sent " + emoji);
-        showStatus(currentPlayer.getName() + " sent " + emoji, false);
+        emojiReactionOverlay.show(gameEngine.getCurrentPlayerIndex(), emoji);
     }
 
     private void resetTurnTimerForCurrentPlayer() {
@@ -453,7 +464,11 @@ private void maybeRescalePropertyCards() {
 
     
     private void initializeGame() {
-        initializeGameWithPlayers(List.of("Player 1", "Player 2", "Player 3", "Player 4"));
+        List<String> names = new ArrayList<>();
+        for (int i = 1; i <= localPlayerCount; i++) {
+            names.add("Player " + i);
+        }
+        initializeGameWithPlayers(names);
     }
 
     private void initializeGameWithPlayers(List<String> names) {

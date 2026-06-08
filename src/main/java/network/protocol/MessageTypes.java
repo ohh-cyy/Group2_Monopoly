@@ -25,4 +25,5 @@ public final class MessageTypes {
     public static final String GAME_STARTED = "GAME_STARTED";
     public static final String STATE = "STATE";
     public static final String PROMPT = "PROMPT";
+    public static final String EMOJI = "EMOJI";
 }

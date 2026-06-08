@@ -9,6 +9,7 @@ public class ServerMessage {
     public int seat = -1;
     public boolean host;
     public boolean youAreHost;
+    public String emoji;
     public GameStateDto state;
     public List<LobbyPlayerDto> lobbyPlayers = new ArrayList<>();
     public InteractionPromptDto prompt;

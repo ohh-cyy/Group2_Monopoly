@@ -12,6 +12,7 @@ import model.enums.Color;
 import model.player.Player;
 import network.GameStateMapper;
 import network.protocol.ClientMessage;
+import network.protocol.EmojiCatalog;
 import network.protocol.InteractionPromptDto;
 import network.protocol.MessageTypes;
 import network.protocol.ServerMessage;
@@ -26,7 +27,7 @@ import java.util.concurrent.TimeUnit;
 
 public class GameSession {
     public static final int MIN_PLAYERS = 2;
-    public static final int MAX_PLAYERS = 4;
+    public static final int MAX_PLAYERS = 5;
     public static final int TURN_TIME_SECONDS = 60;
 
     private final ClientHandler[] seats = new ClientHandler[MAX_PLAYERS];
@@ -498,25 +499,21 @@ public class GameSession {
         if (seat < 0 || seat >= playerCount) {
             return error("Invalid seat");
         }
-        String emoji = sanitizeEmoji(message.emoji);
-        if (emoji.isEmpty()) {
+        String emoji = message.emoji == null ? "" : message.emoji.trim();
+        if (!EmojiCatalog.contains(emoji)) {
             return error("Choose an emoji to send");
         }
-        String name = names[seat] != null ? names[seat] : ("Player " + (seat + 1));
-        appendLog(name + " sent " + emoji);
-        broadcastState();
+        ServerMessage reaction = new ServerMessage();
+        reaction.type = MessageTypes.EMOJI;
+        reaction.seat = seat;
+        reaction.emoji = emoji;
+        for (int i = 0; i < playerCount; i++) {
+            ClientHandler handler = seats[i];
+            if (handler != null && handler.isConnected()) {
+                handler.send(reaction);
+            }
+        }
         return ok("Emoji sent");
-    }
-
-    private String sanitizeEmoji(String raw) {
-        if (raw == null) {
-            return "";
-        }
-        String value = raw.trim();
-        if (value.length() > 12) {
-            value = value.substring(0, 12);
-        }
-        return value;
     }
 
     private void advanceTurnLocked() {

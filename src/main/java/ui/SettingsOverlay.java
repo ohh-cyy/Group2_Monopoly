@@ -79,10 +79,14 @@ public final class SettingsOverlay {
     }
 
     public static GameController openLocalGame(Stage stage) throws IOException {
+        return openLocalGame(stage, 4);
+    }
+
+    public static GameController openLocalGame(Stage stage, int playerCount) throws IOException {
         FXMLLoader loader = new FXMLLoader(SettingsOverlay.class.getResource("/ui/game-view.fxml"));
         loader.load();
         GameController controller = loader.getController();
-        controller.startLocalGame();
+        controller.startLocalGame(playerCount);
         stage.setTitle("Monopoly Deal - Local");
         stage.setScene(createGameScene(loader.getRoot(), stage));
         return controller;

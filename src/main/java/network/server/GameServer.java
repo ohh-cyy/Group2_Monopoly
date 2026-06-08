@@ -23,7 +23,7 @@ public class GameServer implements AutoCloseable {
     }
 
     public int getPort() {
-        return port;
+        return serverSocket != null ? serverSocket.getLocalPort() : port;
     }
 
     public void start() throws IOException {
@@ -35,7 +35,7 @@ public class GameServer implements AutoCloseable {
         Thread acceptThread = new Thread(this::acceptLoop, "game-server-accept");
         acceptThread.setDaemon(true);
         acceptThread.start();
-        System.out.println("Monopoly Deal server started on port " + port);
+        System.out.println("Monopoly Deal server started on port " + getPort());
     }
 
     private void acceptLoop() {

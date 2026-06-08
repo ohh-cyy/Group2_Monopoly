@@ -23,6 +23,7 @@ import model.enums.Color;
 import network.CardMapper;
 import network.client.NetworkClient;
 import network.protocol.ClientMessage;
+import network.protocol.EmojiCatalog;
 import network.protocol.GameStateDto;
 import network.protocol.InteractionPromptDto;
 import network.protocol.MessageTypes;
@@ -31,6 +32,7 @@ import network.protocol.ServerMessage;
 import network.server.PendingActionResolution;
 import ui.AchievementUi;
 import ui.CardView;
+import ui.EmojiReactionOverlay;
 import ui.GameAlertDialogs;
 import ui.GameVictoryScreen;
 import ui.PublicPropertyBoardLayout;
@@ -65,7 +67,8 @@ public class NetworkGameController {
     @FXML private FlowPane playerBank;
     @FXML private Label bankTotalLabel;
     @FXML private TextArea gameLog;
-    @FXML private HBox emojiBar;
+    @FXML private FlowPane emojiBar;
+    @FXML private Pane reactionOverlay;
     @FXML private Button drawCardBtn;
     @FXML private Button discardCardBtn;
     @FXML private Button endTurnBtn;
@@ -76,12 +79,11 @@ public class NetworkGameController {
     private static final double HAND_DOCK_PEEK = 54;
     private static final int MAX_PLAYS_PER_TURN = 3;
     private static final int TURN_WARNING_SECONDS = 10;
-    private static final List<String> EMOJIS = List.of("😀", "😂", "😎", "😮", "👏", "💰", "🎲", "🔥");
-
     private HandRenderer handRenderer;
     private PlayerListRenderer playerListRenderer;
     private PublicBoardRenderer publicBoardRenderer;
     private BankBarRenderer bankBarRenderer;
+    private EmojiReactionOverlay emojiReactionOverlay;
     private HandRenderer.SelectionListener handSelectionListener;
     private GameDialogService dialogs;
     private OnlineCardPlayService onlineCardPlay;
@@ -121,6 +123,7 @@ public class NetworkGameController {
         playerListRenderer = new PlayerListRenderer(() -> avatarImage);
         publicBoardRenderer = new PublicBoardRenderer(() -> avatarImage);
         bankBarRenderer = new BankBarRenderer();
+        emojiReactionOverlay = new EmojiReactionOverlay(reactionOverlay, allPlayersPropertiesPanel);
         handSelectionListener = new HandRenderer.SelectionListener() {
             @Override
             public void onCardSelected(Card card, CardView cardView) {
@@ -178,10 +181,11 @@ public class NetworkGameController {
             return;
         }
         emojiBar.getChildren().clear();
-        for (String emoji : EMOJIS) {
+        for (String emoji : EmojiCatalog.ALL) {
             Button button = new Button(emoji);
             button.getStyleClass().add("emoji-button");
             button.setFocusTraversable(false);
+            button.setTooltip(new Tooltip(EmojiCatalog.nameFor(emoji)));
             button.setOnAction(e -> sendEmoji(emoji));
             emojiBar.getChildren().add(button);
         }
@@ -192,7 +196,6 @@ public class NetworkGameController {
             return;
         }
         client.sendEmoji(emoji);
-        showStatus("Sent " + emoji, false);
     }
 
     private void syncTurnCountdown(GameStateDto newState) {
@@ -394,6 +397,8 @@ public class NetworkGameController {
                 }
             } else if (MessageTypes.ERROR.equals(message.type)) {
                 showStatus(message.text, true);
+            } else if (MessageTypes.EMOJI.equals(message.type)) {
+                emojiReactionOverlay.show(message.seat, message.emoji);
             } else if (MessageTypes.GAME_STARTED.equals(message.type) && message.state != null) {
                 applyState(message.state);
             }
