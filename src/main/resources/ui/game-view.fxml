@@ -24,7 +24,7 @@
                 <Label text="Classic Felt Table" styleClass="top-pill"/>
                 <Region HBox.hgrow="ALWAYS"/>
                 <Label fx:id="gameStatusText"
-                       text="Draw pile: --  |  Discard pile: --"
+                       text=""
                        styleClass="top-meta-label">
                     <HBox.margin>
                         <Insets right="78"/>
@@ -35,6 +35,13 @@
                 <Label fx:id="currentPlayerLabel"
                        text="Current Player: Player 1"
                        styleClass="top-meta-label"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <HBox fx:id="playDotsBar" spacing="2" alignment="CENTER_RIGHT" styleClass="play-dots-bar"/>
+            </HBox>
+            <HBox spacing="16" alignment="CENTER_LEFT">
+                <Label fx:id="turnFlowLabel"
+                       text="Draw 2 cards → Play up to 3 → End turn"
+                       styleClass="turn-flow-label"/>
             </HBox>
         </VBox>
     </top>
@@ -65,9 +72,10 @@
                         <HBox fx:id="publicBoardHeader" spacing="12" alignment="CENTER_LEFT">
                             <VBox spacing="2">
                                 <Label text="Public Board" styleClass="section-title section-title-large"/>
-                                <Label text="Double-click a card in your hand to play it." styleClass="section-subtitle"/>
+                                <Label text="Double-click a card, or click a selected card again, to play it." styleClass="section-subtitle"/>
                             </VBox>
                             <Region HBox.hgrow="ALWAYS"/>
+                            <HBox fx:id="deckPilesBar" spacing="12" alignment="CENTER"/>
                             <VBox alignment="CENTER_RIGHT" spacing="4">
                                 <Label text="Player Banks" styleClass="bank-pill-label"/>
                                 <HBox fx:id="allPlayersBankBar" spacing="8" alignment="CENTER_RIGHT"/>

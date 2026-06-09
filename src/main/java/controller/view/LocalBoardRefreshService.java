@@ -11,12 +11,14 @@ import model.card.Card;
 import model.player.Player;
 import ui.CardView;
 import ui.render.BankBarRenderer;
+import ui.render.DeckPileRenderer;
 import ui.render.HandRenderer;
 import ui.render.PersonalBankRenderer;
 import ui.render.PlayerBoardView;
 import ui.render.PlayerListRenderer;
 import ui.render.PublicBoardRenderOptions;
 import ui.render.PublicBoardRenderer;
+import ui.render.TurnFlowRenderer;
 import ui.render.TurnStatusRenderer;
 
 import java.util.List;
@@ -29,6 +31,9 @@ import java.util.function.Supplier;
 public final class LocalBoardRefreshService implements GameBoardRefreshService {
     private final Label currentPlayerLabel;
     private final Label gameStatusText;
+    private final Label turnFlowLabel;
+    private final HBox playDotsBar;
+    private final HBox deckPilesBar;
     private final VBox publicBoardPanel;
     private final VBox allPlayersPropertiesPanel;
     private final HBox allPlayersBankBar;
@@ -62,6 +67,9 @@ public final class LocalBoardRefreshService implements GameBoardRefreshService {
 
     public LocalBoardRefreshService(Label currentPlayerLabel,
                                     Label gameStatusText,
+                                    Label turnFlowLabel,
+                                    HBox playDotsBar,
+                                    HBox deckPilesBar,
                                     VBox publicBoardPanel,
                                     VBox allPlayersPropertiesPanel,
                                     HBox allPlayersBankBar,
@@ -85,6 +93,9 @@ public final class LocalBoardRefreshService implements GameBoardRefreshService {
                                     HandRenderer.SelectionListener handSelectionListener) {
         this.currentPlayerLabel = currentPlayerLabel;
         this.gameStatusText = gameStatusText;
+        this.turnFlowLabel = turnFlowLabel;
+        this.playDotsBar = playDotsBar;
+        this.deckPilesBar = deckPilesBar;
         this.publicBoardPanel = publicBoardPanel;
         this.allPlayersPropertiesPanel = allPlayersPropertiesPanel;
         this.allPlayersBankBar = allPlayersBankBar;
@@ -130,6 +141,11 @@ public final class LocalBoardRefreshService implements GameBoardRefreshService {
         this.turnSecondsSupplier = turnSecondsSupplier != null ? turnSecondsSupplier : () -> -1;
     }
 
+    /** Updates turn labels and play dots without rebuilding the hand (avoids breaking card animations). */
+    public void refreshTurnStatusOnly() {
+        refreshTurnStatus(engineSupplier.get(), currentPlayerSupplier.get());
+    }
+
     @Override
     public void refreshAll(VBox playersList, Consumer<Double> rowHeightConsumer) {
         GameEngine engine = engineSupplier.get();
@@ -166,6 +182,18 @@ public final class LocalBoardRefreshService implements GameBoardRefreshService {
                 engine.getDiscardPile().size(),
                 engine.isGameOver(),
                 turnSecondsSupplier.getAsInt());
+        TurnFlowRenderer.render(
+                turnFlowLabel,
+                playDotsBar,
+                engine.hasDrawnThisTurn(),
+                engine.getRemainingPlays(),
+                TurnFlowRenderer.defaultMaxPlays(),
+                engine.isGameOver());
+        DeckPileRenderer.render(
+                deckPilesBar,
+                engine.getDeck().size(),
+                engine.getDiscardPile().size(),
+                engine.isGameOver());
     }
 
     @Override
@@ -188,10 +216,10 @@ public final class LocalBoardRefreshService implements GameBoardRefreshService {
             }
             return;
         }
-        boolean canSelect = engine != null && !engine.isGameOver() && engine.hasDrawnThisTurn();
-        boolean canPlay = canSelect && engine.canPlayCard();
+        boolean handInteractive = engine != null && !engine.isGameOver();
+        boolean handSelectable = handInteractive && engine.hasDrawnThisTurn();
         handRenderer.render(playerHand, playerHandScroll, handSupplier.get(), selectedCard,
-                canSelect, canPlay, handSelectionListener);
+                handInteractive, handSelectable, handSelectionListener);
         if (selectedCard != null && selectedViewCallback != null) {
             handRenderer.applySelection(playerHand, selectedCard, selectedViewCallback);
         }

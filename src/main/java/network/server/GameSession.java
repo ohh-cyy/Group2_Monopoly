@@ -112,7 +112,7 @@ public class GameSession {
         if (engine.checkWin(player)) {
             markGameWon(player);
         } else if (engine.isTurnOver()) {
-            tryAdvanceTurnAfterPlay(player);
+            notifyPlaysExhausted(player);
         }
         broadcastState();
     }
@@ -121,18 +121,17 @@ public class GameSession {
         if (engine.checkWin(player)) {
             markGameWon(player);
         } else if (engine.isTurnOver()) {
-            tryAdvanceTurnAfterPlay(player);
+            notifyPlaysExhausted(player);
         }
     }
 
-    private void tryAdvanceTurnAfterPlay(Player player) {
+    private void notifyPlaysExhausted(Player player) {
         if (player.getHandSize() > GameEngine.MAX_HAND_SIZE) {
             appendLog(player.getName() + " must discard down to "
-                    + GameEngine.MAX_HAND_SIZE + " cards to end turn");
+                    + GameEngine.MAX_HAND_SIZE + " cards before ending turn");
             return;
         }
-        appendLog(player.getName() + " played 3 cards, turn ending");
-        advanceTurnLocked();
+        appendLog(player.getName() + " used all 3 plays — end turn when ready");
     }
 
     public synchronized void broadcastState() {

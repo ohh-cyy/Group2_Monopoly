@@ -32,7 +32,6 @@ public final class PlayerListRenderer {
             container.getChildren().add(createPlayerInfoBox(
                     player.getName(),
                     player.getHand().size(),
-                    player.getAllProperties().size(),
                     player.getBankTotalValue(),
                     current));
         }
@@ -50,13 +49,12 @@ public final class PlayerListRenderer {
             container.getChildren().add(createPlayerInfoBox(
                     view.name,
                     view.handSize,
-                    view.properties.size(),
                     view.bankTotal,
                     view.seat == currentSeat));
         }
     }
 
-    private VBox createPlayerInfoBox(String name, int handSize, int propertyCount, int bankTotal, boolean isCurrent) {
+    private VBox createPlayerInfoBox(String name, int handSize, int bankTotal, boolean isCurrent) {
         VBox box = new VBox(7);
         box.getStyleClass().add("player-info-card");
         if (isCurrent) {
@@ -72,7 +70,6 @@ public final class PlayerListRenderer {
         box.getChildren().addAll(
                 header,
                 new Label("Hand: " + handSize + " cards"),
-                new Label("Properties: " + propertyCount),
                 new Label("Bank: " + bankTotal + "M")
         );
         return box;

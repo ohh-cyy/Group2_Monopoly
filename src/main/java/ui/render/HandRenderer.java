@@ -2,6 +2,7 @@ package ui.render;
 
 import javafx.scene.control.ScrollPane;
 import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import model.card.Card;
@@ -12,18 +13,24 @@ import java.util.function.BiConsumer;
 
 /** Renders the current player's hand and wires selection / double-click play. */
 public final class HandRenderer {
+    private static final long DOUBLE_CLICK_WINDOW_MS = 450;
+
+    private Card lastClickCard;
+    private long lastClickAtMs;
+
     public interface SelectionListener {
         void onCardSelected(Card card, CardView cardView);
 
-        void onCardDoubleClickPlay(Card card, CardView cardView);
+        /** Fired on double-click or when clicking an already-selected card. */
+        void onCardPlayAttempt(Card card, CardView cardView);
     }
 
     public void render(HBox playerHand,
                        ScrollPane playerHandScroll,
                        List<Card> hand,
                        Card selectedCard,
-                       boolean canSelect,
-                       boolean canPlay,
+                       boolean handInteractive,
+                       boolean handSelectable,
                        SelectionListener listener) {
         if (playerHand == null) {
             return;
@@ -35,25 +42,32 @@ public final class HandRenderer {
 
         CardView.CardMetrics metrics = computeHandMetrics(playerHandScroll, hand.size());
         for (Card card : hand) {
-            StackPane slot = CardView.wrapInSlot(card, canSelect, metrics);
+            StackPane slot = CardView.wrapInSlot(card, handSelectable, metrics);
             CardView cardView = CardView.getCardView(slot);
             if (selectedCard != null && selectedCard.equals(card) && cardView != null) {
                 cardView.setSelected(true);
             }
-            if (canSelect && cardView != null && listener != null) {
-                slot.setOnMouseClicked(event -> {
+            if (handInteractive && cardView != null && listener != null) {
+                slot.addEventFilter(MouseEvent.MOUSE_CLICKED, event -> {
                     if (event.getButton() != MouseButton.PRIMARY) {
                         return;
                     }
-                    int clicks = event.getClickCount();
-                    if (clicks == 2 && canPlay) {
+                    long now = System.currentTimeMillis();
+                    boolean rapidSecondClick = card.equals(lastClickCard)
+                            && now - lastClickAtMs <= DOUBLE_CLICK_WINDOW_MS;
+                    boolean replaySelected = selectedCard != null && selectedCard.equals(card);
+
+                    if (rapidSecondClick || replaySelected) {
+                        lastClickCard = null;
+                        lastClickAtMs = 0;
                         event.consume();
-                        listener.onCardDoubleClickPlay(card, cardView);
+                        listener.onCardPlayAttempt(card, cardView);
                         return;
                     }
-                    if (clicks == 1) {
-                        listener.onCardSelected(card, cardView);
-                    }
+
+                    lastClickCard = card;
+                    lastClickAtMs = now;
+                    listener.onCardSelected(card, cardView);
                 });
             }
             playerHand.getChildren().add(slot);

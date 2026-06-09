@@ -10,12 +10,14 @@ import model.card.Card;
 import network.protocol.GameStateDto;
 import network.protocol.PlayerViewDto;
 import ui.render.BankBarRenderer;
+import ui.render.DeckPileRenderer;
 import ui.render.HandRenderer;
 import ui.render.PersonalBankRenderer;
 import ui.render.PlayerBoardView;
 import ui.render.PlayerListRenderer;
 import ui.render.PublicBoardRenderOptions;
 import ui.render.PublicBoardRenderer;
+import ui.render.TurnFlowRenderer;
 import ui.render.TurnDeadlineClock;
 import ui.render.TurnStatusRenderer;
 
@@ -30,6 +32,9 @@ public final class NetworkBoardRefreshService implements GameBoardRefreshService
 
     private final Label currentPlayerLabel;
     private final Label gameStatusText;
+    private final Label turnFlowLabel;
+    private final HBox playDotsBar;
+    private final HBox deckPilesBar;
     private final VBox publicBoardPanel;
     private final VBox allPlayersPropertiesPanel;
     private final HBox allPlayersBankBar;
@@ -60,6 +65,9 @@ public final class NetworkBoardRefreshService implements GameBoardRefreshService
 
     public NetworkBoardRefreshService(Label currentPlayerLabel,
                                         Label gameStatusText,
+                                        Label turnFlowLabel,
+                                        HBox playDotsBar,
+                                        HBox deckPilesBar,
                                         VBox publicBoardPanel,
                                         VBox allPlayersPropertiesPanel,
                                         HBox allPlayersBankBar,
@@ -81,6 +89,9 @@ public final class NetworkBoardRefreshService implements GameBoardRefreshService
                                         HandRenderer.SelectionListener handSelectionListener) {
         this.currentPlayerLabel = currentPlayerLabel;
         this.gameStatusText = gameStatusText;
+        this.turnFlowLabel = turnFlowLabel;
+        this.playDotsBar = playDotsBar;
+        this.deckPilesBar = deckPilesBar;
         this.publicBoardPanel = publicBoardPanel;
         this.allPlayersPropertiesPanel = allPlayersPropertiesPanel;
         this.allPlayersBankBar = allPlayersBankBar;
@@ -153,10 +164,10 @@ public final class NetworkBoardRefreshService implements GameBoardRefreshService
 
     private void refreshHand(GameStateDto state) {
         boolean myTurn = isMyTurn(state);
-        boolean canSelect = myTurn && state.hasDrawnThisTurn;
-        boolean canPlay = canSelect && state.remainingPlays > 0;
+        boolean handInteractive = myTurn && state != null && !state.gameOver;
+        boolean handSelectable = handInteractive && state.hasDrawnThisTurn;
         handRenderer.render(playerHand, playerHandScroll, handSupplier.get(), selectedCard,
-                canSelect, canPlay, handSelectionListener);
+                handInteractive, handSelectable, handSelectionListener);
         if (selectedCard != null && selectedViewCallback != null) {
             handRenderer.applySelection(playerHand, selectedCard, selectedViewCallback);
         }
@@ -191,6 +202,18 @@ public final class NetworkBoardRefreshService implements GameBoardRefreshService
                 state.gameOver,
                 state.winnerName,
                 turnSeconds);
+        TurnFlowRenderer.render(
+                turnFlowLabel,
+                playDotsBar,
+                state.hasDrawnThisTurn,
+                state.remainingPlays,
+                MAX_PLAYS_PER_TURN,
+                state.gameOver);
+        DeckPileRenderer.render(
+                deckPilesBar,
+                state.drawPileSize,
+                state.discardPileSize,
+                state.gameOver);
     }
 
     @Override

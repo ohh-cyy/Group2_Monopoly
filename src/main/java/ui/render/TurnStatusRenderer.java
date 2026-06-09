@@ -1,6 +1,5 @@
 package ui.render;
 
-import engine.GameEngine;
 import javafx.scene.control.Label;
 
 /** Updates turn summary and draw/discard pile labels. */
@@ -27,19 +26,13 @@ public final class TurnStatusRenderer {
                             boolean gameOver,
                             int turnSecondsRemaining) {
         if (currentPlayerLabel != null && playerName != null) {
-            String drawStatus = hasDrawnThisTurn ? "Drew cards" : "Hasn't drawn";
             String timerSuffix = !gameOver && turnSecondsRemaining >= 0
                     ? " | Time: " + turnSecondsRemaining + "s"
                     : "";
-            currentPlayerLabel.setText("Current Player: " + playerName
-                    + " | " + drawStatus
-                    + " | Remaining plays: " + remainingPlays + "/"
-                    + GameEngine.MAX_PLAYS_PER_TURN
-                    + timerSuffix);
+            currentPlayerLabel.setText("Current Player: " + playerName + timerSuffix);
         }
-        if (gameStatusText != null && !gameOver) {
-            gameStatusText.setText("Draw pile: " + drawPileSize
-                    + "  |  Discard pile: " + discardPileSize);
+        if (gameStatusText != null) {
+            gameStatusText.setText(gameOver ? "Game over" : "");
         }
     }
 
@@ -70,24 +63,13 @@ public final class TurnStatusRenderer {
                              String winnerName,
                              int turnSecondsRemaining) {
         if (currentPlayerLabel != null && playerName != null) {
-            String drawStatus = hasDrawnThisTurn ? "Drew cards" : "Hasn't drawn";
             String timerSuffix = !gameOver && turnSecondsRemaining >= 0
                     ? " | Time: " + turnSecondsRemaining + "s"
                     : "";
-            currentPlayerLabel.setText("Current Player: " + playerName
-                    + " | " + drawStatus
-                    + " | Remaining plays: " + remainingPlays + "/" + maxPlaysPerTurn
-                    + timerSuffix);
+            currentPlayerLabel.setText("Current Player: " + playerName + timerSuffix);
         }
         if (gameStatusText != null) {
-            if (gameOver) {
-                gameStatusText.setText("Draw pile: " + drawPileSize
-                        + "  |  Discard pile: " + discardPileSize
-                        + "  |  Winner: " + winnerName);
-            } else {
-                gameStatusText.setText("Draw pile: " + drawPileSize
-                        + "  |  Discard pile: " + discardPileSize);
-            }
+            gameStatusText.setText(gameOver ? "Winner: " + winnerName : "");
         }
     }
 }

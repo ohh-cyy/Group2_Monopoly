@@ -1,5 +1,6 @@
 package ui.render;
 
+import engine.PropertyRules;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
@@ -8,6 +9,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.shape.Circle;
 import model.card.Card;
@@ -68,7 +70,12 @@ public final class PublicBoardRenderer {
             Label title = new Label((isTurn ? "▶ " : "") + view.name
                     + "  |  Hand: " + view.handSize + " cards  |  Bank: " + view.bankTotal + "M");
             title.setStyle("-fx-font-weight: 900; -fx-font-size: 15px; -fx-text-fill: #103c2a;");
-            titleRow.getChildren().addAll(createAvatarView(avatarSize), title);
+            Label setsLabel = WinProgressRenderer.createLabel(
+                    PropertyRules.countCompleteSetsFromCards(view.properties));
+            setsLabel.getStyleClass().add("win-progress-board");
+            Region titleSpacer = new Region();
+            HBox.setHgrow(titleSpacer, Priority.ALWAYS);
+            titleRow.getChildren().addAll(createAvatarView(avatarSize), title, titleSpacer, setsLabel);
 
             FlowPane props = new FlowPane(10, 10);
             props.setPrefWrapLength(Math.max(320, rowWidth - 40));

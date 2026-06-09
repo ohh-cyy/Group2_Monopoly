@@ -113,6 +113,34 @@ public final class PropertyRules {
         return countBillableProperties(player, color) >= color.getSetSize();
     }
 
+    /** Counts how many full property sets the player currently has. */
+    public static int countCompleteSets(Player player) {
+        if (player == null) {
+            return 0;
+        }
+        int complete = 0;
+        for (Color color : Color.values()) {
+            if (isCompleteSet(player, color)) {
+                complete++;
+            }
+        }
+        return complete;
+    }
+
+    /** Counts complete sets from a flat property card list (for board view snapshots). */
+    public static int countCompleteSetsFromCards(List<? extends Card> cards) {
+        if (cards == null || cards.isEmpty()) {
+            return 0;
+        }
+        Player scratch = new Player("__stats__");
+        for (Card card : cards) {
+            if (card instanceof PropertyCard property) {
+                scratch.addProperty(property);
+            }
+        }
+        return countCompleteSets(scratch);
+    }
+
     /** Whether another billable property can be added to this color (false once the set is complete). */
     public static boolean canAddBillableProperty(Player player, Color color) {
         if (player == null || color == null) {

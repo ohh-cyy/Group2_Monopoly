@@ -162,6 +162,104 @@
     -fx-font-size: 14px;
 }
 
+.turn-flow-label {
+    -fx-text-fill: #d8f0e0;
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+}
+
+.play-dots-bar {
+    -fx-alignment: center-right;
+}
+
+.play-dots-prefix {
+    -fx-text-fill: #c8e6d4;
+    -fx-font-size: 12px;
+}
+
+.play-dot-used {
+    -fx-text-fill: #f1c40f;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+
+.play-dot-open {
+    -fx-text-fill: rgba(255, 255, 255, 0.35);
+    -fx-font-size: 14px;
+}
+
+.play-dot-count {
+    -fx-text-fill: #eaf7ee;
+    -fx-font-size: 12px;
+    -fx-font-weight: 700;
+}
+
+.deck-pile {
+    -fx-alignment: center;
+}
+
+.deck-pile-card {
+    -fx-fill: linear-gradient(to bottom, #1e3a5f, #0f2744);
+    -fx-stroke: rgba(255, 255, 255, 0.35);
+    -fx-stroke-width: 1.2;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.35), 6, 0.2, 0, 2);
+}
+
+.deck-pile-card.deck-pile-draw {
+    -fx-fill: linear-gradient(to bottom, #1e3a5f, #0f2744);
+}
+
+.deck-pile-card.deck-pile-discard {
+    -fx-fill: linear-gradient(to bottom, #5c3d2e, #3d2618);
+}
+
+.deck-pile-count {
+    -fx-text-fill: white;
+    -fx-font-size: 16px;
+    -fx-font-weight: 900;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 4, 0.3, 0, 1);
+}
+
+.deck-pile-title {
+    -fx-text-fill: #f8f4e8;
+    -fx-font-size: 12px;
+    -fx-font-weight: 900;
+    -fx-background-color: rgba(8, 36, 22, 0.82);
+    -fx-background-radius: 6;
+    -fx-padding: 2 8;
+}
+
+.deck-pile-title-muted {
+    -fx-text-fill: #d5cec0;
+    -fx-background-color: rgba(8, 36, 22, 0.55);
+}
+
+.win-progress-label {
+    -fx-text-fill: #2c5538;
+    -fx-font-size: 12px;
+    -fx-font-weight: 700;
+}
+
+.win-progress-board {
+    -fx-font-size: 13px;
+    -fx-font-weight: 900;
+    -fx-text-fill: #0d2818;
+}
+
+.win-progress-ready {
+    -fx-text-fill: #c0392b;
+}
+
+.wild-recolor-badge {
+    -fx-background-color: rgba(37, 99, 235, 0.92);
+    -fx-background-radius: 999;
+    -fx-padding: 1 4;
+    -fx-text-fill: white;
+    -fx-font-size: 10px;
+    -fx-font-weight: 900;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.45), 4, 0.25, 0, 1);
+}
+
 .top-pill {
     -fx-background-color: linear-gradient(to bottom, #f3d99a, #c7954e);
     -fx-background-radius: 999;

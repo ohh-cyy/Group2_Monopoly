@@ -1,6 +1,7 @@
 package ui;
 
 import engine.PropertyRules;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.control.Label;
@@ -128,6 +129,12 @@ public final class PublicPropertySetView {
             cardView.getStyleClass().add("wild-recolorable");
             cardView.setCursor(Cursor.HAND);
         }
+
+        Label badge = new Label("\u21BB");
+        badge.getStyleClass().add("wild-recolor-badge");
+        StackPane.setAlignment(badge, Pos.TOP_RIGHT);
+        StackPane.setMargin(badge, new Insets(1, 3, 0, 0));
+        slot.getChildren().add(badge);
 
         slot.addEventFilter(MouseEvent.MOUSE_CLICKED, event -> {
             if (options.wildRecolorListener() != null) {

@@ -9,13 +9,22 @@ import javafx.scene.control.Dialog;
 import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
 import javafx.scene.layout.VBox;
+import javafx.stage.Modality;
+import javafx.stage.Window;
 
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
 
 public final class GameAlertDialogs {
+    public static final String NO_PLAYS_REMAINING_MESSAGE =
+            "No plays remaining this turn. You cannot play any more cards.";
+
     private GameAlertDialogs() {
+    }
+
+    public static void showNoPlaysRemaining(Node owner) {
+        showError(owner, "Cannot Play Card", NO_PLAYS_REMAINING_MESSAGE);
     }
 
     public static void showError(Node owner, String message) {
@@ -23,8 +32,15 @@ public final class GameAlertDialogs {
     }
 
     public static void showError(Node owner, String title, String message) {
-        GameAudio.play(GameAudio.Cue.ERROR);
-        Platform.runLater(() -> showErrorNow(owner, title, message));
+        Runnable show = () -> {
+            GameAudio.play(GameAudio.Cue.ERROR);
+            showErrorNow(owner, title, message);
+        };
+        if (Platform.isFxApplicationThread()) {
+            show.run();
+        } else {
+            Platform.runLater(show);
+        }
     }
 
     /** @return true if the player wants another round */
@@ -96,7 +112,29 @@ public final class GameAlertDialogs {
 
         dialog.getDialogPane().setContent(body);
         styleDialog(dialog, owner, true);
+        dialog.initModality(Modality.APPLICATION_MODAL);
         dialog.showAndWait();
+    }
+
+    private static Window resolveWindow(Node owner) {
+        if (owner != null) {
+            if (owner.getScene() != null && owner.getScene().getWindow() != null) {
+                return owner.getScene().getWindow();
+            }
+            Node node = owner;
+            while (node != null) {
+                if (node.getScene() != null && node.getScene().getWindow() != null) {
+                    return node.getScene().getWindow();
+                }
+                node = node instanceof javafx.scene.Parent parent ? parent.getParent() : null;
+            }
+        }
+        for (Window window : Window.getWindows()) {
+            if (window.isShowing()) {
+                return window;
+            }
+        }
+        return null;
     }
 
     private static void styleDialog(Dialog<?> dialog, Node owner, boolean error) {
@@ -112,8 +150,9 @@ public final class GameAlertDialogs {
         if (error) {
             pane.getStyleClass().add("game-dialog-error");
         }
-        if (owner != null && owner.getScene() != null) {
-            dialog.initOwner(owner.getScene().getWindow());
+        Window window = resolveWindow(owner);
+        if (window != null) {
+            dialog.initOwner(window);
         }
     }
 }

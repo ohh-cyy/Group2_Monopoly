@@ -86,10 +86,6 @@ final class GameSessionActions {
             return error("Could not discard card");
         }
         session.appendLog(player.getName() + " discarded " + card.getName());
-        if (engine.isTurnOver() && engine.canEndTurn(player)) {
-            session.appendLog(player.getName() + " played 3 cards, turn ending");
-            session.advanceTurnLocked();
-        }
         session.broadcastState();
         return ok("Card discarded");
     }

@@ -18,6 +18,7 @@ import engine.GameEngine;
 import engine.WildPropertyRules;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.layout.*;
@@ -53,6 +54,9 @@ import java.util.Optional;
 public class GameController {
     @FXML private Label currentPlayerLabel;
     @FXML private Label gameStatusText;
+    @FXML private Label turnFlowLabel;
+    @FXML private HBox playDotsBar;
+    @FXML private HBox deckPilesBar;
     @FXML private Label statusMessage;
     @FXML private VBox playersList;
     @FXML private VBox leftSidebar;
@@ -153,22 +157,19 @@ public class GameController {
             }
 
             @Override
-            public void onCardDoubleClickPlay(Card card, CardView cardView) {
+            public void onCardPlayAttempt(Card card, CardView cardView) {
                 if (!card.equals(selectedCard)) {
                     selectCard(card, cardView);
                 }
-                cardView.playActivationAnimation(() -> {
-                    if (getHandCardsForView().contains(card)) {
-                        Platform.runLater(GameController.this::playSelectedCard);
-                    }
-                });
+                attemptPlayFromHand(card, cardView);
             }
         };
     }
 
     private void initBoardRefresh() {
         boardRefresh = new LocalBoardRefreshService(
-                currentPlayerLabel, gameStatusText, publicBoardPanel, allPlayersPropertiesPanel,
+                currentPlayerLabel, gameStatusText, turnFlowLabel, playDotsBar, deckPilesBar,
+                publicBoardPanel, allPlayersPropertiesPanel,
                 allPlayersBankBar, playerHandScroll, playerHand, playerBank, bankTotalLabel,
                 drawCardBtn, discardCardBtn, endTurnBtn,
                 handRenderer, new PlayerListRenderer(() -> avatarImage),
@@ -346,7 +347,7 @@ public class GameController {
             return;
         }
         if (!gameEngine.canPlayCard()) {
-            showStatus("Three cards have been played in this round, no more cards can be played!", true);
+            GameAlertDialogs.showNoPlaysRemaining(dialogOwner());
             return;
         }
         if (selectedCard == null) {
@@ -377,6 +378,9 @@ public class GameController {
         localSession.recordCardPlayed();
         if (outcome.consumesExtraPlay) {
             localSession.recordCardPlayed();
+        }
+        if (boardRefresh instanceof LocalBoardRefreshService localRefresh) {
+            localRefresh.refreshTurnStatusOnly();
         }
         playAcceptedCardSound(played, outcome);
         playFlyAnimation.play(
@@ -417,8 +421,9 @@ public class GameController {
             return;
         }
         if (gameEngine.isTurnOver()) {
-            logMessage(player.getName() + " Three cards have been played in this turn, turn end");
-            forceEndTurn();
+            logMessage(player.getName() + " used all 3 plays this turn");
+            showStatus("All 3 plays used. Double-click a card for a reminder, or click End Turn.", false);
+            afterStateChange();
             return;
         }
         if (!depositedToBank) {
@@ -451,24 +456,6 @@ public class GameController {
         turnTimer.reset();
         showStatus("Now " + gameEngine.getCurrentPlayer().getName() + "'s turn, please draw 2 cards first", false);
         afterStateChange();
-    }
-
-    private void forceEndTurn() {
-        Platform.runLater(() -> {
-            Player ending = gameEngine.getCurrentPlayer();
-            if (!ensureHandSizeWithinLimit(ending)) {
-                updateUi();
-                return;
-            }
-            gameEngine.nextTurn();
-            GameAudio.play(GameAudio.Cue.TURN);
-            turnTimer.reset();
-            Player next = gameEngine.getCurrentPlayer();
-            logMessage(ending.getName() + " turn ends → " + next.getName() + "'s turn");
-            showStatus("Played 3 cards, automatically switching to " + next.getName()
-                    + ". Please draw 2 cards before playing", false);
-            afterStateChange();
-        });
     }
 
     private void onNewGameClick() {
@@ -530,7 +517,7 @@ public class GameController {
             return;
         }
         if (!gameEngine.canPlayCard()) {
-            showStatus("No plays remaining this turn", true);
+            GameAlertDialogs.showNoPlaysRemaining(dialogOwner());
             return;
         }
 
@@ -559,8 +546,9 @@ public class GameController {
             return;
         }
         if (gameEngine.isTurnOver()) {
-            logMessage(player.getName() + " Three cards have been played in this turn, turn end");
-            forceEndTurn();
+            logMessage(player.getName() + " used all 3 plays this turn");
+            showStatus("All 3 plays used. Double-click a card for a reminder, or click End Turn.", false);
+            afterStateChange();
             return;
         }
         afterStateChange();
@@ -622,6 +610,42 @@ public class GameController {
 
     private int currentTurnSeat() {
         return gameEngine != null ? gameEngine.getCurrentPlayerIndex() : 0;
+    }
+
+    private void attemptPlayFromHand(Card card, CardView cardView) {
+        if (!validatePlayFromHand()) {
+            return;
+        }
+        cardView.playActivationAnimation(() -> {
+            if (getHandCardsForView().contains(card) && validatePlayFromHand()) {
+                Platform.runLater(GameController.this::playSelectedCard);
+            }
+        });
+    }
+
+    private boolean validatePlayFromHand() {
+        if (gameEngine == null || gameEngine.isGameOver()) {
+            return false;
+        }
+        if (!gameEngine.hasDrawnThisTurn()) {
+            showStatus("Please click Draw Cards first before playing a card", true);
+            return false;
+        }
+        if (!gameEngine.canPlayCard()) {
+            GameAlertDialogs.showNoPlaysRemaining(dialogOwner());
+            return false;
+        }
+        return true;
+    }
+
+    private Node dialogOwner() {
+        if (playerHand != null && playerHand.getScene() != null) {
+            return playerHand;
+        }
+        if (publicBoardPanel != null && publicBoardPanel.getScene() != null) {
+            return publicBoardPanel;
+        }
+        return statusMessage;
     }
 
     private void logMessage(String message) {

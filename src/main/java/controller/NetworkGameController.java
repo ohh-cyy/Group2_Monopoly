@@ -12,6 +12,7 @@ import engine.GameEngine;
 import engine.WildPropertyRules;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.layout.*;
@@ -32,6 +33,7 @@ import ui.AchievementUi;
 import ui.AvatarResources;
 import ui.CardView;
 import ui.EmojiReactionOverlay;
+import ui.GameAlertDialogs;
 import ui.GameAudio;
 import ui.GameLogPane;
 import ui.StatusMessageDisplay;
@@ -50,6 +52,9 @@ import java.util.Optional;
 public class NetworkGameController {
     @FXML private Label currentPlayerLabel;
     @FXML private Label gameStatusText;
+    @FXML private Label turnFlowLabel;
+    @FXML private HBox playDotsBar;
+    @FXML private HBox deckPilesBar;
     @FXML private Label statusMessage;
     @FXML private VBox playersList;
     @FXML private VBox leftSidebar;
@@ -145,16 +150,17 @@ public class NetworkGameController {
             }
 
             @Override
-            public void onCardDoubleClickPlay(Card card, CardView cardView) {
+            public void onCardPlayAttempt(Card card, CardView cardView) {
                 if (!card.equals(selectedCard)) {
                     selectCard(card, cardView);
                 }
-                cardView.playActivationAnimation(() -> Platform.runLater(NetworkGameController.this::onPlay));
+                attemptPlayFromHand(card, cardView);
             }
         };
 
         boardRefresh = new NetworkBoardRefreshService(
-                currentPlayerLabel, gameStatusText, publicBoardPanel, allPlayersPropertiesPanel,
+                currentPlayerLabel, gameStatusText, turnFlowLabel, playDotsBar, deckPilesBar,
+                publicBoardPanel, allPlayersPropertiesPanel,
                 allPlayersBankBar, playerHandScroll, playerHand, playerBank, bankTotalLabel,
                 drawCardBtn, discardCardBtn, endTurnBtn,
                 handRenderer, new PlayerListRenderer(() -> avatarImage),
@@ -291,7 +297,7 @@ public class NetworkGameController {
             return;
         }
         if (state.remainingPlays <= 0) {
-            showStatus("No plays remaining this turn", true);
+            GameAlertDialogs.showNoPlaysRemaining(dialogOwner());
             return;
         }
         if (selectedCard == null) {
@@ -299,6 +305,50 @@ public class NetworkGameController {
             return;
         }
         playSelectedCard();
+    }
+
+    private void attemptPlayFromHand(Card card, CardView cardView) {
+        if (!validatePlayFromHand()) {
+            return;
+        }
+        cardView.playActivationAnimation(() -> Platform.runLater(() -> {
+            if (validatePlayFromHand()) {
+                playSelectedCard();
+            }
+        }));
+    }
+
+    private boolean validatePlayFromHand() {
+        if (!isMyTurn()) {
+            showStatus("It's not your turn", true);
+            return false;
+        }
+        if (state == null || state.gameOver) {
+            return false;
+        }
+        if (!state.hasDrawnThisTurn) {
+            showStatus("Please click Draw Cards first before playing a card", true);
+            return false;
+        }
+        if (state.remainingPlays <= 0) {
+            GameAlertDialogs.showNoPlaysRemaining(dialogOwner());
+            return false;
+        }
+        if (selectedCard == null) {
+            showStatus("Select a card first", true);
+            return false;
+        }
+        return true;
+    }
+
+    private Node dialogOwner() {
+        if (playerHand != null && playerHand.getScene() != null) {
+            return playerHand;
+        }
+        if (publicBoardPanel != null && publicBoardPanel.getScene() != null) {
+            return publicBoardPanel;
+        }
+        return statusMessage;
     }
 
     private void onDraw() {
@@ -417,7 +467,7 @@ public class NetworkGameController {
             return;
         }
         if (state.remainingPlays <= 0) {
-            showStatus("No plays remaining this turn", true);
+            GameAlertDialogs.showNoPlaysRemaining(dialogOwner());
             return;
         }
 
