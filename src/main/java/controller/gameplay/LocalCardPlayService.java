@@ -140,7 +140,8 @@ public final class LocalCardPlayService {
         player.removeFromHand(wild);
         wild.use(player, engine);
         log.accept(player.getName() + " played: " + color.get().logKey());
-        status.accept("Wild property placed as " + color.get() + " in property area", false);
+        status.accept("Wild property placed as " + color.get()
+                + ". Click it on the board to change color (uses 1 play)", false);
         return new CardPlayOutcome(ActionEffectResult.SUCCESS, false, false);
     }
 

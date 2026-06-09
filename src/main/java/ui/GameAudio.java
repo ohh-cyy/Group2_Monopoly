@@ -85,6 +85,8 @@ public final class GameAudio {
                 || text.contains(" stole ")
                 || text.contains("swapped properties")) {
             play(Cue.DRAW);
+        } else if (text.contains("recolored wild")) {
+            play(Cue.PLAY);
         } else if (text.contains("ended turn")
                 || text.contains("turn ending")
                 || text.contains("ran out of time and was skipped")) {

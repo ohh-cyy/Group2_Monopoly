@@ -31,6 +31,11 @@ public final class PublicBoardRenderer {
     }
 
     public double render(VBox panel, VBox propertiesPanel, List<PlayerBoardView> views, int currentSeat) {
+        return render(panel, propertiesPanel, views, currentSeat, PublicBoardRenderOptions.none());
+    }
+
+    public double render(VBox panel, VBox propertiesPanel, List<PlayerBoardView> views, int currentSeat,
+                         PublicBoardRenderOptions options) {
         if (propertiesPanel == null) {
             return -1;
         }
@@ -73,7 +78,8 @@ public final class PublicBoardRenderer {
                 props.getChildren().add(new Label("(No properties)"));
             } else {
                 for (Map.Entry<Color, List<Card>> entry : groupPropertiesByColor(view.properties).entrySet()) {
-                    props.getChildren().add(PublicPropertySetView.build(entry.getKey(), entry.getValue(), propertyMetrics));
+                    props.getChildren().add(PublicPropertySetView.build(
+                            entry.getKey(), entry.getValue(), propertyMetrics, view.seat, options));
                 }
             }
 

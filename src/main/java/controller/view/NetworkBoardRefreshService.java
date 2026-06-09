@@ -14,6 +14,7 @@ import ui.render.HandRenderer;
 import ui.render.PersonalBankRenderer;
 import ui.render.PlayerBoardView;
 import ui.render.PlayerListRenderer;
+import ui.render.PublicBoardRenderOptions;
 import ui.render.PublicBoardRenderer;
 import ui.render.TurnStatusRenderer;
 
@@ -54,6 +55,7 @@ public final class NetworkBoardRefreshService implements GameBoardRefreshService
 
     private Card selectedCard;
     private BiConsumer<Card, ui.CardView> selectedViewCallback;
+    private Supplier<PublicBoardRenderOptions> boardOptionsSupplier = () -> PublicBoardRenderOptions.none();
 
     public NetworkBoardRefreshService(Label currentPlayerLabel,
                                         Label gameStatusText,
@@ -111,6 +113,12 @@ public final class NetworkBoardRefreshService implements GameBoardRefreshService
         this.selectedViewCallback = callback;
     }
 
+    public void setBoardOptionsSupplier(Supplier<PublicBoardRenderOptions> boardOptionsSupplier) {
+        this.boardOptionsSupplier = boardOptionsSupplier != null
+                ? boardOptionsSupplier
+                : () -> PublicBoardRenderOptions.none();
+    }
+
     @Override
     public void refreshAll(VBox playersList, Consumer<Double> rowHeightConsumer) {
         GameStateDto state = stateSupplier.get();
@@ -121,7 +129,8 @@ public final class NetworkBoardRefreshService implements GameBoardRefreshService
         List<PlayerBoardView> boardViews = PlayerBoardView.fromDtos(state.players, localSeat);
         playerListRenderer.renderBoardViews(playersList, boardViews, state.currentPlayerIndex);
         double rowHeight = publicBoardRenderer.render(
-                publicBoardPanel, allPlayersPropertiesPanel, boardViews, state.currentPlayerIndex);
+                publicBoardPanel, allPlayersPropertiesPanel, boardViews, state.currentPlayerIndex,
+                boardOptionsSupplier.get());
         if (rowHeightConsumer != null && rowHeight > 0) {
             rowHeightConsumer.accept(rowHeight);
         }

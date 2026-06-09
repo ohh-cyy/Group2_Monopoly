@@ -56,7 +56,7 @@ public final class GameLogFormatter {
         line = line.replaceAll("^(.+?) used (.+?) but was blocked by Just Say No$", "$1 · Blocked · $2");
         line = line.replaceAll("^(.+?) failed to use (.+?); card discarded$", "$1 · Failed · $2");
         line = line.replaceAll("^(.+?) deposited wild property \\[(.+?)\\].*$", "$1 · Wild $2");
-        line = line.replaceAll("^(.+?) played wild property as (.+)$", "$1 · ▶ $2");
+        line = line.replaceAll("^(.+?) recolored wild: (.+?) → (.+)$", "$1 · Wild $2 → $3");
 
         line = line.replaceAll("^(.+?) played Just Say No and cancelled \"(.+?)\"$", "$1 · No! · $2");
         line = line.replaceAll("^(.+?) played Just Say No and countered the previous Just Say No$", "$1 · No! counter");

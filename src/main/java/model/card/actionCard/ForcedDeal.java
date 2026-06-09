@@ -27,7 +27,7 @@ public class ForcedDeal extends ActionCard {
 
     /**
      * Swaps one property from the current player with one property from an
-     * opponent. The opponent's property cannot be part of a complete set.
+     * opponent. Neither side may give up a property from a complete set.
      */
     public boolean swapProperties(Player player, PropertyCard playerGives,
                                   Player target, PropertyCard targetGives) {
@@ -39,6 +39,10 @@ public class ForcedDeal extends ActionCard {
             return false;
         }
         if (!target.getAllProperties().contains(targetGives)) {
+            return false;
+        }
+        Color playerGivesColor = playerGives.getColor();
+        if (playerGivesColor != null && PropertyRules.isCompleteSet(player, playerGivesColor)) {
             return false;
         }
         if (PropertyRules.isCompleteSet(target, targetGives.getColor())) {

@@ -33,6 +33,23 @@ class ForcedDealTest {
     }
 
     @Test
+    void swapPropertiesRejectsPlayerPropertyInCompleteSet() {
+        Player player = player("Player");
+        Player target = player("Target");
+        List<PropertyCard> completeSet = addCompleteSet(player, Color.PINK);
+        PropertyCard protectedProperty = completeSet.get(0);
+        PropertyCard targetProperty = property("Old Kent Road", Color.BROWN, 1);
+        target.addProperty(targetProperty);
+        ForcedDeal forcedDeal = new ForcedDeal("Forced Deal", "Swap properties", CardType.ACTION);
+
+        boolean swapped = forcedDeal.swapProperties(player, protectedProperty, target, targetProperty);
+
+        assertFalse(swapped);
+        assertTrue(player.getAllProperties().contains(protectedProperty));
+        assertTrue(target.getAllProperties().contains(targetProperty));
+    }
+
+    @Test
     void swapPropertiesRejectsTargetPropertyInCompleteSet() {
         Player player = player("Player");
         Player target = player("Target");

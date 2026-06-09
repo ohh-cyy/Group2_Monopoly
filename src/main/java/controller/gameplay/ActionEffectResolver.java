@@ -316,9 +316,9 @@ public class ActionEffectResolver {
         if (justSayNo.respond(target.get(), player, "Forced Deal (swap properties)", gameEngine)) {
             return ActionEffectResult.BLOCKED;
         }
-        List<PropertyCard> myProps = player.getAllProperties();
-        if (myProps.isEmpty()) {
-            status.accept("You have no properties to trade.", true);
+        List<PropertyCard> mySwappable = PropertyRules.getPropertiesOutsideCompleteSets(player);
+        if (mySwappable.isEmpty()) {
+            status.accept("You have no swappable properties. Complete sets are protected.", true);
             return ActionEffectResult.FAILED;
         }
         List<PropertyCard> theirSwappable = PropertyRules.getPropertiesOutsideCompleteSets(target.get());
@@ -327,8 +327,8 @@ public class ActionEffectResolver {
                     + " has no swappable properties. Complete sets are protected.", true);
             return ActionEffectResult.FAILED;
         }
-        Optional<PropertyCard> mine = promptSelectProperty(myProps,
-                "Choose your property to give", "Your properties");
+        Optional<PropertyCard> mine = promptSelectProperty(mySwappable,
+                "Choose your property to give", "Your swappable properties");
         if (mine.isEmpty()) {
             return ActionEffectResult.CANCELLED;
         }

@@ -2,13 +2,18 @@ package ui;
 
 import engine.PropertyRules;
 import javafx.geometry.Pos;
+import javafx.scene.Cursor;
 import javafx.scene.control.Label;
+import javafx.scene.control.Tooltip;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Text;
 import model.card.Card;
+import model.card.WildpropertyCard;
 import model.enums.Color;
+import ui.render.PublicBoardRenderOptions;
 
 import java.util.List;
 
@@ -20,6 +25,11 @@ public final class PublicPropertySetView {
     }
 
     public static VBox build(Color color, List<Card> cards, CardView.CardMetrics metrics) {
+        return build(color, cards, metrics, -1, PublicBoardRenderOptions.none());
+    }
+
+    public static VBox build(Color color, List<Card> cards, CardView.CardMetrics metrics,
+                             int ownerSeat, PublicBoardRenderOptions options) {
         CardView.CardMetrics setMetrics = compactMetrics(metrics);
         int billableCount = PropertyRules.countBillableProperties(cards);
         boolean complete = billableCount >= color.getSetSize();
@@ -42,7 +52,7 @@ public final class PublicPropertySetView {
         title.getStyleClass().add("property-set-title");
         title.setStyle("-fx-text-fill: " + PropertyColorStyles.titleTextHex(color) + ";");
 
-        Pane cardRow = createOverlappedRow(cards, setMetrics);
+        Pane cardRow = createOverlappedRow(cards, setMetrics, ownerSeat, options);
         double titleWidth = measureTitleWidth(title.getText());
         double contentWidth = Math.max(cardRow.getPrefWidth(), titleWidth);
         double boxWidth = contentWidth + BOX_PADDING * 2 + PropertyColorStyles.minBoxWidthBonus(color);
@@ -65,7 +75,8 @@ public final class PublicPropertySetView {
         return metrics.scaled(Math.max(0.32, factor));
     }
 
-    private static Pane createOverlappedRow(List<Card> cards, CardView.CardMetrics metrics) {
+    private static Pane createOverlappedRow(List<Card> cards, CardView.CardMetrics metrics,
+                                            int ownerSeat, PublicBoardRenderOptions options) {
         Pane row = new Pane();
         row.setMinHeight(metrics.slotH() + 6);
         row.setPrefHeight(metrics.slotH() + 6);
@@ -92,10 +103,38 @@ public final class PublicPropertySetView {
             slot.setLayoutX(i * offset);
             slot.setLayoutY(i % 2 == 0 ? 0 : fanDrop);
             slot.setRotate((i - middle) * 2.5);
-            slot.addEventHandler(javafx.scene.input.MouseEvent.MOUSE_ENTERED, e -> slot.toFront());
+            slot.addEventHandler(MouseEvent.MOUSE_ENTERED, e -> slot.toFront());
+            attachWildRecolorHandler(slot, cards.get(i), ownerSeat, options);
             row.getChildren().add(slot);
         }
         return row;
+    }
+
+    private static void attachWildRecolorHandler(StackPane slot, Card card, int ownerSeat,
+                                                 PublicBoardRenderOptions options) {
+        if (!(card instanceof WildpropertyCard wild) || options == null) {
+            return;
+        }
+        if (!options.canClickWildProperty(wild, ownerSeat)) {
+            return;
+        }
+
+        slot.getStyleClass().add("wild-recolorable");
+        slot.setCursor(Cursor.HAND);
+        Tooltip.install(slot, new Tooltip("Click to change wild property color (uses 1 play)"));
+
+        CardView cardView = CardView.getCardView(slot);
+        if (cardView != null) {
+            cardView.getStyleClass().add("wild-recolorable");
+            cardView.setCursor(Cursor.HAND);
+        }
+
+        slot.addEventFilter(MouseEvent.MOUSE_CLICKED, event -> {
+            if (options.wildRecolorListener() != null) {
+                options.wildRecolorListener().onWildPropertyRecolorRequested(wild, ownerSeat);
+            }
+            event.consume();
+        });
     }
 
     private static double measureTitleWidth(String titleText) {

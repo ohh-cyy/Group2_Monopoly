@@ -1,0 +1,75 @@
+package engine;
+
+import model.card.PropertyCard;
+import model.card.WildpropertyCard;
+import model.enums.Color;
+import model.player.Player;
+import org.junit.jupiter.api.Test;
+
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+class WildPropertyRulesTest {
+
+    @Test
+    void recolorMovesWildPropertyToAnotherAvailableColor() {
+        Player player = new Player("P1");
+        WildpropertyCard wild = new WildpropertyCard(
+                "Orange/Pink", "Wild", 2, List.of(Color.ORANGE, Color.PINK), true);
+        wild.setChosenColor(Color.ORANGE);
+        player.addProperty(wild);
+
+        assertTrue(WildPropertyRules.recolor(player, wild, Color.PINK));
+        assertEquals(Color.PINK, wild.getChosenColor());
+        assertTrue(player.getPropertiesByColor(Color.PINK).contains(wild));
+        assertTrue(player.getPropertiesByColor(Color.ORANGE).isEmpty());
+    }
+
+    @Test
+    void recolorRejectsCompleteTargetSet() {
+        Player player = new Player("P1");
+        WildpropertyCard wild = new WildpropertyCard(
+                "Orange/Pink", "Wild", 2, List.of(Color.ORANGE, Color.PINK), true);
+        wild.setChosenColor(Color.ORANGE);
+        player.addProperty(wild);
+        addCompleteSet(player, Color.PINK);
+
+        assertFalse(WildPropertyRules.recolor(player, wild, Color.PINK));
+        assertEquals(Color.ORANGE, wild.getChosenColor());
+    }
+
+    @Test
+    void findOwnedWildMatchesByInstanceId() {
+        Player player = new Player("P1");
+        WildpropertyCard wild = new WildpropertyCard(
+                "Orange/Pink", "Wild", 2, List.of(Color.ORANGE, Color.PINK), true);
+        wild.setChosenColor(Color.ORANGE);
+        player.addProperty(wild);
+
+        WildpropertyCard clickedView = new WildpropertyCard(
+                wild.getInstanceId(), "Orange/Pink", "Wild", 2, List.of(Color.ORANGE, Color.PINK), true);
+        clickedView.setChosenColor(Color.ORANGE);
+
+        assertNotNull(WildPropertyRules.findOwnedWild(player, clickedView));
+        assertFalse(WildPropertyRules.getRecolorOptions(player, clickedView).isEmpty());
+    }
+
+    @Test
+    void recolorRejectsSameColor() {
+        Player player = new Player("P1");
+        WildpropertyCard wild = new WildpropertyCard(
+                "Orange/Pink", "Wild", 2, List.of(Color.ORANGE, Color.PINK), true);
+        wild.setChosenColor(Color.ORANGE);
+        player.addProperty(wild);
+
+        assertFalse(WildPropertyRules.recolor(player, wild, Color.ORANGE));
+    }
+
+    private static void addCompleteSet(Player player, Color color) {
+        int needed = color.getSetSize();
+        for (int i = 0; i < needed; i++) {
+            player.addProperty(new PropertyCard("P" + i, "Test", color, 1));
+        }
+    }
+}

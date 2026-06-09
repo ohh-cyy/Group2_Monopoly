@@ -197,9 +197,9 @@ public final class OnlineCardPlayService {
             if (target.isEmpty()) {
                 return false;
             }
-            List<PropertyCard> myProps = getPropertiesForSeat(localSeat);
+            List<PropertyCard> myProps = getStealablePropertiesForSeat(localSeat);
             if (myProps.isEmpty()) {
-                status.accept("You have no properties to exchange", true);
+                status.accept("You have no exchangeable properties. Complete sets are protected.", true);
                 return false;
             }
             List<PropertyCard> theirProps = getStealablePropertiesForSeat(target.get());
@@ -208,7 +208,7 @@ public final class OnlineCardPlayService {
                 return false;
             }
             Optional<PropertyCard> mine = promptSelectProperty(
-                    myProps, "Select your property to exchange", "Your properties");
+                    myProps, "Select your property to exchange", "Your exchangeable properties");
             if (mine.isEmpty()) {
                 return false;
             }

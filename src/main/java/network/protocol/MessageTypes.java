@@ -9,6 +9,7 @@ public final class MessageTypes {
     public static final String START_GAME = "START_GAME";
     public static final String DRAW = "DRAW";
     public static final String PLAY_CARD = "PLAY_CARD";
+    public static final String RECOLOR_WILD = "RECOLOR_WILD";
     public static final String DISCARD_CARD = "DISCARD_CARD";
     public static final String END_TURN = "END_TURN";
     public static final String SYNC = "SYNC";

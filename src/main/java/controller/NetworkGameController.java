@@ -8,6 +8,7 @@ import controller.view.CardSelectionFeedback;
 import controller.view.GameBoardRefreshService;
 import controller.view.NetworkBoardRefreshService;
 import engine.GameEngine;
+import engine.WildPropertyRules;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
@@ -15,6 +16,10 @@ import javafx.scene.image.Image;
 import javafx.scene.layout.*;
 import model.achievement.AchievementManager;
 import model.card.Card;
+import model.card.PropertyCard;
+import model.card.WildpropertyCard;
+import model.enums.Color;
+import model.player.Player;
 import network.CardMapper;
 import network.client.NetworkClient;
 import network.protocol.ClientMessage;
@@ -34,6 +39,7 @@ import ui.layout.PropertyBoardLayoutTracker;
 import ui.render.BankBarRenderer;
 import ui.render.HandRenderer;
 import ui.render.PlayerListRenderer;
+import ui.render.PublicBoardRenderOptions;
 import ui.render.PublicBoardRenderer;
 
 import java.util.ArrayList;
@@ -152,6 +158,7 @@ public class NetworkGameController {
                 handRenderer, new PlayerListRenderer(() -> avatarImage),
                 new PublicBoardRenderer(() -> avatarImage), new BankBarRenderer(),
                 () -> state, () -> myHand, () -> myBank, () -> localSeat, handSelectionListener);
+        ((NetworkBoardRefreshService) boardRefresh).setBoardOptionsSupplier(this::buildWildRecolorOptions);
         boardRefresh.applySelectionCallback((card, view) -> selectedCardView = view);
     }
 
@@ -342,6 +349,82 @@ public class NetworkGameController {
 
     private void showStatus(String text, boolean error) {
         statusDisplay.show(text, error);
+    }
+
+    private PublicBoardRenderOptions buildWildRecolorOptions() {
+        if (state == null || localSeat < 0 || !isMyTurn() || !state.hasDrawnThisTurn || state.gameOver) {
+            return PublicBoardRenderOptions.none();
+        }
+        return new PublicBoardRenderOptions(
+                this::onWildPropertyRecolorRequested,
+                localSeat,
+                true,
+                playerViewFromLocalState());
+    }
+
+    private void onWildPropertyRecolorRequested(WildpropertyCard wild, int ownerSeat) {
+        if (client == null || state == null || ownerSeat != localSeat || !isMyTurn()) {
+            return;
+        }
+        if (!state.hasDrawnThisTurn) {
+            showStatus("Draw cards before changing wild property color", true);
+            return;
+        }
+        if (state.remainingPlays <= 0) {
+            showStatus("No plays remaining this turn", true);
+            return;
+        }
+
+        Player view = playerViewFromLocalState();
+        WildpropertyCard owned = WildPropertyRules.findOwnedWild(view, wild);
+        if (owned == null) {
+            showStatus("Wild property not found on your board", true);
+            return;
+        }
+
+        List<Color> options = WildPropertyRules.getRecolorOptions(view, owned);
+        if (options.isEmpty()) {
+            showStatus("No alternate colors available (target set may be complete)", true);
+            return;
+        }
+
+        GameAudio.play(GameAudio.Cue.BUTTON);
+        Color current = owned.getChosenColor();
+        Optional<Color> chosen = dialogs.showChoiceDialog(
+                "Change Wild Property Color",
+                owned.getName(),
+                "Current color: " + current + "\nChoose a new color (uses 1 play):",
+                options,
+                color -> color + "  —  change to " + color,
+                color -> "-fx-background-color: " + dialogs.cssColorFor(color) + ";"
+                        + "-fx-text-fill: " + dialogs.textColorFor(color) + ";"
+                        + "-fx-border-color: rgba(255,255,255,0.55);");
+        if (chosen.isEmpty()) {
+            return;
+        }
+
+        client.recolorWildProperty(owned.getInstanceId(), chosen.get().name());
+        showStatus("Changing wild property color...", false);
+    }
+
+    private Player playerViewFromLocalState() {
+        Player view = new Player("view");
+        if (state == null || state.players == null) {
+            return view;
+        }
+        for (var dto : state.players) {
+            if (dto.seat != localSeat || dto.properties == null) {
+                continue;
+            }
+            for (var cardDto : dto.properties) {
+                Card card = CardMapper.fromDto(cardDto);
+                if (card instanceof PropertyCard property) {
+                    view.addProperty(property);
+                }
+            }
+            break;
+        }
+        return view;
     }
 
     private void setupEmojiBar() {

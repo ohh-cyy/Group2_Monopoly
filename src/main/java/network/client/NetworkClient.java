@@ -92,6 +92,14 @@ public class NetworkClient implements AutoCloseable {
         send(playMessage);
     }
 
+    public void recolorWildProperty(String cardId, String color) {
+        ClientMessage msg = new ClientMessage();
+        msg.type = MessageTypes.RECOLOR_WILD;
+        msg.cardId = cardId;
+        msg.color = color;
+        send(msg);
+    }
+
     public void requestSync() {
         ClientMessage msg = new ClientMessage();
         msg.type = "SYNC";

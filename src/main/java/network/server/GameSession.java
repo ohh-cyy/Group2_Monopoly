@@ -4,6 +4,7 @@ import engine.Deck;
 import engine.DeckFactory;
 import engine.GameEngine;
 import engine.PropertyRules;
+import engine.WildPropertyRules;
 import model.card.Card;
 import model.card.RentCard;
 import model.card.WildpropertyCard;
@@ -82,6 +83,7 @@ public class GameSession {
         return switch (message.type) {
             case MessageTypes.DRAW -> handleDraw(seat);
             case MessageTypes.PLAY_CARD -> handlePlayCard(seat, message);
+            case MessageTypes.RECOLOR_WILD -> handleRecolorWild(seat, message);
             case MessageTypes.DISCARD_CARD -> handleDiscardCard(seat, message);
             case MessageTypes.END_TURN -> handleEndTurn(seat);
             case MessageTypes.SYNC -> buildStateMessage(seat);
@@ -322,6 +324,61 @@ public class GameSession {
         }
         broadcastState();
         return ok("Card discarded");
+    }
+
+    private ServerMessage handleRecolorWild(int seat, ClientMessage message) {
+        if (pendingResolution != null) {
+            return error("Waiting for player response");
+        }
+        if (engine == null) {
+            return error("Game not started");
+        }
+        if (seat != engine.getCurrentPlayerIndex()) {
+            return error("Not your turn");
+        }
+        if (!engine.hasDrawnThisTurn()) {
+            return error("Draw cards before changing wild property color");
+        }
+        if (!engine.canPlayCard()) {
+            return error("No plays remaining this turn");
+        }
+        if (message.cardId == null || message.cardId.isBlank()) {
+            return error("Missing card id");
+        }
+        Color newColor = CardMapper.parseColor(message.color);
+        if (newColor == null) {
+            return error("Missing or invalid color");
+        }
+
+        Player player = engine.getCurrentPlayer();
+        WildpropertyCard wild = findWildPropertyById(player, message.cardId);
+        if (wild == null) {
+            return error("Wild property not found on your board");
+        }
+        Color previous = wild.getChosenColor();
+        if (!WildPropertyRules.recolor(player, wild, newColor)) {
+            return error("Cannot change wild property to that color");
+        }
+
+        engine.recordCardPlayed();
+        appendLog(player.getName() + " recolored wild: "
+                + (previous != null ? previous.logKey() : "?") + " → " + newColor.logKey());
+        if (engine.checkWin(player)) {
+            markGameWon(player);
+        } else if (engine.isTurnOver()) {
+            tryAdvanceTurnAfterPlay(player);
+        }
+        broadcastState();
+        return ok("Wild property recolored");
+    }
+
+    private WildpropertyCard findWildPropertyById(Player player, String cardId) {
+        for (model.card.PropertyCard property : player.getAllProperties()) {
+            if (property instanceof WildpropertyCard wild && cardId.equals(wild.getInstanceId())) {
+                return wild;
+            }
+        }
+        return null;
     }
 
     private ServerMessage handlePlayCard(int seat, ClientMessage message) {

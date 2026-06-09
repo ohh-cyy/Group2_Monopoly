@@ -8,9 +8,11 @@ import controller.gameplay.JustSayNoService;
 import controller.gameplay.CardPlayOutcome;
 import controller.gameplay.LocalCardPlayService;
 import controller.gameplay.PaymentService;
+import controller.gameplay.WildPropertyRecolorService;
 import controller.session.LocalGameSession;
 import engine.GameEngine;
 import engine.PropertyRules;
+import engine.WildPropertyRules;
 import javafx.application.Platform;
 import javafx.animation.FadeTransition;
 import javafx.animation.Interpolator;
@@ -33,6 +35,7 @@ import ui.render.BankBarRenderer;
 import ui.render.HandRenderer;
 import ui.render.PlayerBoardView;
 import ui.render.PlayerListRenderer;
+import ui.render.PublicBoardRenderOptions;
 import ui.render.PublicBoardRenderer;
 import javafx.fxml.FXML;
 import javafx.geometry.Bounds;
@@ -48,6 +51,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.image.WritableImage;
 import model.achievement.AchievementManager;
 import model.card.*;
+import model.enums.Color;
 import model.card.actionCard.*;
 import model.enums.CardType;
 import model.player.Player;
@@ -145,6 +149,7 @@ public class GameController {
     private LocalGameSession localSession;
     private GameDialogService dialogs;
     private LocalCardPlayService cardPlayService;
+    private WildPropertyRecolorService wildRecolorService;
     private HandRenderer handRenderer;
     private PlayerListRenderer playerListRenderer;
     private PublicBoardRenderer publicBoardRenderer;
@@ -203,6 +208,7 @@ public class GameController {
         ActionEffectResolver actionResolver = new ActionEffectResolver(dialogs, paymentService, justSayNoService,
                 this::logMessage, this::showStatusForServices);
         cardPlayService = new LocalCardPlayService(dialogs, actionResolver, this::logMessage, this::showStatusForServices);
+        wildRecolorService = new WildPropertyRecolorService(dialogs, this::logMessage, this::showStatusForServices);
         handRenderer = new HandRenderer();
         playerListRenderer = new PlayerListRenderer(() -> avatarImage);
         publicBoardRenderer = new PublicBoardRenderer(() -> avatarImage);
@@ -912,10 +918,68 @@ private void forceEndTurn() {
 
     private void updateAllPlayersProperties() {
         double rowHeight = publicBoardRenderer.render(
-                publicBoardPanel, allPlayersPropertiesPanel, getPublicPlayerViews(), getCurrentTurnSeat());
+                publicBoardPanel, allPlayersPropertiesPanel, getPublicPlayerViews(),
+                getCurrentTurnSeat(), buildWildRecolorOptions());
         if (rowHeight > 0) {
             lastPropertyRowHeight = rowHeight;
         }
+    }
+
+    private PublicBoardRenderOptions buildWildRecolorOptions() {
+        if (gameEngine == null || currentPlayer == null || gameEngine.isGameOver() || !gameEngine.hasDrawnThisTurn()) {
+            return PublicBoardRenderOptions.none();
+        }
+        return new PublicBoardRenderOptions(
+                this::onWildPropertyRecolorRequested,
+                gameEngine.getCurrentPlayerIndex(),
+                true,
+                currentPlayer);
+    }
+
+    private void onWildPropertyRecolorRequested(WildpropertyCard wild, int ownerSeat) {
+        if (gameEngine == null || ownerSeat != gameEngine.getCurrentPlayerIndex()) {
+            return;
+        }
+        if (!gameEngine.hasDrawnThisTurn()) {
+            showStatus("Draw cards before changing wild property color", true);
+            return;
+        }
+        if (!gameEngine.canPlayCard()) {
+            showStatus("No plays remaining this turn", true);
+            return;
+        }
+
+        Player player = gameEngine.getCurrentPlayer();
+        WildpropertyCard owned = WildPropertyRules.findOwnedWild(player, wild);
+        if (owned == null) {
+            showStatus("Wild property not found on your board", true);
+            return;
+        }
+
+        List<Color> options = WildPropertyRules.getRecolorOptions(player, owned);
+        if (options.isEmpty()) {
+            showStatus("No alternate colors available (target set may be complete)", true);
+            return;
+        }
+
+        GameAudio.play(GameAudio.Cue.BUTTON);
+        if (!wildRecolorService.attemptRecolor(player, owned)) {
+            return;
+        }
+
+        localSession.recordCardPlayed();
+        GameAudio.play(GameAudio.Cue.PLAY);
+        if (localSession.checkWin(player)) {
+            localSession.setGameOver(true);
+            showGameOver(player);
+            return;
+        }
+        if (gameEngine.isTurnOver()) {
+            logMessage(player.getName() + " Three cards have been played in this turn, turn end");
+            forceEndTurn();
+            return;
+        }
+        afterStateChange();
     }
 
     private void updateAllPlayersBankBar() {
