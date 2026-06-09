@@ -3,28 +3,16 @@ package network.server;
 import engine.Deck;
 import engine.DeckFactory;
 import engine.GameEngine;
-import engine.PropertyRules;
-import engine.WildPropertyRules;
 import model.card.Card;
-import model.card.RentCard;
-import model.card.WildpropertyCard;
-import model.card.actionCard.*;
-import model.enums.Color;
 import model.player.Player;
 import network.GameStateMapper;
 import network.protocol.ClientMessage;
-import network.protocol.EmojiCatalog;
 import network.protocol.InteractionPromptDto;
 import network.protocol.MessageTypes;
 import network.protocol.ServerMessage;
-import network.CardMapper;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 
 public class GameSession {
     public static final int MIN_PLAYERS = 2;
@@ -33,22 +21,15 @@ public class GameSession {
 
     private final ClientHandler[] seats = new ClientHandler[MAX_PLAYERS];
     private final String[] names = new String[MAX_PLAYERS];
+    private final List<String> logLines = new ArrayList<>();
+    private final GameSessionActions actions = new GameSessionActions();
+    private final SessionTurnClock turnClock = new SessionTurnClock(this::handleTurnTimeout);
+    private final SessionRematchManager rematch = new SessionRematchManager(MAX_PLAYERS);
+
     private int playerCount;
     private GameEngine engine;
-    private final List<String> logLines = new ArrayList<>();
-    private final ServerPlayHandler playHandler = new ServerPlayHandler();
     private PendingActionResolution pendingResolution;
     private boolean pendingUsesTwoPlays;
-    private boolean rematchOpen;
-    private boolean rematchDeclined;
-    private final Boolean[] rematchVotes = new Boolean[MAX_PLAYERS];
-    private final ScheduledExecutorService turnTimerExecutor = Executors.newSingleThreadScheduledExecutor(runnable -> {
-        Thread thread = new Thread(runnable, "game-session-turn-timer");
-        thread.setDaemon(true);
-        return thread;
-    });
-    private ScheduledFuture<?> turnTimeoutTask;
-    private long turnDeadlineEpochMillis;
 
     public synchronized void bindPlayer(int seat, ClientHandler handler, String name) {
         if (seat < 0 || seat >= MAX_PLAYERS) {
@@ -70,7 +51,7 @@ public class GameSession {
         pendingResolution = null;
         pendingUsesTwoPlays = false;
         logLines.clear();
-        clearRematchState();
+        rematch.clear();
         appendLog("=== Game started with " + activePlayers + " players ===");
         startTurnClockLocked();
         broadcastState();
@@ -81,15 +62,15 @@ public class GameSession {
             return error("Invalid message");
         }
         return switch (message.type) {
-            case MessageTypes.DRAW -> handleDraw(seat);
-            case MessageTypes.PLAY_CARD -> handlePlayCard(seat, message);
-            case MessageTypes.RECOLOR_WILD -> handleRecolorWild(seat, message);
-            case MessageTypes.DISCARD_CARD -> handleDiscardCard(seat, message);
-            case MessageTypes.END_TURN -> handleEndTurn(seat);
+            case MessageTypes.DRAW -> actions.handleDraw(this, seat);
+            case MessageTypes.PLAY_CARD -> actions.handlePlayCard(this, seat, message);
+            case MessageTypes.RECOLOR_WILD -> actions.handleRecolorWild(this, seat, message);
+            case MessageTypes.DISCARD_CARD -> actions.handleDiscardCard(this, seat, message);
+            case MessageTypes.END_TURN -> actions.handleEndTurn(this, seat);
             case MessageTypes.SYNC -> buildStateMessage(seat);
-            case MessageTypes.RESPOND -> handleRespond(seat, message);
+            case MessageTypes.RESPOND -> actions.handleRespond(this, seat, message);
             case MessageTypes.REMATCH_VOTE -> handleRematchVote(seat, message);
-            case MessageTypes.SEND_EMOJI -> handleEmoji(seat, message);
+            case MessageTypes.SEND_EMOJI -> actions.handleEmoji(this, seat, message);
             default -> error("Unknown command: " + message.type);
         };
     }
@@ -102,8 +83,8 @@ public class GameSession {
         msg.type = MessageTypes.PROMPT;
         msg.prompt = prompt;
         msg.state = GameStateMapper.buildForSeat(engine, seat, logLines);
-        msg.state.turnDeadlineEpochMillis = turnDeadlineEpochMillis;
-        enrichRematchState(msg.state, seat);
+        msg.state.turnDeadlineEpochMillis = turnClock.deadlineEpochMillis();
+        rematch.enrichState(msg.state, seat, playerCount);
         seats[seat].send(msg);
         broadcastStateExceptPrompt(seat);
     }
@@ -136,6 +117,14 @@ public class GameSession {
         broadcastState();
     }
 
+    void afterSuccessfulPlay(Player player) {
+        if (engine.checkWin(player)) {
+            markGameWon(player);
+        } else if (engine.isTurnOver()) {
+            tryAdvanceTurnAfterPlay(player);
+        }
+    }
+
     private void tryAdvanceTurnAfterPlay(Player player) {
         if (player.getHandSize() > GameEngine.MAX_HAND_SIZE) {
             appendLog(player.getName() + " must discard down to "
@@ -160,424 +149,46 @@ public class GameSession {
         msg.type = MessageTypes.STATE;
         if (engine != null) {
             msg.state = GameStateMapper.buildForSeat(engine, seat, logLines);
-            msg.state.turnDeadlineEpochMillis = turnDeadlineEpochMillis;
-            enrichRematchState(msg.state, seat);
+            msg.state.turnDeadlineEpochMillis = turnClock.deadlineEpochMillis();
+            rematch.enrichState(msg.state, seat, playerCount);
         }
         return msg;
     }
 
     private ServerMessage handleRematchVote(int seat, ClientMessage message) {
-        if (!rematchOpen || engine == null || !engine.isGameOver()) {
+        if (!rematch.isRematchOpen() || engine == null || !engine.isGameOver()) {
             return error("Rematch not available");
         }
-        if (seat < 0 || seat >= playerCount) {
-            return error("Invalid seat");
-        }
-        if (rematchVotes[seat] != null) {
-            return error("Already voted");
-        }
-        boolean accept = Boolean.TRUE.equals(message.acceptRematch);
-        rematchVotes[seat] = accept;
-        if (!accept) {
-            rematchOpen = false;
-            rematchDeclined = true;
-            appendLog(names[seat] + " declined a rematch");
-            broadcastState();
-            return ok("Rematch declined");
-        }
-
-        appendLog(names[seat] + " wants a rematch");
-        if (allRematchVotesYes()) {
-            appendLog("All players voted yes — starting a new game");
-            startGame(playerCount);
-            return ok("New game started");
-        }
-        broadcastState();
-        return ok("Vote recorded");
+        SessionRematchManager.VoteOutcome outcome = rematch.recordVote(
+                seat, playerCount, Boolean.TRUE.equals(message.acceptRematch), names[seat]);
+        return switch (outcome.kind()) {
+            case ERROR -> error(outcome.logLine());
+            case DECLINED -> {
+                appendLog(outcome.logLine());
+                broadcastState();
+                yield ok("Rematch declined");
+            }
+            case WAITING -> {
+                appendLog(outcome.logLine());
+                broadcastState();
+                yield ok("Vote recorded");
+            }
+            case RESTART -> {
+                appendLog(outcome.logLine());
+                startGame(outcome.restartPlayerCount());
+                yield ok("New game started");
+            }
+        };
     }
 
     private void markGameWon(Player winner) {
         engine.setGameOver(true);
-        cancelTurnClockLocked();
+        turnClock.cancel();
         appendLog("=== " + winner.getName() + " wins! ===");
-        openRematchPhase();
+        rematch.open();
     }
 
-    private void openRematchPhase() {
-        rematchOpen = true;
-        rematchDeclined = false;
-        java.util.Arrays.fill(rematchVotes, null);
-    }
-
-    private void clearRematchState() {
-        rematchOpen = false;
-        rematchDeclined = false;
-        java.util.Arrays.fill(rematchVotes, null);
-    }
-
-    private boolean allRematchVotesYes() {
-        for (int i = 0; i < playerCount; i++) {
-            if (!Boolean.TRUE.equals(rematchVotes[i])) {
-                return false;
-            }
-        }
-        return playerCount > 0;
-    }
-
-    private int countRematchYesVotes() {
-        int count = 0;
-        for (int i = 0; i < playerCount; i++) {
-            if (Boolean.TRUE.equals(rematchVotes[i])) {
-                count++;
-            }
-        }
-        return count;
-    }
-
-    private void enrichRematchState(network.protocol.GameStateDto state, int seat) {
-        state.rematchOpen = rematchOpen;
-        state.rematchRequired = playerCount;
-        state.rematchYesCount = countRematchYesVotes();
-        state.rematchDeclined = rematchDeclined;
-        if (seat >= 0 && seat < MAX_PLAYERS) {
-            state.myRematchVote = rematchVotes[seat];
-        }
-    }
-
-    private ServerMessage handleRespond(int seat, ClientMessage message) {
-        if (pendingResolution == null) {
-            return error("No pending prompt");
-        }
-        if (!pendingResolution.handleResponse(seat, message)) {
-            return error("Invalid response");
-        }
-        broadcastState();
-        return ok("Response accepted");
-    }
-
-    private ServerMessage handleDraw(int seat) {
-        if (pendingResolution != null) {
-            return error("Waiting for player response");
-        }
-        if (engine == null) {
-            return error("Game not started");
-        }
-        if (seat != engine.getCurrentPlayerIndex()) {
-            return error("Not your turn");
-        }
-        if (!engine.drawCardsForCurrentPlayer()) {
-            return error("Cannot draw cards now");
-        }
-        appendLog(engine.getCurrentPlayer().getName() + " drew 2 cards");
-        broadcastState();
-        return ok("Drew 2 cards");
-    }
-
-    private ServerMessage handleEndTurn(int seat) {
-        if (pendingResolution != null) {
-            return error("Waiting for player response");
-        }
-        if (engine == null) {
-            return error("Game not started");
-        }
-        if (seat != engine.getCurrentPlayerIndex()) {
-            return error("Not your turn");
-        }
-        Player ending = engine.getCurrentPlayer();
-        if (!engine.canEndTurn(ending)) {
-            return error("Discard down to " + GameEngine.MAX_HAND_SIZE + " cards before ending turn");
-        }
-        appendLog(ending.getName() + " ended turn");
-        advanceTurnLocked();
-        broadcastState();
-        return ok("Turn ended");
-    }
-
-    private ServerMessage handleDiscardCard(int seat, ClientMessage message) {
-        if (pendingResolution != null) {
-            return error("Waiting for player response");
-        }
-        if (engine == null) {
-            return error("Game not started");
-        }
-        if (seat != engine.getCurrentPlayerIndex()) {
-            return error("Not your turn");
-        }
-        if (!engine.hasDrawnThisTurn()) {
-            return error("Draw cards before discarding");
-        }
-        if (message.cardId == null || message.cardId.isBlank()) {
-            return error("Missing card id");
-        }
-        Player player = engine.getCurrentPlayer();
-        Card card = player.findInHandById(message.cardId);
-        if (card == null) {
-            return error("Card not in hand");
-        }
-        if (!engine.discardFromHand(player, card)) {
-            return error("Could not discard card");
-        }
-        appendLog(player.getName() + " discarded " + card.getName());
-        if (engine.isTurnOver() && engine.canEndTurn(player)) {
-            appendLog(player.getName() + " played 3 cards, turn ending");
-            advanceTurnLocked();
-        }
-        broadcastState();
-        return ok("Card discarded");
-    }
-
-    private ServerMessage handleRecolorWild(int seat, ClientMessage message) {
-        if (pendingResolution != null) {
-            return error("Waiting for player response");
-        }
-        if (engine == null) {
-            return error("Game not started");
-        }
-        if (seat != engine.getCurrentPlayerIndex()) {
-            return error("Not your turn");
-        }
-        if (!engine.hasDrawnThisTurn()) {
-            return error("Draw cards before changing wild property color");
-        }
-        if (!engine.canPlayCard()) {
-            return error("No plays remaining this turn");
-        }
-        if (message.cardId == null || message.cardId.isBlank()) {
-            return error("Missing card id");
-        }
-        Color newColor = CardMapper.parseColor(message.color);
-        if (newColor == null) {
-            return error("Missing or invalid color");
-        }
-
-        Player player = engine.getCurrentPlayer();
-        WildpropertyCard wild = findWildPropertyById(player, message.cardId);
-        if (wild == null) {
-            return error("Wild property not found on your board");
-        }
-        Color previous = wild.getChosenColor();
-        if (!WildPropertyRules.recolor(player, wild, newColor)) {
-            return error("Cannot change wild property to that color");
-        }
-
-        engine.recordCardPlayed();
-        appendLog(player.getName() + " recolored wild: "
-                + (previous != null ? previous.logKey() : "?") + " → " + newColor.logKey());
-        if (engine.checkWin(player)) {
-            markGameWon(player);
-        } else if (engine.isTurnOver()) {
-            tryAdvanceTurnAfterPlay(player);
-        }
-        broadcastState();
-        return ok("Wild property recolored");
-    }
-
-    private WildpropertyCard findWildPropertyById(Player player, String cardId) {
-        for (model.card.PropertyCard property : player.getAllProperties()) {
-            if (property instanceof WildpropertyCard wild && cardId.equals(wild.getInstanceId())) {
-                return wild;
-            }
-        }
-        return null;
-    }
-
-    private ServerMessage handlePlayCard(int seat, ClientMessage message) {
-        if (pendingResolution != null) {
-            return error("Waiting for player response");
-        }
-        if (engine == null) {
-            return error("Game not started");
-        }
-        if (seat != engine.getCurrentPlayerIndex()) {
-            return error("Not your turn");
-        }
-        if (!engine.hasDrawnThisTurn()) {
-            return error("Draw cards before playing");
-        }
-        if (!engine.canPlayCard()) {
-            return error("No plays remaining this turn");
-        }
-
-        String mode = message.mode != null ? message.mode.toUpperCase() : "PLAY";
-        if ("DOUBLE_RENT".equals(mode) && engine.getRemainingPlays() < 2) {
-            return error("Double the Rent requires 2 plays remaining this turn");
-        }
-
-        if (message.cardId == null || message.cardId.isBlank()) {
-            return error("Missing card id");
-        }
-
-        Player player = engine.getCurrentPlayer();
-        Card card = player.findInHandById(message.cardId);
-        if (card == null) {
-            return error("Card not in hand");
-        }
-
-        boolean success = switch (mode) {
-            case "BANK" -> playToBank(player, card);
-            case "PROPERTY" -> playWildAsProperty(player, card, message);
-            case "DOUBLE_RENT" -> playDoubleRentCombo(seat, player, message);
-            case "EFFECT" -> playActionEffect(seat, player, card, message);
-            default -> playSimpleCard(player, card);
-        };
-
-        if (!success) {
-            return error(playFailureReason(player, card, message));
-        }
-
-        if (pendingResolution != null) {
-            return ok("Waiting for responses");
-        }
-
-        engine.recordCardPlayed();
-        if (engine.checkWin(player)) {
-            markGameWon(player);
-        } else if (engine.isTurnOver()) {
-            tryAdvanceTurnAfterPlay(player);
-        }
-        broadcastState();
-        return ok("Card played");
-    }
-
-    boolean playToBank(Player player, Card card) {
-        if (!(card instanceof ActionCard action)) {
-            if (card instanceof WildpropertyCard wild && wild.isBankable()) {
-                player.removeFromHand(wild);
-                wild.depositToBank(player);
-                appendLog(player.getName() + " banked " + wild.getName());
-                return true;
-            }
-            return false;
-        }
-        player.removeFromHand(action);
-        action.depositToBank(player);
-        appendLog(player.getName() + " banked " + action.getName());
-        return true;
-    }
-
-    private boolean playWildAsProperty(Player player, Card card, ClientMessage message) {
-        if (!(card instanceof WildpropertyCard wild)) {
-            return false;
-        }
-        Color color = CardMapper.parseColor(message.color);
-        if (color == null || !PropertyRules.canAddBillableProperty(player, color)) {
-            return false;
-        }
-        wild.setChosenColor(color);
-        player.removeFromHand(wild);
-        wild.use(player, engine);
-        appendLog(player.getName() + " played " + color.logKey());
-        return true;
-    }
-
-    private boolean playActionEffect(int seat, Player player, Card card, ClientMessage message) {
-        if (!(card instanceof ActionCard action)) {
-            return false;
-        }
-        if (action instanceof JustSayNo || action instanceof DoubleTheRent) {
-            return false;
-        }
-        if (PendingActionResolution.requiresInteraction(action, message)) {
-            player.removeFromHand(action);
-            engine.getDiscardPile().addCard(action);
-            pendingResolution = new PendingActionResolution(this, engine, seat, action, message, logLines);
-            pendingResolution.begin();
-            return true;
-        }
-        boolean ok = playHandler.applyEffect(engine, player, action, message, logLines);
-        if (ok) {
-            player.removeFromHand(action);
-            engine.getDiscardPile().addCard(action);
-        }
-        return ok;
-    }
-
-    private boolean playDoubleRentCombo(int seat, Player player, ClientMessage message) {
-        if (message.secondCardId == null || message.secondCardId.isBlank()) {
-            return false;
-        }
-        Card doubleCard = player.findInHandById(message.cardId);
-        Card rentRaw = player.findInHandById(message.secondCardId);
-        if (!(doubleCard instanceof DoubleTheRent) || !(rentRaw instanceof RentCard rentCard)) {
-            return false;
-        }
-        Color chargeColor = CardMapper.parseColor(message.color);
-        if (chargeColor == null || !isValidRentChargeColor(rentCard, player, chargeColor)) {
-            return false;
-        }
-        if (rentCard.calculateRent(player, chargeColor) <= 0) {
-            return false;
-        }
-
-        player.removeFromHand(doubleCard);
-        player.removeFromHand(rentCard);
-        engine.getDiscardPile().addCard(doubleCard);
-        engine.getDiscardPile().addCard(rentCard);
-
-        pendingUsesTwoPlays = true;
-        pendingResolution = PendingActionResolution.rentWithDouble(
-                this, engine, seat, rentCard, message, logLines);
-        pendingResolution.begin();
-        return true;
-    }
-
-    private boolean isValidRentChargeColor(RentCard rentCard, Player player, Color color) {
-        if (rentCard.getChargeableColors(player).contains(color)) {
-            return true;
-        }
-        return rentCard.isAllColors() && rentCard.countProperties(player, color) > 0;
-    }
-
-    private boolean playSimpleCard(Player player, Card card) {
-        if (card instanceof WildpropertyCard) {
-            return false;
-        }
-        if (card instanceof ActionCard) {
-            return false;
-        }
-        if (card instanceof model.card.PropertyCard property
-                && !PropertyRules.isSetImprovement(property)) {
-            Color color = property.getColor();
-            if (color != null && !PropertyRules.canAddBillableProperty(player, color)) {
-                return false;
-            }
-        }
-        card.use(player, engine);
-        player.removeFromHand(card);
-        if (card instanceof model.card.MoneyCard) {
-            appendLog(player.getName() + " banked " + card.getName());
-        } else {
-            appendLog(player.getName() + " played " + propertyPlayDetail(card));
-        }
-        return true;
-    }
-
-
-    private ServerMessage handleEmoji(int seat, ClientMessage message) {
-        if (engine == null) {
-            return error("Game not started");
-        }
-        if (seat < 0 || seat >= playerCount) {
-            return error("Invalid seat");
-        }
-        String emoji = message.emoji == null ? "" : message.emoji.trim();
-        if (!EmojiCatalog.contains(emoji)) {
-            return error("Choose an emoji to send");
-        }
-        ServerMessage reaction = new ServerMessage();
-        reaction.type = MessageTypes.EMOJI;
-        reaction.seat = seat;
-        reaction.emoji = emoji;
-        for (int i = 0; i < playerCount; i++) {
-            ClientHandler handler = seats[i];
-            if (handler != null && handler.isConnected()) {
-                handler.send(reaction);
-            }
-        }
-        return ok("Emoji sent");
-    }
-
-    private void advanceTurnLocked() {
+    void advanceTurnLocked() {
         if (engine == null || engine.isGameOver()) {
             return;
         }
@@ -586,21 +197,11 @@ public class GameSession {
     }
 
     private void startTurnClockLocked() {
-        cancelTurnClockLocked();
         if (engine == null || engine.isGameOver()) {
-            turnDeadlineEpochMillis = 0;
+            turnClock.cancel();
             return;
         }
-        turnDeadlineEpochMillis = System.currentTimeMillis() + TURN_TIME_SECONDS * 1000L;
-        turnTimeoutTask = turnTimerExecutor.schedule(this::handleTurnTimeout, TURN_TIME_SECONDS, TimeUnit.SECONDS);
-    }
-
-    private void cancelTurnClockLocked() {
-        if (turnTimeoutTask != null) {
-            turnTimeoutTask.cancel(false);
-            turnTimeoutTask = null;
-        }
-        turnDeadlineEpochMillis = 0;
+        turnClock.start(TURN_TIME_SECONDS);
     }
 
     private void handleTurnTimeout() {
@@ -625,23 +226,58 @@ public class GameSession {
         }
     }
 
-    public synchronized void shutdown() {
-        cancelTurnClockLocked();
-        turnTimerExecutor.shutdownNow();
+    void broadcastEmoji(int seat, String emoji) {
+        ServerMessage reaction = new ServerMessage();
+        reaction.type = MessageTypes.EMOJI;
+        reaction.seat = seat;
+        reaction.emoji = emoji;
+        for (int i = 0; i < playerCount; i++) {
+            ClientHandler handler = seats[i];
+            if (handler != null && handler.isConnected()) {
+                handler.send(reaction);
+            }
+        }
     }
 
-    private void appendLog(String line) {
+    public synchronized void shutdown() {
+        turnClock.shutdown();
+    }
+
+    void appendLog(String line) {
         logLines.add("[" + java.time.LocalTime.now().format(
                 java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")) + "] " + line);
     }
 
-    private static String propertyPlayDetail(Card card) {
-        if (card instanceof model.card.PropertyCard property
-                && !PropertyRules.isSetImprovement(property)
-                && property.getColor() != null) {
-            return property.getColor().logKey();
-        }
-        return card.getName();
+    boolean playToBank(Player player, Card card) {
+        return actions.playToBank(this, player, card);
+    }
+
+    GameEngine engine() {
+        return engine;
+    }
+
+    int playerCount() {
+        return playerCount;
+    }
+
+    List<String> logLines() {
+        return logLines;
+    }
+
+    PendingActionResolution pendingResolution() {
+        return pendingResolution;
+    }
+
+    void setPendingResolution(PendingActionResolution pendingResolution) {
+        this.pendingResolution = pendingResolution;
+    }
+
+    boolean pendingUsesTwoPlays() {
+        return pendingUsesTwoPlays;
+    }
+
+    void setPendingUsesTwoPlays(boolean pendingUsesTwoPlays) {
+        this.pendingUsesTwoPlays = pendingUsesTwoPlays;
     }
 
     private ServerMessage ok(String text) {
@@ -649,42 +285,6 @@ public class GameSession {
         msg.type = MessageTypes.OK;
         msg.text = text;
         return msg;
-    }
-
-    private String playFailureReason(Player player, Card card, ClientMessage message) {
-        String mode = message.mode != null ? message.mode.toUpperCase() : "PLAY";
-        if ("EFFECT".equals(mode) && card instanceof ActionCard action) {
-            if (action instanceof JustSayNo) {
-                return "Just Say No can only be played in response to an action against you";
-            }
-            if (action instanceof DoubleTheRent) {
-                return "Choose a playable Rent card in hand (requires 2 plays remaining)";
-            }
-            if (action instanceof House || action instanceof Hotel) {
-                return "Cannot add improvement to that set (need complete set"
-                        + (action instanceof Hotel ? " with a House first" : "")
-                        + ", and no duplicate improvement)";
-            }
-            if (action instanceof SlyDeal || action instanceof ForcedDeal || action instanceof DealBreaker) {
-                return "Missing or invalid target for this action card";
-            }
-            if (action instanceof DebtCollector) {
-                return "Choose an opponent to collect from";
-            }
-            if (action instanceof RentCard) {
-                return "Choose a valid rent color or play a matching property first";
-            }
-        }
-        if ("BANK".equals(mode)) {
-            return "This card cannot be deposited to the bank";
-        }
-        if ("PROPERTY".equals(mode)) {
-            return "That color set is already complete; choose another color or deposit to bank";
-        }
-        if (card instanceof model.card.PropertyCard) {
-            return "That color set is already complete; only House or Hotel can be added";
-        }
-        return "Could not play card";
     }
 
     private ServerMessage error(String text) {

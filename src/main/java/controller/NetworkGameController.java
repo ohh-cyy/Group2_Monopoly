@@ -4,6 +4,7 @@ import controller.dialog.GameDialogService;
 import controller.gameplay.OnlineCardPlayService;
 import controller.network.NetworkMatchCoordinator;
 import controller.network.NetworkPromptResponder;
+import controller.network.OnlineTurnTimerDisplay;
 import controller.view.CardSelectionFeedback;
 import controller.view.GameBoardRefreshService;
 import controller.view.NetworkBoardRefreshService;
@@ -86,6 +87,7 @@ public class NetworkGameController {
     private NetworkMatchCoordinator matchCoordinator;
     private NetworkPromptResponder promptResponder;
     private OnlineCardPlayService onlineCardPlay;
+    private OnlineTurnTimerDisplay turnTimerDisplay;
     private HandRenderer.SelectionListener handSelectionListener;
 
     private NetworkClient client;
@@ -160,6 +162,43 @@ public class NetworkGameController {
                 () -> state, () -> myHand, () -> myBank, () -> localSeat, handSelectionListener);
         ((NetworkBoardRefreshService) boardRefresh).setBoardOptionsSupplier(this::buildWildRecolorOptions);
         boardRefresh.applySelectionCallback((card, view) -> selectedCardView = view);
+        initTurnTimerDisplay();
+    }
+
+    private void initTurnTimerDisplay() {
+        turnTimerDisplay = new OnlineTurnTimerDisplay(new OnlineTurnTimerDisplay.Host() {
+            @Override
+            public GameStateDto state() {
+                return state;
+            }
+
+            @Override
+            public boolean isMyTurn() {
+                return NetworkGameController.this.isMyTurn();
+            }
+
+            @Override
+            public String currentPlayerName() {
+                if (state == null || state.players == null
+                        || state.currentPlayerIndex < 0
+                        || state.currentPlayerIndex >= state.players.size()) {
+                    return "Player";
+                }
+                return state.players.get(state.currentPlayerIndex).name;
+            }
+
+            @Override
+            public void refreshTimerLabel() {
+                if (boardRefresh instanceof NetworkBoardRefreshService onlineRefresh) {
+                    onlineRefresh.refreshTurnStatus();
+                }
+            }
+
+            @Override
+            public void onTurnWarning(String playerName) {
+                showStatus(playerName + " has 10 seconds left to play", false);
+            }
+        });
     }
 
     public void startOnlineGame(NetworkClient networkClient, int seat, GameStateDto initialState) {
@@ -233,6 +272,13 @@ public class NetworkGameController {
         }
         matchCoordinator.onStateApplied(newState);
         matchCoordinator.checkHandLimitAfterRefresh(newState, myHand, dialogs);
+        if (turnTimerDisplay != null) {
+            if (newState.gameOver) {
+                turnTimerDisplay.stop();
+            } else {
+                turnTimerDisplay.onStateUpdated();
+            }
+        }
     }
 
     private void onPlay() {

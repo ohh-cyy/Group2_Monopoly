@@ -15,11 +15,13 @@ import ui.render.HandRenderer;
 import ui.render.PersonalBankRenderer;
 import ui.render.PlayerBoardView;
 import ui.render.PlayerListRenderer;
+import ui.render.PublicBoardRenderOptions;
 import ui.render.PublicBoardRenderer;
 import ui.render.TurnStatusRenderer;
 
 import java.util.List;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
@@ -55,6 +57,8 @@ public final class LocalBoardRefreshService implements GameBoardRefreshService {
 
     private Card selectedCard;
     private BiConsumer<Card, CardView> selectedViewCallback;
+    private Supplier<PublicBoardRenderOptions> boardOptionsSupplier = () -> PublicBoardRenderOptions.none();
+    private IntSupplier turnSecondsSupplier = () -> -1;
 
     public LocalBoardRefreshService(Label currentPlayerLabel,
                                     Label gameStatusText,
@@ -116,8 +120,18 @@ public final class LocalBoardRefreshService implements GameBoardRefreshService {
         this.selectedViewCallback = callback;
     }
 
+    public void setBoardOptionsSupplier(Supplier<PublicBoardRenderOptions> boardOptionsSupplier) {
+        this.boardOptionsSupplier = boardOptionsSupplier != null
+                ? boardOptionsSupplier
+                : () -> PublicBoardRenderOptions.none();
+    }
+
+    public void setTurnSecondsSupplier(IntSupplier turnSecondsSupplier) {
+        this.turnSecondsSupplier = turnSecondsSupplier != null ? turnSecondsSupplier : () -> -1;
+    }
+
     @Override
-    public void refreshAll(VBox playersList, java.util.function.Consumer<Double> rowHeightConsumer) {
+    public void refreshAll(VBox playersList, Consumer<Double> rowHeightConsumer) {
         GameEngine engine = engineSupplier.get();
         Player currentPlayer = currentPlayerSupplier.get();
         playerListRenderer.render(playersList, playersSupplier.get(),
@@ -125,7 +139,8 @@ public final class LocalBoardRefreshService implements GameBoardRefreshService {
         refreshTurnStatus(engine, currentPlayer);
         double rowHeight = publicBoardRenderer.render(
                 publicBoardPanel, allPlayersPropertiesPanel,
-                boardViewsSupplier.get(), currentTurnSeatSupplier.getAsInt());
+                boardViewsSupplier.get(), currentTurnSeatSupplier.getAsInt(),
+                boardOptionsSupplier.get());
         if (rowHeightConsumer != null && rowHeight > 0) {
             rowHeightConsumer.accept(rowHeight);
         }
@@ -149,7 +164,21 @@ public final class LocalBoardRefreshService implements GameBoardRefreshService {
                 engine.getRemainingPlays(),
                 engine.getDeck().size(),
                 engine.getDiscardPile().size(),
-                engine.isGameOver());
+                engine.isGameOver(),
+                turnSecondsSupplier.getAsInt());
+    }
+
+    @Override
+    public void disableActionButtons() {
+        if (drawCardBtn != null) {
+            drawCardBtn.setDisable(true);
+        }
+        if (discardCardBtn != null) {
+            discardCardBtn.setDisable(true);
+        }
+        if (endTurnBtn != null) {
+            endTurnBtn.setDisable(true);
+        }
     }
 
     private void refreshHand(GameEngine engine, Player currentPlayer) {

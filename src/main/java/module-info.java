@@ -35,6 +35,7 @@ module com.example.zyzzs {
     exports ui.animation;
     exports controller.view;
     exports controller.network;
+    exports controller.local;
     exports network;
     exports network.protocol;
     exports network.server;

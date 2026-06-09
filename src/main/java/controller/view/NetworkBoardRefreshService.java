@@ -16,6 +16,7 @@ import ui.render.PlayerBoardView;
 import ui.render.PlayerListRenderer;
 import ui.render.PublicBoardRenderOptions;
 import ui.render.PublicBoardRenderer;
+import ui.render.TurnDeadlineClock;
 import ui.render.TurnStatusRenderer;
 
 import java.util.List;
@@ -119,6 +120,15 @@ public final class NetworkBoardRefreshService implements GameBoardRefreshService
                 : () -> PublicBoardRenderOptions.none();
     }
 
+    /** Updates only the turn summary labels (used by the online countdown ticker). */
+    public void refreshTurnStatus() {
+        GameStateDto state = stateSupplier.get();
+        if (state == null) {
+            return;
+        }
+        refreshLabels(state);
+    }
+
     @Override
     public void refreshAll(VBox playersList, Consumer<Double> rowHeightConsumer) {
         GameStateDto state = stateSupplier.get();
@@ -168,6 +178,7 @@ public final class NetworkBoardRefreshService implements GameBoardRefreshService
         if (state.currentPlayerIndex >= 0 && state.currentPlayerIndex < state.players.size()) {
             currentName = state.players.get(state.currentPlayerIndex).name;
         }
+        int turnSeconds = TurnDeadlineClock.secondsRemaining(state.turnDeadlineEpochMillis);
         turnStatusRenderer.renderOnline(
                 currentPlayerLabel,
                 gameStatusText,
@@ -178,7 +189,8 @@ public final class NetworkBoardRefreshService implements GameBoardRefreshService
                 state.drawPileSize,
                 state.discardPileSize,
                 state.gameOver,
-                state.winnerName);
+                state.winnerName,
+                turnSeconds);
     }
 
     @Override

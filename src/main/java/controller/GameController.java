@@ -4,215 +4,148 @@ import controller.dialog.GameDialogService;
 import controller.dialog.HandDiscardDialogService;
 import controller.gameplay.ActionEffectResolver;
 import controller.gameplay.ActionEffectResult;
-import controller.gameplay.JustSayNoService;
 import controller.gameplay.CardPlayOutcome;
+import controller.gameplay.JustSayNoService;
 import controller.gameplay.LocalCardPlayService;
 import controller.gameplay.PaymentService;
 import controller.gameplay.WildPropertyRecolorService;
+import controller.local.LocalTurnTimer;
 import controller.session.LocalGameSession;
+import controller.view.CardSelectionFeedback;
+import controller.view.GameBoardRefreshService;
+import controller.view.LocalBoardRefreshService;
 import engine.GameEngine;
-import engine.PropertyRules;
 import engine.WildPropertyRules;
 import javafx.application.Platform;
-import javafx.animation.FadeTransition;
-import javafx.animation.Interpolator;
-import javafx.animation.KeyFrame;
-import javafx.animation.ParallelTransition;
-import javafx.animation.RotateTransition;
-import javafx.animation.ScaleTransition;
-import javafx.animation.TranslateTransition;
-import javafx.animation.Timeline;
-import javafx.util.Duration;
+import javafx.fxml.FXML;
+import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.layout.*;
+import model.achievement.AchievementManager;
+import model.card.*;
+import model.card.actionCard.*;
+import model.enums.Color;
+import model.player.Player;
+import network.protocol.EmojiCatalog;
 import ui.AchievementUi;
+import ui.AvatarResources;
 import ui.CardView;
 import ui.EmojiReactionOverlay;
 import ui.GameAlertDialogs;
 import ui.GameAudio;
 import ui.GameLogPane;
 import ui.GameVictoryScreen;
-import ui.PublicPropertyBoardLayout;
+import ui.StatusMessageDisplay;
+import ui.animation.PlayCardFlyAnimation;
+import ui.layout.GameBoardChrome;
+import ui.layout.PropertyBoardLayoutTracker;
 import ui.render.BankBarRenderer;
 import ui.render.HandRenderer;
 import ui.render.PlayerBoardView;
 import ui.render.PlayerListRenderer;
 import ui.render.PublicBoardRenderOptions;
 import ui.render.PublicBoardRenderer;
-import javafx.fxml.FXML;
-import javafx.geometry.Bounds;
-import javafx.geometry.Point2D;
-import javafx.geometry.Pos;
-import javafx.scene.Node;
-import javafx.scene.Parent;
-import javafx.scene.SnapshotParameters;
-import javafx.scene.control.*;
-import javafx.scene.layout.*;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
-import javafx.scene.image.WritableImage;
-import model.achievement.AchievementManager;
-import model.card.*;
-import model.enums.Color;
-import model.card.actionCard.*;
-import model.enums.CardType;
-import model.player.Player;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 
 public class GameController {
-    @FXML
-    private Label currentPlayerLabel;
-    
-    @FXML
-    private Label gameStatusText;
-    
-    @FXML
-    private Label statusMessage;
-    
-    @FXML
-    private VBox playersList;
+    @FXML private Label currentPlayerLabel;
+    @FXML private Label gameStatusText;
+    @FXML private Label statusMessage;
+    @FXML private VBox playersList;
+    @FXML private VBox leftSidebar;
+    @FXML private VBox rightSidebar;
+    @FXML private Button leftSidebarToggle;
+    @FXML private Button rightSidebarToggle;
+    @FXML private Button leftSidebarHandle;
+    @FXML private Button rightSidebarHandle;
+    @FXML private VBox handDock;
+    @FXML private Label handDockHint;
+    @FXML private Button handDockToggle;
+    @FXML private VBox publicBoardPanel;
+    @FXML private HBox publicBoardHeader;
+    @FXML private VBox allPlayersPropertiesPanel;
+    @FXML private HBox allPlayersBankBar;
+    @FXML private ScrollPane playerHandScroll;
+    @FXML private HBox playerHand;
+    @FXML private FlowPane playerBank;
+    @FXML private Label bankTotalLabel;
+    @FXML private GameLogPane gameLog;
+    @FXML private FlowPane emojiBar;
+    @FXML private Pane reactionOverlay;
+    @FXML private Button drawCardBtn;
+    @FXML private Button discardCardBtn;
+    @FXML private Button endTurnBtn;
+    @FXML private Button newGameBtn;
+    @FXML private Button achievementBtn;
 
-    @FXML
-    private VBox leftSidebar;
-
-    @FXML
-    private VBox rightSidebar;
-
-    @FXML
-    private Button leftSidebarToggle;
-
-    @FXML
-    private Button rightSidebarToggle;
-
-    @FXML
-    private Button leftSidebarHandle;
-
-    @FXML
-    private Button rightSidebarHandle;
-
-    @FXML
-    private VBox handDock;
-
-    @FXML
-    private Label handDockHint;
-
-    @FXML
-    private Button handDockToggle;
-
-    @FXML
-    private VBox publicBoardPanel;
-
-    @FXML
-    private HBox publicBoardHeader;
-    
-    @FXML
-    private VBox allPlayersPropertiesPanel;
-
-    @FXML
-    private HBox allPlayersBankBar;
-    
-    @FXML
-    private ScrollPane playerHandScroll;
-
-    @FXML
-    private HBox playerHand;
-
-    @FXML
-    private FlowPane playerBank;
-
-    @FXML
-    private Label bankTotalLabel;
-    
-    @FXML
-    private GameLogPane gameLog;
-
-    @FXML
-    private FlowPane emojiBar;
-
-    @FXML
-    private Pane reactionOverlay;
-    
-    @FXML
-    private Button drawCardBtn;
-    
-    @FXML
-    private Button discardCardBtn;
-    
-    @FXML
-    private Button endTurnBtn;
-    
-    @FXML
-    private Button newGameBtn;
-
-    @FXML
-    private Button achievementBtn;
-    
     private LocalGameSession localSession;
     private GameDialogService dialogs;
     private LocalCardPlayService cardPlayService;
     private WildPropertyRecolorService wildRecolorService;
-    private HandRenderer handRenderer;
-    private PlayerListRenderer playerListRenderer;
-    private PublicBoardRenderer publicBoardRenderer;
-    private BankBarRenderer bankBarRenderer;
+    private StatusMessageDisplay statusDisplay;
+    private GameBoardChrome boardChrome;
+    private PropertyBoardLayoutTracker layoutTracker;
+    private GameBoardRefreshService boardRefresh;
+    private LocalTurnTimer turnTimer;
+    private PlayCardFlyAnimation playFlyAnimation;
     private EmojiReactionOverlay emojiReactionOverlay;
+    private HandRenderer handRenderer;
+    private HandRenderer.SelectionListener handSelectionListener;
 
     private GameEngine gameEngine;
     private List<Player> players;
-    private Player currentPlayer;
     private Card selectedCard;
     private CardView selectedCardView;
     private CardView pendingPlayedCardView;
-    private Random random;
-
-    private static final double HAND_DOCK_HEIGHT = 266;
-    private static final double HAND_DOCK_PEEK = 54;
-    private static final int TURN_TIME_SECONDS = 60;
-    private static final int TURN_WARNING_SECONDS = 10;
-    private int localPlayerCount = 4;
-    private boolean handDockExpanded = false;
-    private int turnSecondsRemaining = TURN_TIME_SECONDS;
-    private boolean turnWarningShown = false;
-    private Timeline turnTimer;
-    private double lastPropertyRowHeight = -1;
     private Image avatarImage;
-    private String lastStatusMessage = "";
-    private boolean lastStatusError = false;
-    private FadeTransition statusFadeTransition;
-    private HandRenderer.SelectionListener handSelectionListener;
-    
+    private int localPlayerCount = 4;
+
     @FXML
     public void initialize() {
-        random = new Random();
-        loadAvatarImage();
+        avatarImage = AvatarResources.loadDefaultAvatar(getClass());
+        statusDisplay = new StatusMessageDisplay(statusMessage);
+        dialogs = new GameDialogService(statusMessage);
+        playFlyAnimation = new PlayCardFlyAnimation();
+        emojiReactionOverlay = new EmojiReactionOverlay(reactionOverlay, allPlayersPropertiesPanel);
+
+        boardChrome = new GameBoardChrome(
+                leftSidebar, rightSidebar, leftSidebarToggle, rightSidebarToggle,
+                leftSidebarHandle, rightSidebarHandle, handDock, handDockHint, handDockToggle);
+        boardChrome.setup();
+
+        initGameplayServices();
+        initBoardRefresh();
+        initTurnTimer();
+        setupButtonActions();
+        setupEmojiBar();
+
+        layoutTracker = new PropertyBoardLayoutTracker(
+                allPlayersPropertiesPanel,
+                () -> players != null ? players.size() : 0,
+                this::updateUi);
+        layoutTracker.attach();
+
         if (playerHandScroll != null) {
             playerHandScroll.widthProperty().addListener((obs, oldW, newW) -> {
-                if (currentPlayer != null) {
-                    updatePlayerHand();
+                if (gameEngine != null) {
+                    updateUi();
                 }
             });
         }
-        emojiReactionOverlay = new EmojiReactionOverlay(reactionOverlay, allPlayersPropertiesPanel);
-        setupButtonActions();
-        setupEmojiBar();
-        setupCollapsibleSidebars();
-        setupHandDockInteractions();
-        setupPublicBoardSizing();
-        initGameplayServices();
     }
 
     private void initGameplayServices() {
         localSession = new LocalGameSession();
-        dialogs = new GameDialogService(statusMessage);
-        PaymentService paymentService = new PaymentService(dialogs, this::logMessage, this::showStatusForServices);
-        JustSayNoService justSayNoService = new JustSayNoService(dialogs, this::logMessage, this::showStatusForServices);
-        ActionEffectResolver actionResolver = new ActionEffectResolver(dialogs, paymentService, justSayNoService,
-                this::logMessage, this::showStatusForServices);
-        cardPlayService = new LocalCardPlayService(dialogs, actionResolver, this::logMessage, this::showStatusForServices);
-        wildRecolorService = new WildPropertyRecolorService(dialogs, this::logMessage, this::showStatusForServices);
+        PaymentService paymentService = new PaymentService(dialogs, this::logMessage, this::showStatus);
+        JustSayNoService justSayNoService = new JustSayNoService(dialogs, this::logMessage, this::showStatus);
+        ActionEffectResolver actionResolver = new ActionEffectResolver(
+                dialogs, paymentService, justSayNoService, this::logMessage, this::showStatus);
+        cardPlayService = new LocalCardPlayService(dialogs, actionResolver, this::logMessage, this::showStatus);
+        wildRecolorService = new WildPropertyRecolorService(dialogs, this::logMessage, this::showStatus);
         handRenderer = new HandRenderer();
-        playerListRenderer = new PlayerListRenderer(() -> avatarImage);
-        publicBoardRenderer = new PublicBoardRenderer(() -> avatarImage);
-        bankBarRenderer = new BankBarRenderer();
         handSelectionListener = new HandRenderer.SelectionListener() {
             @Override
             public void onCardSelected(Card card, CardView cardView) {
@@ -225,17 +158,65 @@ public class GameController {
                     selectCard(card, cardView);
                 }
                 cardView.playActivationAnimation(() -> {
-                    if (!getHandCardsForView().contains(card)) {
-                        return;
+                    if (getHandCardsForView().contains(card)) {
+                        Platform.runLater(GameController.this::playSelectedCard);
                     }
-                    Platform.runLater(GameController.this::playSelectedCard);
                 });
             }
         };
     }
 
-    private void showStatusForServices(String message, boolean isError) {
-        showStatus(message, isError);
+    private void initBoardRefresh() {
+        boardRefresh = new LocalBoardRefreshService(
+                currentPlayerLabel, gameStatusText, publicBoardPanel, allPlayersPropertiesPanel,
+                allPlayersBankBar, playerHandScroll, playerHand, playerBank, bankTotalLabel,
+                drawCardBtn, discardCardBtn, endTurnBtn,
+                handRenderer, new PlayerListRenderer(() -> avatarImage),
+                new PublicBoardRenderer(() -> avatarImage), new BankBarRenderer(),
+                () -> gameEngine, () -> players, () -> currentPlayer(),
+                this::getHandCardsForView, this::currentTurnSeat, this::publicPlayerViews,
+                handSelectionListener);
+        ((LocalBoardRefreshService) boardRefresh).setBoardOptionsSupplier(this::buildWildRecolorOptions);
+        ((LocalBoardRefreshService) boardRefresh).setTurnSecondsSupplier(
+                () -> turnTimer != null ? turnTimer.getSecondsRemaining() : -1);
+        boardRefresh.applySelectionCallback((card, view) -> selectedCardView = view);
+    }
+
+    private void initTurnTimer() {
+        turnTimer = new LocalTurnTimer(new LocalTurnTimer.Host() {
+            @Override
+            public GameEngine engine() {
+                return gameEngine;
+            }
+
+            @Override
+            public void onTimerTick(int secondsRemaining) {
+                updateUi();
+            }
+
+            @Override
+            public void onTurnWarning(Player currentPlayer) {
+                showStatus(currentPlayer.getName() + " has 10 seconds left to play", false);
+                logMessage(currentPlayer.getName() + " has 10 seconds left");
+            }
+
+            @Override
+            public void onTurnTimedOut(Player skipped) {
+                selectedCard = null;
+                selectedCardView = null;
+                pendingPlayedCardView = null;
+                for (Card card : gameEngine.enforceHandSizeLimit(skipped)) {
+                    logMessage(skipped.getName() + " auto-discarded " + card.getName() + " (hand size limit)");
+                }
+                gameEngine.nextTurn();
+                GameAudio.play(GameAudio.Cue.TURN);
+                Player next = gameEngine.getCurrentPlayer();
+                logMessage(skipped.getName() + " ran out of time and was skipped → " + next.getName() + "'s turn");
+                showStatus(skipped.getName() + " ran out of time. Skipped to " + next.getName(), false);
+                turnTimer.reset();
+                afterStateChange();
+            }
+        });
     }
 
     public void startLocalGame() {
@@ -246,7 +227,7 @@ public class GameController {
         localPlayerCount = Math.max(2, Math.min(5, playerCount));
         initializeGame();
     }
-    
+
     private void setupButtonActions() {
         if (drawCardBtn != null) {
             drawCardBtn.setOnAction(e -> onDrawCardsClick());
@@ -265,238 +246,48 @@ public class GameController {
         }
     }
 
-
     private void setupEmojiBar() {
         if (emojiBar == null) {
             return;
         }
         emojiBar.getChildren().clear();
-        for (String emoji : network.protocol.EmojiCatalog.ALL) {
+        for (String emoji : EmojiCatalog.ALL) {
             Button button = new Button(emoji);
             button.getStyleClass().add("emoji-button");
             button.setFocusTraversable(false);
-            button.setTooltip(new Tooltip(network.protocol.EmojiCatalog.nameFor(emoji)));
+            button.setTooltip(new Tooltip(EmojiCatalog.nameFor(emoji)));
             button.setOnAction(e -> sendLocalEmoji(emoji));
             emojiBar.getChildren().add(button);
         }
     }
 
     private void sendLocalEmoji(String emoji) {
-        if (gameEngine == null || currentPlayer == null) {
+        if (gameEngine == null || gameEngine.isGameOver()) {
             return;
         }
         GameAudio.play(GameAudio.Cue.EMOJI);
         emojiReactionOverlay.show(gameEngine.getCurrentPlayerIndex(), emoji);
     }
 
-    private void resetTurnTimerForCurrentPlayer() {
-        stopTurnTimer();
-        if (gameEngine == null || gameEngine.isGameOver()) {
-            turnSecondsRemaining = 0;
-            return;
-        }
-        turnSecondsRemaining = TURN_TIME_SECONDS;
-        turnWarningShown = false;
-        turnTimer = new Timeline(new KeyFrame(Duration.seconds(1), e -> tickTurnTimer()));
-        turnTimer.setCycleCount(Timeline.INDEFINITE);
-        turnTimer.play();
-    }
-
-    private void stopTurnTimer() {
-        if (turnTimer != null) {
-            turnTimer.stop();
-            turnTimer = null;
-        }
-    }
-
-    private void tickTurnTimer() {
-        if (gameEngine == null || gameEngine.isGameOver()) {
-            stopTurnTimer();
-            return;
-        }
-        turnSecondsRemaining = Math.max(0, turnSecondsRemaining - 1);
-        if (!turnWarningShown && turnSecondsRemaining == TURN_WARNING_SECONDS) {
-            turnWarningShown = true;
-            showStatus(gameEngine.getCurrentPlayer().getName() + " has 10 seconds left to play", false);
-            logMessage(gameEngine.getCurrentPlayer().getName() + " has 10 seconds left");
-        }
-        updateCurrentPlayerDisplay();
-        if (turnSecondsRemaining == 0) {
-            skipTurnOnTimeout();
-        }
-    }
-
-    private void skipTurnOnTimeout() {
-        if (gameEngine == null || gameEngine.isGameOver()) {
-            return;
-        }
-        stopTurnTimer();
-        Player skipped = gameEngine.getCurrentPlayer();
-        selectedCard = null;
-        selectedCardView = null;
-        pendingPlayedCardView = null;
-        for (Card card : gameEngine.enforceHandSizeLimit(skipped)) {
-            logMessage(skipped.getName() + " auto-discarded " + card.getName() + " (hand size limit)");
-        }
-        gameEngine.nextTurn();
-        GameAudio.play(GameAudio.Cue.TURN);
-        currentPlayer = gameEngine.getCurrentPlayer();
-        logMessage(skipped.getName() + " ran out of time and was skipped → " + currentPlayer.getName() + "'s turn");
-        showStatus(skipped.getName() + " ran out of time. Skipped to " + currentPlayer.getName(), false);
-        resetTurnTimerForCurrentPlayer();
-        afterStateChange();
-    }
-
-private void setupCollapsibleSidebars() {
-        setLeftSidebarOpen(false);
-        setRightSidebarOpen(false);
-
-        if (leftSidebarToggle != null) {
-            leftSidebarToggle.setOnAction(e -> setLeftSidebarOpen(false));
-        }
-        if (leftSidebarHandle != null) {
-            leftSidebarHandle.setOnAction(e -> setLeftSidebarOpen(true));
-        }
-        if (rightSidebarToggle != null) {
-            rightSidebarToggle.setOnAction(e -> setRightSidebarOpen(false));
-        }
-        if (rightSidebarHandle != null) {
-            rightSidebarHandle.setOnAction(e -> setRightSidebarOpen(true));
-        }
-    }
-
-private void setLeftSidebarOpen(boolean open) {
-        setNodeLayoutVisible(leftSidebar, open);
-        setNodeLayoutVisible(leftSidebarHandle, !open);
-    }
-
-private void setRightSidebarOpen(boolean open) {
-        setNodeLayoutVisible(rightSidebar, open);
-        setNodeLayoutVisible(rightSidebarHandle, !open);
-    }
-
-private void setNodeLayoutVisible(javafx.scene.Node node, boolean visible) {
-        if (node == null) {
-            return;
-        }
-        node.setVisible(visible);
-        node.setManaged(visible);
-    }
-
-private void setupHandDockInteractions() {
-        if (handDock == null) {
-            return;
-        }
-        setHandDockExpanded(false, false);
-        if (handDockToggle != null) {
-            handDockToggle.setOnAction(e -> setHandDockExpanded(!handDockExpanded, true));
-        }
-    }
-
-private void setHandDockExpanded(boolean expanded, boolean animate) {
-        if (handDock == null || (handDockExpanded == expanded && animate)) {
-            return;
-        }
-        handDockExpanded = expanded;
-        double collapsedY = HAND_DOCK_HEIGHT - HAND_DOCK_PEEK;
-        double targetY = expanded ? 0 : collapsedY;
-        if (handDockToggle != null) {
-            handDockToggle.setText(expanded ? "Hide Hand ▼" : "Show Hand ▲");
-        }
-        if (handDockHint != null) {
-            handDockHint.setText(expanded
-                    ? "Double-click a card to play"
-                    : "Click Show Hand to view your cards");
-        }
-        if (expanded) {
-            handDock.toFront();
-        }
-        if (!animate) {
-            handDock.setTranslateY(targetY);
-            return;
-        }
-        TranslateTransition transition = new TranslateTransition(Duration.millis(280), handDock);
-        transition.setToY(targetY);
-        transition.setInterpolator(Interpolator.EASE_BOTH);
-        transition.play();
-    }
-
-private void setupPublicBoardSizing() {
-    if (allPlayersPropertiesPanel == null) {
-        return;
-    }
-    allPlayersPropertiesPanel.widthProperty().addListener((obs, oldW, newW) -> {
-        if (newW.doubleValue() > 0 && gameEngine != null) {
-            updateAllPlayersProperties();
-        }
-    });
-    attachTableAreaHeightListener();
-}
-
-private void attachTableAreaHeightListener() {
-    Parent node = allPlayersPropertiesPanel;
-    while (node != null && !node.getStyleClass().contains("table-area")) {
-        node = node.getParent();
-    }
-    if (!(node instanceof Region tableArea)) {
-        return;
-    }
-    tableArea.heightProperty().addListener((obs, oldH, newH) -> {
-        if (newH.doubleValue() <= 0) {
-            return;
-        }
-        refreshPropertyAreaLayout();
-    });
-}
-
-private void refreshPropertyAreaLayout() {
-    if (gameEngine == null) {
-        PublicPropertyBoardLayout.applyEqualRows(allPlayersPropertiesPanel);
-        return;
-    }
-    PublicPropertyBoardLayout.applyEqualRows(
-            allPlayersPropertiesPanel, gameEngine.getPlayers().size());
-    maybeRescalePropertyCards();
-}
-
-private void maybeRescalePropertyCards() {
-    if (allPlayersPropertiesPanel == null || gameEngine == null) {
-        return;
-    }
-    double rowHeight = PublicPropertyBoardLayout.rowHeightFor(
-            allPlayersPropertiesPanel, gameEngine.getPlayers().size());
-    if (rowHeight <= 0 || Math.abs(rowHeight - lastPropertyRowHeight) <= 2) {
-        return;
-    }
-    lastPropertyRowHeight = rowHeight;
-    updateAllPlayersProperties();
-}
-
-    
     private void initializeGame() {
         List<String> names = new ArrayList<>();
         for (int i = 1; i <= localPlayerCount; i++) {
             names.add("Player " + i);
         }
-        initializeGameWithPlayers(names);
-    }
-
-    private void initializeGameWithPlayers(List<String> names) {
         if (gameLog != null) {
             gameLog.clear();
         }
         localSession.startNewGame(names);
         gameEngine = localSession.getEngine();
         players = localSession.getPlayers();
-        currentPlayer = localSession.getCurrentPlayer();
         selectedCard = null;
         selectedCardView = null;
         pendingPlayedCardView = null;
         logMessage("=== Game started with " + names.size() + " players ===");
-        resetTurnTimerForCurrentPlayer();
-        updateUI();
+        turnTimer.reset();
+        updateUi();
     }
-    
+
     @FXML
     private void onDrawCardsClick() {
         if (!isMyActionTurn()) {
@@ -519,7 +310,7 @@ private void maybeRescalePropertyCards() {
                 + gameEngine.getRemainingPlays(), false);
         afterStateChange();
     }
-    
+
     @FXML
     private void onDiscardCardClick() {
         if (!isMyActionTurn()) {
@@ -549,30 +340,6 @@ private void maybeRescalePropertyCards() {
         afterStateChange();
     }
 
-    private boolean ensureHandSizeWithinLimit(Player player) {
-        while (player.getHandSize() > GameEngine.MAX_HAND_SIZE) {
-            int excess = player.getHandSize() - GameEngine.MAX_HAND_SIZE;
-            Optional<Card> choice = HandDiscardDialogService.promptDiscardOne(
-                    helper -> dialogs.showChoiceDialog(
-                            helper.title(),
-                            helper.header(),
-                            helper.prompt(),
-                            helper.hand(),
-                            Card::getName,
-                            card -> null),
-                    player.getHand(),
-                    excess,
-                    true);
-            if (choice.isEmpty()) {
-                showStatus("You must discard down to " + GameEngine.MAX_HAND_SIZE + " cards before ending your turn", true);
-                return false;
-            }
-            gameEngine.discardFromHand(player, choice.get());
-            logMessage(player.getName() + " discarded " + choice.get().getName() + " (hand size limit)");
-        }
-        return true;
-    }
-    
     private void playSelectedCard() {
         if (!gameEngine.hasDrawnThisTurn()) {
             showStatus("Please click Draw Cards first before playing a card", true);
@@ -596,7 +363,7 @@ private void maybeRescalePropertyCards() {
             if (outcome.result == ActionEffectResult.CANCELLED || outcome.result == ActionEffectResult.FAILED) {
                 selectedCard = played;
                 pendingPlayedCardView = null;
-                updateUI();
+                updateUi();
                 return;
             }
             completePlayStep(player, played, outcome);
@@ -612,8 +379,17 @@ private void maybeRescalePropertyCards() {
             localSession.recordCardPlayed();
         }
         playAcceptedCardSound(played, outcome);
-        runAfterPlayAnimation(played, outcome.depositedToBank,
+        playFlyAnimation.play(
+                boardChrome.handDock(),
+                pendingPlayedCardView,
+                played,
+                outcome.depositedToBank,
+                playerBank,
+                allPlayersPropertiesPanel,
+                gameStatusText,
                 () -> finishPlayStep(player, played, outcome.depositedToBank));
+        pendingPlayedCardView = null;
+        selectedCardView = null;
     }
 
     private void playAcceptedCardSound(Card played, CardPlayOutcome outcome) {
@@ -640,138 +416,20 @@ private void maybeRescalePropertyCards() {
             showGameOver(player);
             return;
         }
-
         if (gameEngine.isTurnOver()) {
             logMessage(player.getName() + " Three cards have been played in this turn, turn end");
             forceEndTurn();
             return;
         }
-
         if (!depositedToBank) {
             showStatus("Card played. You can still play " + gameEngine.getRemainingPlays() + " more cards this turn", false);
         } else {
-            showStatus("Already deposited into the bank. This turn can still be played " + gameEngine.getRemainingPlays() + " cards", false);
+            showStatus("Already deposited into the bank. This turn can still be played "
+                    + gameEngine.getRemainingPlays() + " cards", false);
         }
         afterStateChange();
     }
 
-    private void runAfterPlayAnimation(Card played, boolean depositedToBank, Runnable onFinished) {
-        CardView source = pendingPlayedCardView;
-        pendingPlayedCardView = null;
-        selectedCardView = null;
-
-        if (source == null || source.getScene() == null || handDock == null) {
-            onFinished.run();
-            return;
-        }
-
-        Parent parent = handDock.getParent();
-        if (!(parent instanceof Pane overlay)) {
-            onFinished.run();
-            return;
-        }
-
-        Node target = targetNodeForPlayedCard(played, depositedToBank);
-        if (target == null || target.getScene() == null) {
-            onFinished.run();
-            return;
-        }
-
-        Bounds sourceBounds = source.localToScene(source.getBoundsInLocal());
-        Bounds targetBounds = target.localToScene(target.getBoundsInLocal());
-        Point2D start = overlay.sceneToLocal(sourceBounds.getMinX(), sourceBounds.getMinY());
-        Point2D targetPoint = overlay.sceneToLocal(
-                targetBounds.getMinX() + targetBounds.getWidth() / 2,
-                targetBounds.getMinY() + targetBounds.getHeight() / 2
-        );
-
-        SnapshotParameters params = new SnapshotParameters();
-        params.setFill(javafx.scene.paint.Color.TRANSPARENT);
-        WritableImage snapshot = source.snapshot(params, null);
-        ImageView ghost = new ImageView(snapshot);
-        ghost.setFitWidth(sourceBounds.getWidth());
-        ghost.setFitHeight(sourceBounds.getHeight());
-        ghost.setPreserveRatio(false);
-        ghost.setMouseTransparent(true);
-        ghost.setManaged(false);
-        ghost.setLayoutX(start.getX());
-        ghost.setLayoutY(start.getY());
-
-        source.setVisible(false);
-        overlay.getChildren().add(ghost);
-        ghost.toFront();
-
-        double targetX = targetPoint.getX() - start.getX() - sourceBounds.getWidth() / 2;
-        double targetY = targetPoint.getY() - start.getY() - sourceBounds.getHeight() / 2;
-
-        TranslateTransition move = new TranslateTransition(Duration.millis(420), ghost);
-        move.setByX(targetX);
-        move.setByY(targetY);
-        move.setInterpolator(Interpolator.EASE_BOTH);
-
-        ScaleTransition scale = new ScaleTransition(Duration.millis(420), ghost);
-        scale.setToX(depositedToBank ? 0.45 : 0.65);
-        scale.setToY(depositedToBank ? 0.45 : 0.65);
-        scale.setInterpolator(Interpolator.EASE_BOTH);
-
-        RotateTransition rotate = new RotateTransition(Duration.millis(420), ghost);
-        rotate.setByAngle(depositedToBank ? -10 : 12);
-        rotate.setInterpolator(Interpolator.EASE_BOTH);
-
-        FadeTransition fade = new FadeTransition(Duration.millis(420), ghost);
-        fade.setFromValue(0.98);
-        fade.setToValue(0.12);
-
-        ParallelTransition fly = new ParallelTransition(move, scale, rotate, fade);
-        fly.setOnFinished(e -> {
-            overlay.getChildren().remove(ghost);
-            onFinished.run();
-        });
-        fly.play();
-    }
-
-    private Node targetNodeForPlayedCard(Card played, boolean depositedToBank) {
-        if (depositedToBank) {
-            return playerBank != null ? playerBank : bankTotalLabel;
-        }
-        if (played instanceof PropertyCard) {
-            return allPlayersPropertiesPanel != null ? allPlayersPropertiesPanel : gameStatusText;
-        }
-        return gameStatusText != null ? gameStatusText : allPlayersPropertiesPanel;
-    }
-
-    
-    private void loadAvatarImage() {
-        try {
-            avatarImage = new Image(Objects.requireNonNull(
-                    getClass().getResourceAsStream("/ui/avatar.png")));
-        } catch (Exception ex) {
-            avatarImage = null;
-        }
-    }
-
-    private void unlockAchievement(String achievementId) {
-        Platform.runLater(() -> AchievementUi.unlockAndShow(achievementId, statusMessage));
-    }
-
-private void forceEndTurn() {
-        Platform.runLater(() -> {
-            Player ending = gameEngine.getCurrentPlayer();
-            if (!ensureHandSizeWithinLimit(ending)) {
-                updateUI();
-                return;
-            }
-            gameEngine.nextTurn();
-            GameAudio.play(GameAudio.Cue.TURN);
-            resetTurnTimerForCurrentPlayer();
-            currentPlayer = gameEngine.getCurrentPlayer();
-            logMessage(ending.getName() + " turn ends → " + currentPlayer.getName() + "'s turn");
-            showStatus("Played 3 cards, automatically switching to " + currentPlayer.getName()
-                    + ". Please draw 2 cards before playing", false);
-            afterStateChange();
-        });
-    }
-    
     @FXML
     private void onEndTurnClick() {
         if (!isMyActionTurn()) {
@@ -780,21 +438,39 @@ private void forceEndTurn() {
         }
         endCurrentTurn();
     }
-    
+
     private void endCurrentTurn() {
         Player player = gameEngine.getCurrentPlayer();
         if (!ensureHandSizeWithinLimit(player)) {
-            updateUI();
+            updateUi();
             return;
         }
         logMessage(player.getName() + " ended turn voluntarily");
         gameEngine.nextTurn();
         GameAudio.play(GameAudio.Cue.TURN);
-        resetTurnTimerForCurrentPlayer();
-        currentPlayer = gameEngine.getCurrentPlayer();
-        showStatus("Now " + currentPlayer.getName() + "'s turn, please draw 2 cards first", false);
+        turnTimer.reset();
+        showStatus("Now " + gameEngine.getCurrentPlayer().getName() + "'s turn, please draw 2 cards first", false);
         afterStateChange();
     }
+
+    private void forceEndTurn() {
+        Platform.runLater(() -> {
+            Player ending = gameEngine.getCurrentPlayer();
+            if (!ensureHandSizeWithinLimit(ending)) {
+                updateUi();
+                return;
+            }
+            gameEngine.nextTurn();
+            GameAudio.play(GameAudio.Cue.TURN);
+            turnTimer.reset();
+            Player next = gameEngine.getCurrentPlayer();
+            logMessage(ending.getName() + " turn ends → " + next.getName() + "'s turn");
+            showStatus("Played 3 cards, automatically switching to " + next.getName()
+                    + ". Please draw 2 cards before playing", false);
+            afterStateChange();
+        });
+    }
+
     private void onNewGameClick() {
         ButtonType start = new ButtonType("Start New Game");
         ButtonType cancel = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
@@ -807,63 +483,29 @@ private void forceEndTurn() {
             initializeGame();
         }
     }
-    
-    private boolean isMyActionTurn() {
-        return gameEngine != null && !gameEngine.isGameOver();
-    }
 
-    private boolean isCurrentPlayerTurn() {
-        return isMyActionTurn();
-    }
-    
-    private void updateUI() {
-        Platform.runLater(() -> {
-            if (gameEngine != null) {
-                currentPlayer = gameEngine.getCurrentPlayer();
+    private boolean ensureHandSizeWithinLimit(Player player) {
+        while (player.getHandSize() > GameEngine.MAX_HAND_SIZE) {
+            int excess = player.getHandSize() - GameEngine.MAX_HAND_SIZE;
+            Optional<Card> choice = HandDiscardDialogService.promptDiscardOne(
+                    helper -> dialogs.showChoiceDialog(
+                            helper.title(),
+                            helper.header(),
+                            helper.prompt(),
+                            helper.hand(),
+                            Card::getName,
+                            card -> null),
+                    player.getHand(),
+                    excess,
+                    true);
+            if (choice.isEmpty()) {
+                showStatus("You must discard down to " + GameEngine.MAX_HAND_SIZE + " cards before ending your turn", true);
+                return false;
             }
-            updatePlayerInfo();
-            updateCurrentPlayerDisplay();
-            updateAllPlayersProperties();
-            updateAllPlayersBankBar();
-            updatePlayerHand();
-            updatePlayerBank();
-            updatePileCounts();
-            updateButtonStates();
-        });
-    }
-
-    private void updatePlayerInfo() {
-        playerListRenderer.render(playersList, players,
-                gameEngine != null ? gameEngine.getCurrentPlayer() : null);
-    }
-
-    private void updateCurrentPlayerDisplay() {
-        if (currentPlayerLabel == null || currentPlayer == null || gameEngine == null) {
-            return;
+            gameEngine.discardFromHand(player, choice.get());
+            logMessage(player.getName() + " discarded " + choice.get().getName() + " (hand size limit)");
         }
-        String drawStatus = gameEngine.hasDrawnThisTurn() ? "Drew cards" : "Hasn't drawn";
-        currentPlayerLabel.setText("Current Player: " + currentPlayer.getName()
-                + " | " + drawStatus
-                + " | Remaining plays: " + gameEngine.getRemainingPlays() + "/"
-                + GameEngine.MAX_PLAYS_PER_TURN
-                + " | Time: " + turnSecondsRemaining + "s");
-    }
-    
-    private void updatePlayerHand() {
-        if (currentPlayer == null) {
-            if (playerHand != null) {
-                playerHand.getChildren().clear();
-            }
-            return;
-        }
-
-        boolean canSelect = isMyActionTurn() && gameEngine.hasDrawnThisTurn();
-        boolean canPlay = canSelect && canPlayFromView();
-        handRenderer.render(playerHand, playerHandScroll, getHandCardsForView(), selectedCard,
-                canSelect, canPlay, handSelectionListener);
-        if (selectedCard != null) {
-            handRenderer.applySelection(playerHand, selectedCard, (card, view) -> selectedCardView = view);
-        }
+        return true;
     }
 
     private void selectCard(Card card, CardView cardView) {
@@ -871,69 +513,12 @@ private void forceEndTurn() {
             return;
         }
         handRenderer.clearSelection(playerHand);
-
         selectedCard = card;
         selectedCardView = cardView;
         cardView.setSelected(true);
-
-        if (card instanceof WildpropertyCard wild) {
-            showStatus("Selected wild property [" + card.getName() + "]"
-                    + (wild.isBankable() ? " (can deposit to bank for " + wild.getBankValueM() + "M)" : " (cannot deposit to bank)")
-                    + ". Play card to choose color or deposit to bank", false);
-        } else if (card instanceof RentCard rentCard) {
-            showStatus("Selected rent card [" + card.getName() + "] (bank " + rentCard.getBankValueM()
-                    + "M). Play card to collect rent or deposit to bank", false);
-        } else if (card instanceof ActionCard actionCard) {
-            showStatus("Selected action card [" + card.getName() + "] (bank " + actionCard.getBankValueM()
-                    + "M). Play card to choose: use effect or deposit to bank", false);
-        } else {
-            showStatus("Selected: " + card.getName() + ". Double-click to play, or click Discard Selected Card to discard", false);
-        }
-        updateButtonStates();
-    }
-    
-    private void updatePlayerBank() {
-        if (playerBank == null || currentPlayer == null) {
-            return;
-        }
-        playerBank.getChildren().clear();
-        if (bankTotalLabel != null) {
-            bankTotalLabel.setText(currentPlayer.getBankTotalValue() + "M");
-        }
-        for (Card card : currentPlayer.getBank()) {
-            StackPane slot = CardView.wrapInSlot(card, false, CardView.COMPACT);
-            slot.getStyleClass().add("bank-card-slot");
-            playerBank.getChildren().add(slot);
-        }
-        if (playerBank.getChildren().isEmpty()) {
-            Label hint = new Label("(Money cards / action cards played, or rent collected, go into bank)");
-            hint.setStyle("-fx-text-fill: #476272; -fx-font-size: 12px; -fx-wrap-text: true;");
-            playerBank.getChildren().add(hint);
-        }
-    }
-
-    private void updatePlayerProperties() {
-        updateAllPlayersProperties();
-    }
-
-    private void updateAllPlayersProperties() {
-        double rowHeight = publicBoardRenderer.render(
-                publicBoardPanel, allPlayersPropertiesPanel, getPublicPlayerViews(),
-                getCurrentTurnSeat(), buildWildRecolorOptions());
-        if (rowHeight > 0) {
-            lastPropertyRowHeight = rowHeight;
-        }
-    }
-
-    private PublicBoardRenderOptions buildWildRecolorOptions() {
-        if (gameEngine == null || currentPlayer == null || gameEngine.isGameOver() || !gameEngine.hasDrawnThisTurn()) {
-            return PublicBoardRenderOptions.none();
-        }
-        return new PublicBoardRenderOptions(
-                this::onWildPropertyRecolorRequested,
-                gameEngine.getCurrentPlayerIndex(),
-                true,
-                currentPlayer);
+        showStatus(CardSelectionFeedback.messageFor(card), false);
+        boardRefresh.setSelectedCard(selectedCard);
+        boardRefresh.refreshButtons();
     }
 
     private void onWildPropertyRecolorRequested(WildpropertyCard wild, int ownerSeat) {
@@ -955,7 +540,6 @@ private void forceEndTurn() {
             showStatus("Wild property not found on your board", true);
             return;
         }
-
         List<Color> options = WildPropertyRules.getRecolorOptions(player, owned);
         if (options.isEmpty()) {
             showStatus("No alternate colors available (target set may be complete)", true);
@@ -982,29 +566,62 @@ private void forceEndTurn() {
         afterStateChange();
     }
 
-    private void updateAllPlayersBankBar() {
-        if (gameEngine == null) {
-            return;
-        }
-        bankBarRenderer.render(allPlayersBankBar, gameEngine.getPlayers(), getCurrentTurnSeat());
+    private void showGameOver(Player winner) {
+        turnTimer.stop();
+        Platform.runLater(() -> {
+            GameVictoryScreen.show(statusMessage, winner.getName(), () ->
+                    GameAlertDialogs.askPlayAgain(statusMessage, accept -> {
+                        if (accept) {
+                            initializeGame();
+                        }
+                    }));
+            gameStatusText.setText("Game Over - " + winner.getName() + " Wins!");
+            boardRefresh.disableActionButtons();
+        });
     }
 
-    private void updatePileCounts() {
-        if (gameStatusText == null || gameEngine == null || gameEngine.isGameOver()) {
-            return;
+    private PublicBoardRenderOptions buildWildRecolorOptions() {
+        Player current = currentPlayer();
+        if (gameEngine == null || current == null || gameEngine.isGameOver() || !gameEngine.hasDrawnThisTurn()) {
+            return PublicBoardRenderOptions.none();
         }
-        gameStatusText.setText("Draw pile: " + gameEngine.getDeck().size()
-                + "  |  Discard pile: " + gameEngine.getDiscardPile().size());
+        return new PublicBoardRenderOptions(
+                this::onWildPropertyRecolorRequested,
+                gameEngine.getCurrentPlayerIndex(),
+                true,
+                current);
     }
 
-    private void updateButtonStates() {
-        if (gameEngine == null) {
-            return;
-        }
-        boolean canDraw = isMyActionTurn() && gameEngine.canDrawCards();
-        drawCardBtn.setDisable(!canDraw);
-        discardCardBtn.setDisable(!isMyActionTurn() || !gameEngine.hasDrawnThisTurn() || selectedCard == null);
-        endTurnBtn.setDisable(!isMyActionTurn());
+    private void updateUi() {
+        Platform.runLater(() -> {
+            boardRefresh.setSelectedCard(selectedCard);
+            boardRefresh.refreshAll(playersList, layoutTracker::setLastRowHeight);
+        });
+    }
+
+    private void afterStateChange() {
+        updateUi();
+    }
+
+    private boolean isMyActionTurn() {
+        return gameEngine != null && !gameEngine.isGameOver();
+    }
+
+    private Player currentPlayer() {
+        return gameEngine != null ? gameEngine.getCurrentPlayer() : null;
+    }
+
+    private List<Card> getHandCardsForView() {
+        Player current = currentPlayer();
+        return current != null ? current.getHand() : List.of();
+    }
+
+    private List<PlayerBoardView> publicPlayerViews() {
+        return gameEngine != null ? PlayerBoardView.fromPlayers(players) : List.of();
+    }
+
+    private int currentTurnSeat() {
+        return gameEngine != null ? gameEngine.getCurrentPlayerIndex() : 0;
     }
 
     private void logMessage(String message) {
@@ -1014,70 +631,10 @@ private void forceEndTurn() {
     }
 
     private void showStatus(String message, boolean isError) {
-        if (isError) {
-            GameAlertDialogs.showError(statusMessage, message);
-            return;
-        }
-        Platform.runLater(() -> {
-            if (message.equals(lastStatusMessage) && isError == lastStatusError) {
-                return;
-            }
-            lastStatusMessage = message;
-            lastStatusError = isError;
-
-            if (statusFadeTransition != null) {
-                statusFadeTransition.stop();
-            }
-            statusMessage.setOpacity(0.4);
-            statusMessage.setText(message);
-            if (isError) {
-                statusMessage.setStyle("-fx-text-fill: #e74c3c; -fx-font-size: 14px;");
-            } else {
-                statusMessage.setStyle("-fx-text-fill: white; -fx-font-size: 14px;");
-            }
-            statusFadeTransition = new FadeTransition(Duration.millis(160), statusMessage);
-            statusFadeTransition.setFromValue(0.4);
-            statusFadeTransition.setToValue(1);
-            statusFadeTransition.setInterpolator(Interpolator.EASE_OUT);
-            statusFadeTransition.play();
-        });
-    }
-    
-        private void showGameOver(Player winner) {
-        stopTurnTimer();
-        Platform.runLater(() -> {
-            GameVictoryScreen.show(statusMessage, winner.getName(), () ->
-                    GameAlertDialogs.askPlayAgain(statusMessage, accept -> {
-                        if (accept) {
-                            initializeGame();
-                        }
-                    }));
-            gameStatusText.setText("Game Over - " + winner.getName() + " Wins!");
-            drawCardBtn.setDisable(true);
-            discardCardBtn.setDisable(true);
-            endTurnBtn.setDisable(true);
-        });
+        statusDisplay.show(message, isError);
     }
 
-    private void afterStateChange() {
-        updateUI();
-    }
-
-    private List<Card> getHandCardsForView() {
-        return currentPlayer != null ? currentPlayer.getHand() : List.of();
-    }
-
-    private boolean canPlayFromView() {
-        return gameEngine != null
-                && gameEngine.hasDrawnThisTurn()
-                && gameEngine.canPlayCard();
-    }
-
-    private List<PlayerBoardView> getPublicPlayerViews() {
-        return gameEngine != null ? PlayerBoardView.fromPlayers(players) : List.of();
-    }
-
-    private int getCurrentTurnSeat() {
-        return gameEngine != null ? gameEngine.getCurrentPlayerIndex() : 0;
+    private void unlockAchievement(String achievementId) {
+        Platform.runLater(() -> AchievementUi.unlockAndShow(achievementId, statusMessage));
     }
 }
