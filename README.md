@@ -65,7 +65,7 @@ On macOS or Linux:
 Latest local verification:
 
 ```text
-Tests run: 93
+Tests run: 131
 Failures: 0
 Errors: 0
 Skipped: 0
@@ -118,6 +118,9 @@ testing.
 - Win detection when a player completes three full property sets.
 - Achievement progress saved locally.
 - Victory screen and online rematch flow.
+- Emoji reactions, sound effects, scene-specific background music, and settings toggles.
+- Local and online turn timers with timeout skip handling.
+- Wild property recoloring on complete sets.
 
 ## Game Logic
 
@@ -292,7 +295,7 @@ and setters.
 Current result:
 
 ```text
-Tests run: 93
+Tests run: 131
 Failures: 0
 Errors: 0
 Skipped: 0
@@ -328,3 +331,5 @@ A recommended interview/demo flow:
 - Package the JavaFX application as an installable desktop build.
 - Add more in-game rule hints for first-time players.
 - Extend online deployment support beyond controlled local/demo sessions.
+
+Re-run `.\mvnw.cmd test` before submission and update the test counts below if the suite changes.

@@ -11,6 +11,7 @@ import java.util.List;
 
 /** Rules for property sets, stealing, and swapping. */
 public final class PropertyRules {
+    public static final int WINNING_SET_COUNT = 3;
     public static final int HOUSE_RENT_BONUS_M = 3;
     public static final int HOTEL_RENT_BONUS_M = 4;
     private static final String HOUSE_PREFIX = "House+";
@@ -125,6 +126,11 @@ public final class PropertyRules {
             }
         }
         return complete;
+    }
+
+    /** Returns true when the player owns three complete property sets. */
+    public static boolean hasWon(Player player) {
+        return countCompleteSets(player) >= WINNING_SET_COUNT;
     }
 
     /** Counts complete sets from a flat property card list (for board view snapshots). */

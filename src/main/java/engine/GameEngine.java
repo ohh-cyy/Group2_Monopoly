@@ -1,11 +1,10 @@
 package engine;
 
 import model.card.Card;
-import model.card.PropertyCard;
-import model.enums.Color;
 import model.player.Player;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class GameEngine {
     public static final int START_HAND_SIZE = 5;
@@ -147,36 +146,7 @@ public class GameEngine {
     }
 
     public boolean checkWin(Player player) {
-        Map<Color, Integer> colorCount = new HashMap<>();
-
-        for (PropertyCard card : player.getAllProperties()) {
-            Color color = card.getColor();
-            if (color != null) {
-                colorCount.put(color, colorCount.getOrDefault(color, 0) + 1);
-            }
-        }
-
-        int completeSets = 0;
-        for (Map.Entry<Color, Integer> entry : colorCount.entrySet()) {
-            if (entry.getValue() >= getRequiredCount(entry.getKey())) {
-                completeSets++;
-            }
-        }
-
-        return completeSets >= 3;
-    }
-
-    private int getRequiredCount(Color color) {
-        switch (color) {
-            case BROWN:
-            case DARK_BLUE:
-            case LIGHT_GREEN:
-                return 2;
-            case BLACK:
-                return 4;
-            default:
-                return 3;
-        }
+        return PropertyRules.hasWon(player);
     }
 
     public void setGameOver(boolean gameOver) {
