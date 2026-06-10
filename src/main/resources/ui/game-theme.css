@@ -1266,3 +1266,38 @@
     -fx-font-size: 14px;
     -fx-font-weight: 800;
 }
+
+/* Online-only full-board notification shown when the local player's turn begins. */
+.your-turn-overlay {
+    -fx-alignment: center;
+    -fx-background-color: radial-gradient(
+        center 50% 50%, radius 44%,
+        rgba(242, 201, 76, 0.16),
+        rgba(5, 35, 23, 0.22),
+        transparent);
+}
+
+.your-turn-card {
+    -fx-alignment: center;
+    -fx-padding: 25 54;
+    -fx-background-color: linear-gradient(to bottom, rgba(17, 87, 58, 0.98), rgba(6, 49, 31, 0.98));
+    -fx-background-radius: 24;
+    -fx-border-color: #f2c94c;
+    -fx-border-width: 3;
+    -fx-border-radius: 24;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.55), 30, 0.28, 0, 10);
+}
+
+.your-turn-title {
+    -fx-font-family: "Arial Black";
+    -fx-font-size: 42px;
+    -fx-font-weight: 900;
+    -fx-text-fill: #fff0a6;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.42), 6, 0.25, 0, 2);
+}
+
+.your-turn-subtitle {
+    -fx-font-size: 16px;
+    -fx-font-weight: 800;
+    -fx-text-fill: #f8f1d4;
+}

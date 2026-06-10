@@ -37,6 +37,7 @@ import ui.GameAlertDialogs;
 import ui.GameAudio;
 import ui.GameLogPane;
 import ui.StatusMessageDisplay;
+import ui.YourTurnOverlay;
 import ui.layout.GameBoardChrome;
 import ui.layout.PropertyBoardLayoutTracker;
 import ui.render.BankBarRenderer;
@@ -98,6 +99,8 @@ public class NetworkGameController {
     /** Emoji reaction picker and floating overlay target. */
     @FXML private FlowPane emojiBar;
     @FXML private Pane reactionOverlay;
+    /** Mouse-transparent full-board layer containing the local Your Turn notification. */
+    @FXML private StackPane yourTurnOverlay;
 
     /** Renders and tracks hand card selection state. */
     private HandRenderer handRenderer;
@@ -140,6 +143,12 @@ public class NetworkGameController {
     private Image avatarImage;
     /** Floating emoji reactions over the public property board. */
     private EmojiReactionOverlay emojiReactionOverlay;
+    /** Full-board notification shown when the authoritative turn reaches this seat. */
+    private YourTurnOverlay yourTurnNotification;
+    /** Last authoritative turn seat, used to suppress duplicate notifications on sync. */
+    private int lastObservedTurnSeat = -1;
+    /** Allows a rematch starting on the same seat to trigger a fresh notification. */
+    private boolean lastObservedGameOver;
 
     /**
      * FXML lifecycle hook: builds services and board refresh without connecting to a server.
@@ -153,6 +162,7 @@ public class NetworkGameController {
         onlineCardPlay = new OnlineCardPlayService(dialogs, this::showStatus);
         promptResponder = new NetworkPromptResponder(dialogs, statusDisplay, this::showStatus);
         emojiReactionOverlay = new EmojiReactionOverlay(reactionOverlay, allPlayersPropertiesPanel);
+        yourTurnNotification = new YourTurnOverlay(yourTurnOverlay);
         setupEmojiBar();
 
         boardChrome = new GameBoardChrome(
@@ -336,6 +346,7 @@ public class NetworkGameController {
             return;
         }
         matchCoordinator.normalize(newState);
+        showYourTurnIfNeeded(newState);
         this.state = newState;
         myHand = CardMapper.fromDtos(newState.myHand);
         myBank = CardMapper.fromDtos(newState.myBank);
@@ -352,6 +363,22 @@ public class NetworkGameController {
                 turnTimerDisplay.onStateUpdated();
             }
         }
+    }
+
+    /**
+     * Displays the local turn notification only on a meaningful turn boundary.
+     * Normal STATE messages arrive after draws, plays, payments, and timer updates, so comparing
+     * seats prevents those routine synchronizations from replaying the overlay.
+     */
+    private void showYourTurnIfNeeded(GameStateDto newState) {
+        boolean freshGame = lastObservedGameOver && !newState.gameOver;
+        boolean turnChanged = newState.currentPlayerIndex != lastObservedTurnSeat;
+        boolean localTurn = !newState.gameOver && newState.currentPlayerIndex == localSeat;
+        if (localTurn && (turnChanged || freshGame)) {
+            yourTurnNotification.show();
+        }
+        lastObservedTurnSeat = newState.currentPlayerIndex;
+        lastObservedGameOver = newState.gameOver;
     }
 
     private void onPlay() {

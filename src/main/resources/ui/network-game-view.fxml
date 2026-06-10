@@ -148,6 +148,24 @@
                   maxWidth="Infinity"
                   maxHeight="Infinity"/>
 
+            <!-- Non-blocking local notification shown only when the authoritative turn reaches this client. -->
+            <StackPane fx:id="yourTurnOverlay"
+                       visible="false"
+                       mouseTransparent="true"
+                       maxWidth="Infinity"
+                       maxHeight="Infinity"
+                       styleClass="your-turn-overlay">
+                <VBox alignment="CENTER"
+                      spacing="7"
+                      maxWidth="430"
+                      maxHeight="170"
+                      styleClass="your-turn-card">
+                    <Label text="YOUR TURN" styleClass="your-turn-title"/>
+                    <Label text="Draw 2 cards and make your move"
+                           styleClass="your-turn-subtitle"/>
+                </VBox>
+            </StackPane>
+
             <Button fx:id="leftSidebarHandle"
                     text="Players &#8250;"
                     styleClass="drawer-handle drawer-handle-left"
