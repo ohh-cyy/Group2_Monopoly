@@ -727,6 +727,15 @@
     -fx-background-color: transparent;
 }
 
+.game-dialog-play-again > *.button-bar > *.container {
+    -fx-alignment: center;
+    -fx-spacing: 14;
+}
+
+.game-dialog-play-again > *.button-bar > *.container > .button {
+    -fx-min-width: 128px;
+}
+
 .game-dialog .button {
     -fx-background-radius: 999;
     -fx-padding: 8 16;

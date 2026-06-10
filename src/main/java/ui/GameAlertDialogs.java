@@ -69,11 +69,12 @@ public final class GameAlertDialogs {
     }
 
     private static boolean showPlayAgainDialog(Node owner, String message) {
-        ButtonType yes = new ButtonType("Play Again");
-        ButtonType no = new ButtonType("End Game", ButtonBar.ButtonData.CANCEL_CLOSE);
+        ButtonType yes = new ButtonType("Play Again", ButtonBar.ButtonData.YES);
+        ButtonType no = new ButtonType("End Game", ButtonBar.ButtonData.NO);
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Play Again?");
-        dialog.getDialogPane().getButtonTypes().setAll(yes, no);
+        DialogPane pane = dialog.getDialogPane();
+        pane.getButtonTypes().setAll(yes, no);
         dialog.setResultConverter(button -> button);
 
         VBox body = new VBox(10);
@@ -85,8 +86,15 @@ public final class GameAlertDialogs {
         contentLabel.setWrapText(true);
         contentLabel.getStyleClass().add("dialog-content-label");
         body.getChildren().addAll(header, contentLabel);
-        dialog.getDialogPane().setContent(body);
+        pane.setContent(body);
         styleDialog(dialog, owner, false);
+        pane.getStyleClass().add("game-dialog-play-again");
+        dialog.setOnShown(event -> {
+            ButtonBar buttonBar = (ButtonBar) pane.lookup(".button-bar");
+            if (buttonBar != null) {
+                buttonBar.setButtonOrder(ButtonBar.BUTTON_ORDER_NONE);
+            }
+        });
 
         Optional<ButtonType> result = dialog.showAndWait();
         return result.isPresent() && result.get() == yes;
