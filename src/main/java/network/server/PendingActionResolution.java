@@ -307,6 +307,10 @@ public final class PendingActionResolution {
         if (card instanceof DebtCollector) {
             appendLog(attacker.getName() + " collected " + totalCollected + "M from Debt Collector");
             finish(totalCollected > 0);
+            return;
+        }
+        if (card instanceof SlyDeal || card instanceof ForcedDeal || card instanceof DealBreaker) {
+            finish(true);
         }
     }
 

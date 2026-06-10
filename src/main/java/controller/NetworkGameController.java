@@ -271,6 +271,26 @@ public class NetworkGameController {
         });
     }
 
+    /** Pauses the turn countdown while the pause dialog is open. */
+    public void pauseGame() {
+        if (client != null) {
+            client.pauseGame();
+        }
+        if (turnTimerDisplay != null) {
+            turnTimerDisplay.pause();
+        }
+    }
+
+    /** Resumes the turn countdown after closing the pause dialog. */
+    public void resumeGame() {
+        if (client != null) {
+            client.resumeGame();
+        }
+        if (turnTimerDisplay != null) {
+            turnTimerDisplay.resume();
+        }
+    }
+
     private void setupButtons() {
         if (drawCardBtn != null) drawCardBtn.setOnAction(e -> onDraw());
         if (discardCardBtn != null) discardCardBtn.setOnAction(e -> onDiscard());

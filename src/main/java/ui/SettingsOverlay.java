@@ -46,7 +46,7 @@ public final class SettingsOverlay {
     /** Wraps {@code content} with a pause button for in-game screens. */
     public static StackPane wrapGame(Parent content, Stage stage) {
         return wrapGame(content, stage, () -> {
-        });
+        }, null, null);
     }
 
     /**
@@ -54,8 +54,17 @@ public final class SettingsOverlay {
      * before navigating back to the lobby.
      */
     public static StackPane wrapGame(Parent content, Stage stage, Runnable beforeReturnToLobby) {
+        return wrapGame(content, stage, beforeReturnToLobby, null, null);
+    }
+
+    /**
+     * Wraps {@code content} with a pause button and optional pause/resume hooks
+     * for freezing the turn timer while the dialog is open.
+     */
+    public static StackPane wrapGame(Parent content, Stage stage, Runnable beforeReturnToLobby,
+                                     Runnable onPause, Runnable onResume) {
         StackPane root = new StackPane(content);
-        addPauseButton(root, stage, beforeReturnToLobby);
+        addPauseButton(root, stage, beforeReturnToLobby, onPause, onResume);
         return root;
     }
 
@@ -72,7 +81,13 @@ public final class SettingsOverlay {
 
     /** Creates an in-game scene with pause overlay and a lobby-return hook. */
     public static Scene createGameScene(Parent content, Stage stage, Runnable beforeReturnToLobby) {
-        return createScene(content, stage, true, beforeReturnToLobby);
+        return createGameScene(content, stage, beforeReturnToLobby, null, null);
+    }
+
+    /** Creates an in-game scene with pause/resume hooks for the turn timer. */
+    public static Scene createGameScene(Parent content, Stage stage, Runnable beforeReturnToLobby,
+                                        Runnable onPause, Runnable onResume) {
+        return createScene(content, stage, true, beforeReturnToLobby, onPause, onResume);
     }
 
     /** Adds a settings button to an existing {@link StackPane} root. */
@@ -107,7 +122,8 @@ public final class SettingsOverlay {
         GameController controller = loader.getController();
         controller.startLocalGame(playerCount);
         stage.setTitle("Monopoly Deal - Local");
-        stage.setScene(createGameScene(loader.getRoot(), stage));
+        stage.setScene(createGameScene(loader.getRoot(), stage, () -> {
+        }, controller::pauseGame, controller::resumeGame));
         GameSettings.useGameMusic();
         return controller;
     }
@@ -133,7 +149,8 @@ public final class SettingsOverlay {
             throw new IllegalStateException("NetworkGameController not loaded");
         }
         stage.setTitle("Monopoly Deal - Online");
-        stage.setScene(createGameScene(root, stage, beforeReturnToLobby));
+        stage.setScene(createGameScene(root, stage, beforeReturnToLobby,
+                controller::pauseGame, controller::resumeGame));
         GameSettings.useGameMusic();
         stage.show();
         controller.startOnlineGame(client, localSeat, initialState);
@@ -148,11 +165,16 @@ public final class SettingsOverlay {
             height = Math.max(stage.getMinHeight(), stage.getScene().getHeight());
         }
         return createScene(content, stage, gameScreen, () -> {
-        });
+        }, null, null);
     }
 
     private static Scene createScene(Parent content, Stage stage, boolean gameScreen,
                                      Runnable beforeReturnToLobby) {
+        return createScene(content, stage, gameScreen, beforeReturnToLobby, null, null);
+    }
+
+    private static Scene createScene(Parent content, Stage stage, boolean gameScreen,
+                                     Runnable beforeReturnToLobby, Runnable onPause, Runnable onResume) {
         double width = DEFAULT_WIDTH;
         double height = DEFAULT_HEIGHT;
         if (stage != null && stage.getScene() != null) {
@@ -160,7 +182,7 @@ public final class SettingsOverlay {
             height = Math.max(stage.getMinHeight(), stage.getScene().getHeight());
         }
         Parent root = gameScreen
-                ? wrapGame(content, stage, beforeReturnToLobby)
+                ? wrapGame(content, stage, beforeReturnToLobby, onPause, onResume)
                 : wrap(content, stage);
         return new Scene(root, width, height);
     }
@@ -174,11 +196,13 @@ public final class SettingsOverlay {
         root.getChildren().add(settingsButton);
     }
 
-    private static void addPauseButton(StackPane root, Stage stage, Runnable beforeReturnToLobby) {
+    private static void addPauseButton(StackPane root, Stage stage, Runnable beforeReturnToLobby,
+                                       Runnable onPause, Runnable onResume) {
         Button pauseButton = new Button("\u23F8");
         pauseButton.getStyleClass().add("settings-button");
         pauseButton.getStyleClass().add("pause-button");
-        pauseButton.setOnAction(event -> showPauseDialog(pauseButton, stage, beforeReturnToLobby));
+        pauseButton.setOnAction(event -> showPauseDialog(
+                pauseButton, stage, beforeReturnToLobby, onPause, onResume));
         StackPane.setAlignment(pauseButton, Pos.TOP_RIGHT);
         StackPane.setMargin(pauseButton, new Insets(18, 22, 0, 0));
         root.getChildren().add(pauseButton);
@@ -195,7 +219,8 @@ public final class SettingsOverlay {
         dialog.showAndWait();
     }
 
-    private static void showPauseDialog(Button owner, Stage stage, Runnable beforeReturnToLobby) {
+    private static void showPauseDialog(Button owner, Stage stage, Runnable beforeReturnToLobby,
+                                        Runnable onPause, Runnable onResume) {
         Dialog<ButtonType> dialog = createDialog("Paused", owner, stage);
         ButtonType lobby = new ButtonType("Return to Lobby", ButtonBar.ButtonData.OTHER);
         ButtonType resume = new ButtonType("Resume", ButtonBar.ButtonData.CANCEL_CLOSE);
@@ -205,14 +230,20 @@ public final class SettingsOverlay {
                 "Resume the match, adjust playback, or return to the lobby."));
         styleDialog(dialog);
 
-        dialog.showAndWait().ifPresent(result -> {
-            if (result == lobby && stage != null) {
-                if (beforeReturnToLobby != null) {
-                    beforeReturnToLobby.run();
-                }
-                showLobby(stage);
+        if (onPause != null) {
+            onPause.run();
+        }
+        var result = dialog.showAndWait();
+        if (result.isPresent() && result.get() == lobby && stage != null) {
+            if (beforeReturnToLobby != null) {
+                beforeReturnToLobby.run();
             }
-        });
+            showLobby(stage);
+            return;
+        }
+        if (onResume != null) {
+            onResume.run();
+        }
     }
 
     private static Dialog<ButtonType> createDialog(String title, Button owner, Stage stage) {

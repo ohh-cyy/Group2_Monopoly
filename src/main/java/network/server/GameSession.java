@@ -83,6 +83,8 @@ public class GameSession {
             case MessageTypes.RESPOND -> actions.handleRespond(this, seat, message);
             case MessageTypes.REMATCH_VOTE -> handleRematchVote(seat, message);
             case MessageTypes.SEND_EMOJI -> actions.handleEmoji(this, seat, message);
+            case MessageTypes.PAUSE_GAME -> handlePauseGame();
+            case MessageTypes.RESUME_GAME -> handleResumeGame();
             default -> error("Unknown command: " + message.type);
         };
     }
@@ -99,7 +101,7 @@ public class GameSession {
         msg.type = MessageTypes.PROMPT;
         msg.prompt = prompt;
         msg.state = GameStateMapper.buildForSeat(engine, seat, logLines);
-        msg.state.turnDeadlineEpochMillis = turnClock.deadlineEpochMillis();
+        enrichTurnClockState(msg.state);
         rematch.enrichState(msg.state, seat, playerCount);
         seats[seat].send(msg);
         broadcastStateExceptPrompt(seat);
@@ -168,10 +170,38 @@ public class GameSession {
         msg.type = MessageTypes.STATE;
         if (engine != null) {
             msg.state = GameStateMapper.buildForSeat(engine, seat, logLines);
-            msg.state.turnDeadlineEpochMillis = turnClock.deadlineEpochMillis();
+            enrichTurnClockState(msg.state);
             rematch.enrichState(msg.state, seat, playerCount);
         }
         return msg;
+    }
+
+    private ServerMessage handlePauseGame() {
+        if (engine == null || engine.isGameOver()) {
+            return ok("Game paused");
+        }
+        turnClock.pause();
+        broadcastState();
+        return ok("Game paused");
+    }
+
+    private ServerMessage handleResumeGame() {
+        if (engine == null || engine.isGameOver()) {
+            return ok("Game resumed");
+        }
+        turnClock.resume();
+        broadcastState();
+        return ok("Game resumed");
+    }
+
+    private void enrichTurnClockState(network.protocol.GameStateDto state) {
+        state.gamePaused = turnClock.isPaused();
+        if (state.gamePaused) {
+            state.pausedTurnSecondsRemaining = turnClock.frozenSecondsRemaining();
+            state.turnDeadlineEpochMillis = 0;
+        } else {
+            state.turnDeadlineEpochMillis = turnClock.deadlineEpochMillis();
+        }
     }
 
     private ServerMessage handleRematchVote(int seat, ClientMessage message) {

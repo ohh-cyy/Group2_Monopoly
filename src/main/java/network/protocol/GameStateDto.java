@@ -47,6 +47,12 @@ public class GameStateDto {
     /** Epoch millis when the current turn ends; 0 if no timer is active. */
     public long turnDeadlineEpochMillis;
 
+    /** True while the turn timer is frozen for all players. */
+    public boolean gamePaused;
+
+    /** Seconds left when {@link #gamePaused} is true. */
+    public int pausedTurnSecondsRemaining;
+
     /** Full session log lines, newest appended at the end. */
     public List<String> logLines = new ArrayList<>();
 

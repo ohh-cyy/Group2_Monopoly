@@ -210,7 +210,9 @@ public final class NetworkBoardRefreshService implements GameBoardRefreshService
         if (state.currentPlayerIndex >= 0 && state.currentPlayerIndex < state.players.size()) {
             currentName = state.players.get(state.currentPlayerIndex).name;
         }
-        int turnSeconds = TurnDeadlineClock.secondsRemaining(state.turnDeadlineEpochMillis);
+        int turnSeconds = state.gamePaused
+                ? state.pausedTurnSecondsRemaining
+                : TurnDeadlineClock.secondsRemaining(state.turnDeadlineEpochMillis);
         turnStatusRenderer.renderOnline(
                 currentPlayerLabel,
                 gameStatusText,

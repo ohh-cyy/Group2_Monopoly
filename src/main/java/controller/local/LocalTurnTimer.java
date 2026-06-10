@@ -75,6 +75,20 @@ public final class LocalTurnTimer {
         }
     }
 
+    /** Pauses the countdown while the game is paused; no-op if not running. */
+    public void pause() {
+        if (timeline != null) {
+            timeline.pause();
+        }
+    }
+
+    /** Resumes a paused countdown; no-op if not running. */
+    public void resume() {
+        if (timeline != null) {
+            timeline.play();
+        }
+    }
+
     private void tick() {
         GameEngine engine = host.engine();
         if (engine == null || engine.isGameOver()) {

@@ -19,9 +19,24 @@ final class SessionTurnClock {
 
     private ScheduledFuture<?> timeoutTask;
     private long deadlineEpochMillis;
+    private boolean paused;
+    private long frozenRemainingMillis;
 
     SessionTurnClock(Runnable onTimeout) {
         this.onTimeout = onTimeout;
+    }
+
+    /** True while the turn timer is paused and not counting down. */
+    boolean isPaused() {
+        return paused;
+    }
+
+    /** Whole seconds left when paused; {@code 0} when not paused or expired. */
+    int frozenSecondsRemaining() {
+        if (!paused) {
+            return 0;
+        }
+        return (int) Math.ceil(frozenRemainingMillis / 1000.0);
     }
 
     /** Epoch millis when the active turn ends; 0 when no timer is running. */
@@ -36,12 +51,41 @@ final class SessionTurnClock {
         timeoutTask = executor.schedule(onTimeout, turnTimeSeconds, TimeUnit.SECONDS);
     }
 
+    /** Freezes the countdown until {@link #resume()} is called. */
+    void pause() {
+        if (paused || timeoutTask == null) {
+            return;
+        }
+        frozenRemainingMillis = Math.max(0, deadlineEpochMillis - System.currentTimeMillis());
+        timeoutTask.cancel(false);
+        timeoutTask = null;
+        paused = true;
+    }
+
+    /** Restarts the countdown from the remaining time saved by {@link #pause()}. */
+    void resume() {
+        if (!paused) {
+            return;
+        }
+        paused = false;
+        if (frozenRemainingMillis <= 0) {
+            deadlineEpochMillis = 0;
+            onTimeout.run();
+            return;
+        }
+        deadlineEpochMillis = System.currentTimeMillis() + frozenRemainingMillis;
+        timeoutTask = executor.schedule(onTimeout, frozenRemainingMillis, TimeUnit.MILLISECONDS);
+        frozenRemainingMillis = 0;
+    }
+
     void cancel() {
         if (timeoutTask != null) {
             timeoutTask.cancel(false);
             timeoutTask = null;
         }
         deadlineEpochMillis = 0;
+        paused = false;
+        frozenRemainingMillis = 0;
     }
 
     void shutdown() {

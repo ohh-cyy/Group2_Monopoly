@@ -163,6 +163,20 @@ public class NetworkClient implements AutoCloseable {
         send(msg);
     }
 
+    /** PAUSE_GAME: freeze the shared turn timer for all players. */
+    public void pauseGame() {
+        ClientMessage msg = new ClientMessage();
+        msg.type = MessageTypes.PAUSE_GAME;
+        send(msg);
+    }
+
+    /** RESUME_GAME: resume the shared turn timer after a pause. */
+    public void resumeGame() {
+        ClientMessage msg = new ClientMessage();
+        msg.type = MessageTypes.RESUME_GAME;
+        send(msg);
+    }
+
     /** Stops the reader thread and closes the underlying socket. */
     @Override
     public void close() {

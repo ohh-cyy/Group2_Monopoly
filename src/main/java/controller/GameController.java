@@ -276,6 +276,20 @@ public class GameController {
         initializeGame();
     }
 
+    /** Pauses the turn countdown while the pause dialog is open. */
+    public void pauseGame() {
+        if (turnTimer != null) {
+            turnTimer.pause();
+        }
+    }
+
+    /** Resumes the turn countdown after closing the pause dialog. */
+    public void resumeGame() {
+        if (turnTimer != null) {
+            turnTimer.resume();
+        }
+    }
+
     private void setupButtonActions() {
         if (drawCardBtn != null) {
             drawCardBtn.setOnAction(e -> onDrawCardsClick());

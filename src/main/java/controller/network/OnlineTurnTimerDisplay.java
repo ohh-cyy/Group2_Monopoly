@@ -63,9 +63,23 @@ public final class OnlineTurnTimerDisplay {
         }
     }
 
+    /** Pauses the display ticker while the game is paused. */
+    public void pause() {
+        if (timeline != null) {
+            timeline.pause();
+        }
+    }
+
+    /** Resumes a paused display ticker. */
+    public void resume() {
+        if (timeline != null) {
+            timeline.play();
+        }
+    }
+
     private void ensureRunning() {
         GameStateDto state = host.state();
-        if (state == null || state.gameOver || state.turnDeadlineEpochMillis <= 0) {
+        if (state == null || state.gameOver || (!state.gamePaused && state.turnDeadlineEpochMillis <= 0)) {
             stop();
             return;
         }
@@ -79,7 +93,14 @@ public final class OnlineTurnTimerDisplay {
     private void tick() {
         host.refreshTimerLabel();
         GameStateDto state = host.state();
-        if (state == null || state.gameOver || state.turnDeadlineEpochMillis <= 0) {
+        if (state == null || state.gameOver) {
+            stop();
+            return;
+        }
+        if (state.gamePaused) {
+            return;
+        }
+        if (state.turnDeadlineEpochMillis <= 0) {
             stop();
             return;
         }

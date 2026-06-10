@@ -34,6 +34,10 @@ public final class MessageTypes {
     public static final String REMATCH_VOTE = "REMATCH_VOTE";
     /** Broadcast an emoji reaction to all players. */
     public static final String SEND_EMOJI = "SEND_EMOJI";
+    /** Pause the shared turn timer for all players. */
+    public static final String PAUSE_GAME = "PAUSE_GAME";
+    /** Resume the shared turn timer after a pause. */
+    public static final String RESUME_GAME = "RESUME_GAME";
 
     // --- Server -> client responses and events ---
 
