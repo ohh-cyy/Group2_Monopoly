@@ -23,6 +23,7 @@ public final class PendingActionResolution {
     public static final String PROMPT_JUST_SAY_NO = "JUST_SAY_NO";
     public static final String PROMPT_PAYMENT = "PAYMENT";
 
+    /** Current step when resolving multi-player action cards. */
     private enum Phase {
         JUST_SAY_NO,
         PAYMENT,
@@ -38,6 +39,7 @@ public final class PendingActionResolution {
     private final ServerPlayHandler playHandler = new ServerPlayHandler();
 
     private Phase phase = Phase.JUST_SAY_NO;
+    /** Opponents that still need JSN/payment processing for this action. */
     private final List<Integer> opponentSeats = new ArrayList<>();
     private int opponentIndex;
     private int currentPayerSeat = -1;
@@ -45,11 +47,13 @@ public final class PendingActionResolution {
     private int paymentPaid;
     private int totalCollected;
 
+    // Just Say No chain state (players may counter each other's JSN cards).
     private int jsnResponderSeat = -1;
     private int jsnOtherSeat = -1;
     private int jsnDepth;
     private boolean jsnBlocked;
 
+    /** Id of the prompt awaiting a matching RESPOND. */
     private String currentPromptId;
     private Color chargeColor;
     private int rentPerPlayer;
@@ -65,6 +69,7 @@ public final class PendingActionResolution {
         this.logLines = logLines;
     }
 
+    /** Factory for a rent resolution where rent is already doubled (Double the Rent combo). */
     public static PendingActionResolution rentWithDouble(GameSession session, GameEngine engine, int attackerSeat,
                                                         RentCard rentCard, ClientMessage playMessage,
                                                         List<String> logLines) {
@@ -74,6 +79,7 @@ public final class PendingActionResolution {
         return resolution;
     }
 
+    /** True when playing this card must pause for remote PROMPT/RESPOND interaction. */
     public static boolean requiresInteraction(ActionCard card, ClientMessage message) {
         if (card instanceof RentCard || card instanceof MyBirthday) {
             return true;
@@ -85,6 +91,7 @@ public final class PendingActionResolution {
         return false;
     }
 
+    /** Starts the state machine and sends the first prompt to the appropriate seat. */
     public void begin() {
         Player attacker = engine.getPlayers().get(attackerSeat);
         if (card instanceof RentCard rentCard) {
@@ -148,6 +155,7 @@ public final class PendingActionResolution {
         }
     }
 
+    /** Processes a client RESPOND; returns false if prompt id or seat does not match. */
     public boolean handleResponse(int seat, ClientMessage response) {
         if (response == null || response.promptId == null || !response.promptId.equals(currentPromptId)) {
             return false;
@@ -164,6 +172,7 @@ public final class PendingActionResolution {
         return false;
     }
 
+    /** Toggles block state or extends the JSN counter-chain, then re-prompts or continues. */
     private boolean handleJustSayNoResponse(ClientMessage response) {
         if (response.useJustSayNo == null) {
             return false;
@@ -192,6 +201,7 @@ public final class PendingActionResolution {
         return true;
     }
 
+    /** Transfers one chosen asset; repeats until paid in full or payer has nothing left. */
     private boolean handlePaymentResponse(ClientMessage response) {
         if (response.paymentCardId == null || response.paymentCardId.isBlank()) {
             return false;
@@ -215,6 +225,7 @@ public final class PendingActionResolution {
         return true;
     }
 
+    /** Begins JSN/payment processing for the opponent at {@link #opponentIndex}. */
     private void startCurrentOpponent() {
         if (opponentIndex >= opponentSeats.size()) {
             completeActionEffect();
@@ -242,6 +253,7 @@ public final class PendingActionResolution {
         finishJustSayNoChain();
     }
 
+    /** After JSN resolves: skip opponent, collect payment, or apply steal/swap effect. */
     private void finishJustSayNoChain() {
         if (jsnBlocked) {
             appendLog(playerName(currentPayerSeat) + " blocked " + actionLabel() + " with Just Say No");
@@ -397,6 +409,7 @@ public final class PendingActionResolution {
                 java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")) + "] " + line);
     }
 
+    /** Ends the state machine and lets {@link GameSession} record plays and broadcast. */
     private void finish(boolean success) {
         phase = Phase.DONE;
         session.onActionResolutionComplete(success);

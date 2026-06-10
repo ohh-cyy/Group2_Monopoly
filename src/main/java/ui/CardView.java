@@ -22,11 +22,16 @@ import java.util.stream.Collectors;
 
 /**
  * Shared card UI. Cards stay small by default and enlarge on hover.
+ * <p>
+ * Supports hand, public-board, and compact sizing via {@link CardMetrics}.
  */
 public class CardView extends StackPane {
 
+    /** Default metrics for cards in the player's hand. */
     public static final CardMetrics HAND = new CardMetrics(82, 116, 126, 176);
+    /** Default metrics for cards on the public property board. */
     public static final CardMetrics PUBLIC = new CardMetrics(82, 116, 132, 184);
+    /** Compact metrics for cards in the personal bank row. */
     public static final CardMetrics COMPACT = new CardMetrics(56, 78, 92, 128);
 
     private final Card card;
@@ -37,10 +42,12 @@ public class CardView extends StackPane {
     private boolean activating;
     private Timeline visualTransition;
 
+    /** Creates a card view using default hand metrics. */
     public CardView(Card card, boolean clickable) {
         this(card, clickable, HAND);
     }
 
+    /** Creates a card view with the given interaction flag and size metrics. */
     public CardView(Card card, boolean clickable, CardMetrics metrics) {
         this.card = card;
         this.clickable = clickable;
@@ -50,10 +57,12 @@ public class CardView extends StackPane {
         initializeCard();
     }
 
+    /** Wraps a card in a fixed-size slot with hover handling. */
     public static StackPane wrapInSlot(Card card, boolean clickable) {
         return wrapInSlot(card, clickable, HAND);
     }
 
+    /** Wraps a card in a fixed-size slot using the given metrics. */
     public static StackPane wrapInSlot(Card card, boolean clickable, CardMetrics metrics) {
         StackPane slot = new StackPane();
         slot.setMinSize(metrics.slotW(), metrics.slotH());
@@ -73,6 +82,7 @@ public class CardView extends StackPane {
         return slot;
     }
 
+    /** Returns the {@link CardView} inside a slot created by {@link #wrapInSlot}. */
     public static CardView getCardView(StackPane slot) {
         if (slot == null || slot.getChildren().isEmpty()) {
             return null;
@@ -120,6 +130,7 @@ public class CardView extends StackPane {
         setOnMouseExited(e -> setHovered(false));
     }
 
+    /** Updates hover enlargement; ignored while an activation animation is running. */
     public void setHovered(boolean hovered) {
         this.hovered = hovered;
         if (activating) {
@@ -169,6 +180,7 @@ public class CardView extends StackPane {
         updateCardStyle();
     }
 
+    /** Plays a brief press animation and runs {@code onFinished} when done. */
     public void playActivationAnimation(Runnable onFinished) {
         if (activating) {
             return;
@@ -376,6 +388,7 @@ public class CardView extends StackPane {
         };
     }
 
+    /** Marks the card as selected and updates border styling. */
     public void setSelected(boolean selected) {
         this.selected = selected;
         if (activating) {
@@ -385,16 +398,19 @@ public class CardView extends StackPane {
         animateVisualState();
     }
 
+    /** Returns whether this card is currently selected. */
     public boolean isSelected() {
         return selected;
     }
 
+    /** Returns the underlying domain card. */
     public Card getCard() {
         return card;
     }
 
     /** Card size settings for hand, bank, and public property areas. */
     public record CardMetrics(double normalW, double normalH, double slotW, double slotH) {
+        /** Creates metrics with normal and slot (hover) dimensions. */
         public CardMetrics(double normalW, double normalH, double slotW, double slotH) {
             this.normalW = normalW;
             this.normalH = normalH;
@@ -402,14 +418,17 @@ public class CardView extends StackPane {
             this.slotH = slotH;
         }
 
+        /** Width used when the card is enlarged on hover or selection. */
         public double hoverW() {
             return slotW;
         }
 
+        /** Height used when the card is enlarged on hover or selection. */
         public double hoverH() {
             return slotH;
         }
 
+        /** Returns a proportionally scaled copy of these metrics. */
         public CardMetrics scaled(double factor) {
             if (factor >= 0.999) {
                 return this;

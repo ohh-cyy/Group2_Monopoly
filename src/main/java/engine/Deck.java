@@ -8,13 +8,20 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
 
+/**
+ * Shuffled draw pile backed by a stack ({@link ArrayDeque}).
+ * Cards are drawn from the top; empty draws require reshuffling the discard pile.
+ */
 public class Deck {
+    /** Draw stack; top of stack is the next card dealt. */
     private final Deque<Card> cards = new ArrayDeque<>();
 
+    /** Builds a deck from {@code cardList} and shuffles before dealing. */
     public Deck(List<Card> cardList) {
         shuffleAndAdd(cardList);
     }
 
+    /** Removes and returns the top card; throws if the deck is empty. */
     public Card draw() {
         if (cards.isEmpty()) {
             throw new RuntimeException("Deck is empty! Need to reshuffle from discard pile.");
@@ -22,6 +29,7 @@ public class Deck {
         return cards.pop();
     }
 
+    /** Shuffles {@code cardsToShuffle} and appends them to the draw pile. */
     public void reshuffle(List<Card> cardsToShuffle) {
         if (cardsToShuffle != null && !cardsToShuffle.isEmpty()) {
             shuffleAndAdd(cardsToShuffle);
@@ -34,10 +42,12 @@ public class Deck {
         cards.addAll(shuffled);
     }
 
+    /** True when no cards remain to draw. */
     public boolean isEmpty() {
         return cards.isEmpty();
     }
 
+    /** Number of cards still in the draw pile. */
     public int size() {
         return cards.size();
     }

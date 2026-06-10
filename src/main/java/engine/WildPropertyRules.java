@@ -8,15 +8,20 @@ import model.player.Player;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Rules for recoloring wild property cards already on the board. */
+/**
+ * Rules for recoloring wild property cards already on the board.
+ * Validates target colors against set capacity and rolls back failed moves.
+ */
 public final class WildPropertyRules {
     private WildPropertyRules() {
     }
 
+    /** True when the wild card can switch between at least two colors. */
     public static boolean isRecolorable(WildpropertyCard wild) {
         return wild != null && wild.getAvailableColors().size() > 1;
     }
 
+    /** Finds the live board copy of {@code wild} owned by {@code player}, matched by instance id. */
     public static WildpropertyCard findOwnedWild(Player player, WildpropertyCard wild) {
         if (player == null || wild == null) {
             return null;
@@ -30,6 +35,10 @@ public final class WildPropertyRules {
         return null;
     }
 
+    /**
+     * Returns colors the wild may switch to without completing an already-full set.
+     * Excludes the current color and colors where no billable slot remains.
+     */
     public static List<Color> getRecolorOptions(Player player, WildpropertyCard wild) {
         WildpropertyCard owned = findOwnedWild(player, wild);
         if (owned == null || !isRecolorable(owned)) {
@@ -49,10 +58,15 @@ public final class WildPropertyRules {
         return options;
     }
 
+    /** True when {@code newColor} is a valid recolor target for the owned wild. */
     public static boolean canRecolorTo(Player player, WildpropertyCard wild, Color newColor) {
         return getRecolorOptions(player, wild).contains(newColor);
     }
 
+    /**
+     * Moves the owned wild to {@code newColor} on the player's board.
+     * Rolls back if the new color group cannot accept the card.
+     */
     public static boolean recolor(Player player, WildpropertyCard wild, Color newColor) {
         WildpropertyCard owned = findOwnedWild(player, wild);
         if (owned == null || !canRecolorTo(player, owned, newColor)) {

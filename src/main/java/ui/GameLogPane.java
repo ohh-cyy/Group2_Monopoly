@@ -5,12 +5,18 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.VBox;
 import ui.render.GameLogFormatter;
 
-/** Scrollable game log with concise, highlighted entries. */
+/**
+ * Scrollable game log pane that displays concise, color-highlighted event entries.
+ * <p>
+ * Entries are simplified via {@link ui.render.GameLogFormatter} and capped at
+ * {@value #MAX_ENTRIES} lines; new lines auto-scroll into view.
+ */
 public class GameLogPane extends ScrollPane {
     private static final int MAX_ENTRIES = 40;
 
     private final VBox entries = new VBox(6);
 
+    /** Creates an empty log pane with vertical scrolling enabled. */
     public GameLogPane() {
         getStyleClass().add("game-log");
         setFitToWidth(true);
@@ -19,6 +25,11 @@ public class GameLogPane extends ScrollPane {
         setContent(entries);
     }
 
+    /**
+     * Appends a raw log line after simplifying and styling it.
+     *
+     * @param rawLine engine log text; blank lines after simplification are skipped
+     */
     public void append(String rawLine) {
         Runnable task = () -> {
             String simplified = GameLogFormatter.simplify(rawLine);
@@ -36,6 +47,7 @@ public class GameLogPane extends ScrollPane {
         }
     }
 
+    /** Removes all log entries from the pane. */
     public void clear() {
         Runnable task = () -> entries.getChildren().clear();
         if (Platform.isFxApplicationThread()) {

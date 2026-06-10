@@ -49,62 +49,102 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * FXML controller for the online multiplayer game view ({@code network-game-view.fxml}).
+ * <p>
+ * Renders authoritative state from the server via {@link GameStateDto}, sends player
+ * actions through {@link NetworkClient}, and handles server-driven interaction prompts.
+ */
 public class NetworkGameController {
+    /** Turn summary and deck pile labels in the top status bar. */
     @FXML private Label currentPlayerLabel;
     @FXML private Label gameStatusText;
     @FXML private Label turnFlowLabel;
     @FXML private HBox playDotsBar;
     @FXML private HBox deckPilesBar;
+    /** Transient hint shown below the board (errors use a distinct style). */
     @FXML private Label statusMessage;
+    /** Left sidebar listing all players and their bank totals. */
     @FXML private VBox playersList;
+    /** Collapsible side panels and their toggle controls. */
     @FXML private VBox leftSidebar;
     @FXML private VBox rightSidebar;
     @FXML private Button leftSidebarToggle;
     @FXML private Button rightSidebarToggle;
     @FXML private Button leftSidebarHandle;
     @FXML private Button rightSidebarHandle;
+    /** Bottom hand dock: scroll area, hint label, and collapse toggle. */
     @FXML private VBox handDock;
     @FXML private Label handDockHint;
     @FXML private Button handDockToggle;
+    /** Center board: all players' property rows and shared bank bar. */
     @FXML private VBox publicBoardPanel;
     @FXML private HBox publicBoardHeader;
     @FXML private VBox allPlayersPropertiesPanel;
     @FXML private HBox allPlayersBankBar;
+    /** Current player's hand and personal bank widgets. */
     @FXML private ScrollPane playerHandScroll;
     @FXML private HBox playerHand;
     @FXML private FlowPane playerBank;
     @FXML private Label bankTotalLabel;
+    /** Scrollable event log in the right sidebar. */
     @FXML private GameLogPane gameLog;
+    /** Primary turn action buttons. */
     @FXML private Button drawCardBtn;
     @FXML private Button discardCardBtn;
     @FXML private Button endTurnBtn;
     @FXML private Button newGameBtn;
     @FXML private Button achievementBtn;
+    /** Emoji reaction picker and floating overlay target. */
     @FXML private FlowPane emojiBar;
     @FXML private Pane reactionOverlay;
 
+    /** Renders and tracks hand card selection state. */
     private HandRenderer handRenderer;
+    /** Themed dialogs for play prompts and wild recolor. */
     private GameDialogService dialogs;
+    /** Presents transient status and error messages. */
     private StatusMessageDisplay statusDisplay;
+    /** Collapsible sidebar and hand-dock chrome. */
     private GameBoardChrome boardChrome;
+    /** Tracks property row heights for responsive board layout. */
     private PropertyBoardLayoutTracker layoutTracker;
+    /** Mode-specific board refresh implementation. */
     private GameBoardRefreshService boardRefresh;
+    /** Log merge, victory/rematch, and hand-limit coordination. */
     private NetworkMatchCoordinator matchCoordinator;
+    /** Handles server-driven Just Say No and payment prompts. */
     private NetworkPromptResponder promptResponder;
+    /** Builds play messages before sending to the server. */
     private OnlineCardPlayService onlineCardPlay;
+    /** Client-side countdown display between server syncs. */
     private OnlineTurnTimerDisplay turnTimerDisplay;
+    /** Routes hand click and double-click to selection/play. */
     private HandRenderer.SelectionListener handSelectionListener;
 
+    /** Active socket client; set by {@link #startOnlineGame}. */
     private NetworkClient client;
+    /** This client's seat index assigned by the server (-1 until joined). */
     private int localSeat = -1;
+    /** Latest authoritative snapshot from the server. */
     private GameStateDto state;
+    /** Mapped hand and bank cards for the local seat only. */
     private List<Card> myHand = new ArrayList<>();
+    /** Mapped bank cards for the local seat only. */
     private List<Card> myBank = new ArrayList<>();
+    /** Hand card currently highlighted for discard or play. */
     private Card selectedCard;
+    /** View widget for {@link #selectedCard}, used to restore highlight after sync. */
     private CardView selectedCardView;
+    /** Default avatar image for player list and board renderers. */
     private Image avatarImage;
+    /** Floating emoji reactions over the public property board. */
     private EmojiReactionOverlay emojiReactionOverlay;
 
+    /**
+     * FXML lifecycle hook: builds services and board refresh without connecting to a server.
+     * Call {@link #startOnlineGame} to attach the client and apply initial state.
+     */
     @FXML
     public void initialize() {
         avatarImage = AvatarResources.loadDefaultAvatar(getClass());
@@ -207,6 +247,13 @@ public class NetworkGameController {
         });
     }
 
+    /**
+     * Binds this controller to an active network session and renders the first state snapshot.
+     *
+     * @param networkClient connected client whose listener is routed here
+     * @param seat          local player's seat index
+     * @param initialState  first {@link GameStateDto} from the server (may be refreshed via sync)
+     */
     public void startOnlineGame(NetworkClient networkClient, int seat, GameStateDto initialState) {
         this.client = networkClient;
         this.localSeat = seat;

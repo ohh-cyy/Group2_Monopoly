@@ -14,8 +14,15 @@ import network.protocol.ClientMessage;
 
 import java.util.List;
 
-/** Executes card plays on the server without UI dialogs. */
+/**
+ * Executes immediate action-card effects on the server (no UI).
+ * Interactive flows (rent with payment choice, JSN chains) use {@link PendingActionResolution} instead.
+ */
 public final class ServerPlayHandler {
+    /**
+     * Applies a single action card effect using targets/colors from the play message.
+     * Returns false when the card requires async interaction or inputs are invalid.
+     */
     public boolean applyEffect(GameEngine engine, Player player, ActionCard card, ClientMessage msg,
                                List<String> log) {
         if (card instanceof RentCard rentCard) {
@@ -70,6 +77,7 @@ public final class ServerPlayHandler {
         return true;
     }
 
+    /** Auto-collects rent from every opponent (used only for non-interactive server paths). */
     private boolean applyRent(GameEngine engine, Player player, RentCard rentCard, ClientMessage msg,
                               List<String> log) {
         Color chargeColor = CardMapper.parseColor(msg.color);

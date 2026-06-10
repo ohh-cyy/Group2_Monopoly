@@ -15,16 +15,34 @@ import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 
+/**
+ * Displays animated emoji reaction bubbles anchored to sidebar player rows.
+ * <p>
+ * Each reaction pops in, holds briefly, then floats upward and fades out.
+ * Used in online play when opponents send emoji messages.
+ */
 public final class EmojiReactionOverlay {
     private final Pane overlay;
     private final VBox playerRows;
     private int reactionSequence;
 
+    /**
+     * Creates an overlay that positions reactions relative to {@code playerRows}.
+     *
+     * @param overlay     pane that receives floating bubble nodes
+     * @param playerRows  sidebar rows used to resolve anchor positions by seat
+     */
     public EmojiReactionOverlay(Pane overlay, VBox playerRows) {
         this.overlay = overlay;
         this.playerRows = playerRows;
     }
 
+    /**
+     * Shows a floating emoji bubble for the given player seat.
+     *
+     * @param seat  zero-based player seat used to anchor the bubble
+     * @param emoji emoji text to display; ignored when blank
+     */
     public void show(int seat, String emoji) {
         if (overlay == null || emoji == null || emoji.isBlank()) {
             return;

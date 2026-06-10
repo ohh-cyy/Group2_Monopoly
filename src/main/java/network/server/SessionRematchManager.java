@@ -2,7 +2,12 @@ package network.server;
 
 import network.protocol.GameStateDto;
 
-/** Tracks rematch votes after an online game ends. */
+/**
+ * Tracks unanimous rematch voting after an online win.
+ * <p>
+ * When all active players vote yes, {@link GameSession} restarts the deal.
+ * One decline closes voting for everyone.
+ */
 final class SessionRematchManager {
     private final Boolean[] rematchVotes;
     private boolean rematchOpen;
@@ -12,14 +17,17 @@ final class SessionRematchManager {
         rematchVotes = new Boolean[maxPlayers];
     }
 
+    /** True while players may still vote after a win. */
     boolean isRematchOpen() {
         return rematchOpen;
     }
 
+    /** True once any player declined a rematch. */
     boolean isRematchDeclined() {
         return rematchDeclined;
     }
 
+    /** Returns null if the seat has not voted yet. */
     Boolean voteForSeat(int seat) {
         if (seat < 0 || seat >= rematchVotes.length) {
             return null;
@@ -27,18 +35,21 @@ final class SessionRematchManager {
         return rematchVotes[seat];
     }
 
+    /** Resets rematch state when a new deal starts. */
     void clear() {
         rematchOpen = false;
         rematchDeclined = false;
         java.util.Arrays.fill(rematchVotes, null);
     }
 
+    /** Opens voting after a player wins. */
     void open() {
         rematchOpen = true;
         rematchDeclined = false;
         java.util.Arrays.fill(rematchVotes, null);
     }
 
+    /** Copies rematch vote progress into a STATE snapshot for the given seat. */
     void enrichState(GameStateDto state, int seat, int playerCount) {
         state.rematchOpen = rematchOpen;
         state.rematchRequired = playerCount;
@@ -49,6 +60,10 @@ final class SessionRematchManager {
         }
     }
 
+    /**
+     * Records one player's rematch vote.
+     * Returns RESTART when all active players voted yes.
+     */
     VoteOutcome recordVote(int seat, int playerCount, boolean accept, String playerName) {
         if (!rematchOpen) {
             return VoteOutcome.error("Rematch not available");
@@ -93,6 +108,7 @@ final class SessionRematchManager {
         return count;
     }
 
+    /** Result category after recording one rematch vote. */
     enum VoteKind {
         ERROR,
         DECLINED,
@@ -100,6 +116,7 @@ final class SessionRematchManager {
         RESTART
     }
 
+    /** Outcome of {@link #recordVote}; RESTART includes the player count for a new deal. */
     record VoteOutcome(VoteKind kind, String logLine, int restartPlayerCount) {
         static VoteOutcome error(String message) {
             return new VoteOutcome(VoteKind.ERROR, message, 0);

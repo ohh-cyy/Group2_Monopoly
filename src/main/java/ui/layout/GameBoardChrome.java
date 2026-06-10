@@ -8,7 +8,11 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 
-/** Collapsible sidebars and expandable hand dock shared by local and online game views. */
+/**
+ * Collapsible sidebars and expandable hand dock shared by local and online game views.
+ * <p>
+ * Sidebars start collapsed; the hand dock slides up from a peek strip at the bottom.
+ */
 public final class GameBoardChrome {
     private static final double HAND_DOCK_HEIGHT = 266;
     private static final double HAND_DOCK_PEEK = 54;
@@ -25,6 +29,11 @@ public final class GameBoardChrome {
 
     private boolean handDockExpanded;
 
+    /**
+     * Creates chrome controls for collapsible sidebars and the expandable hand dock.
+     *
+     * @param handDock hand panel that slides up from the bottom of the board
+     */
     public GameBoardChrome(VBox leftSidebar,
                            VBox rightSidebar,
                            Button leftSidebarToggle,
@@ -45,10 +54,12 @@ public final class GameBoardChrome {
         this.handDockToggle = handDockToggle;
     }
 
+    /** Returns the hand dock container for external layout access. */
     public VBox handDock() {
         return handDock;
     }
 
+    /** Wires toggle buttons and initializes collapsed sidebar and hand-dock state. */
     public void setup() {
         setupCollapsibleSidebars();
         setupHandDockInteractions();

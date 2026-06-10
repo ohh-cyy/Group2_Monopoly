@@ -18,17 +18,28 @@ import ui.render.PublicBoardRenderOptions;
 
 import java.util.List;
 
-/** Compact vertical property-set tile for the public board. */
+/**
+ * Builds compact vertical property-set tiles for the public board.
+ * <p>
+ * Each tile shows set progress, overlapped card fan, rent value, and optional
+ * wild-property recolor affordances via {@link ui.render.PublicBoardRenderOptions}.
+ */
 public final class PublicPropertySetView {
     private static final double BOX_PADDING = 6;
 
     private PublicPropertySetView() {
     }
 
+    /** Builds a property-set tile without wild-recolor interactivity. */
     public static VBox build(Color color, List<Card> cards, CardView.CardMetrics metrics) {
         return build(color, cards, metrics, -1, PublicBoardRenderOptions.none());
     }
 
+    /**
+     * Builds a property-set tile for the public board.
+     *
+     * @param ownerSeat seat index of the set owner, or {@code -1} when not interactive
+     */
     public static VBox build(Color color, List<Card> cards, CardView.CardMetrics metrics,
                              int ownerSeat, PublicBoardRenderOptions options) {
         CardView.CardMetrics setMetrics = compactMetrics(metrics);

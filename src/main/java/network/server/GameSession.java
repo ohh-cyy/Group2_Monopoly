@@ -14,11 +14,16 @@ import network.protocol.ServerMessage;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Authoritative online match: owns the server-side {@link GameEngine},
+ * validates commands, broadcasts per-seat STATE snapshots, and runs timers/rematch.
+ */
 public class GameSession {
     public static final int MIN_PLAYERS = 2;
     public static final int MAX_PLAYERS = 5;
     public static final int TURN_TIME_SECONDS = 60;
 
+    /** Network connection per seat; null if unused. */
     private final ClientHandler[] seats = new ClientHandler[MAX_PLAYERS];
     private final String[] names = new String[MAX_PLAYERS];
     private final List<String> logLines = new ArrayList<>();
@@ -28,9 +33,14 @@ public class GameSession {
 
     private int playerCount;
     private GameEngine engine;
+
+    /** Non-null while waiting for PROMPT/RESPOND interaction (rent, JSN, payment). */
     private PendingActionResolution pendingResolution;
+
+    /** True when a Double-the-Rent combo should consume two play actions. */
     private boolean pendingUsesTwoPlays;
 
+    /** Links a lobby seat to its live connection before the match starts. */
     public synchronized void bindPlayer(int seat, ClientHandler handler, String name) {
         if (seat < 0 || seat >= MAX_PLAYERS) {
             return;
@@ -40,6 +50,7 @@ public class GameSession {
         playerCount = Math.max(playerCount, seat + 1);
     }
 
+    /** Starts or restarts a match: new engine, fresh deck, turn timer, initial STATE broadcast. */
     public synchronized void startGame(int activePlayers) {
         List<Player> players = new ArrayList<>();
         playerCount = activePlayers;
@@ -57,6 +68,7 @@ public class GameSession {
         broadcastState();
     }
 
+    /** Dispatches an in-game client command to {@link GameSessionActions}. */
     public synchronized ServerMessage handleMessage(int seat, ClientMessage message) {
         if (message == null || message.type == null) {
             return error("Invalid message");
@@ -75,6 +87,10 @@ public class GameSession {
         };
     }
 
+    /**
+     * Sends PROMPT to one player (with state + prompt payload)
+     * and STATE updates to everyone else.
+     */
     public synchronized void sendPrompt(int seat, InteractionPromptDto prompt) {
         if (seat < 0 || seat >= playerCount || seats[seat] == null) {
             return;
@@ -101,6 +117,7 @@ public class GameSession {
         }
     }
 
+    /** Called when a multi-step action (rent/JSN/payment) finishes; records plays and broadcasts. */
     public synchronized void onActionResolutionComplete(boolean success) {
         pendingResolution = null;
         if (engine == null) {
@@ -117,6 +134,7 @@ public class GameSession {
         broadcastState();
     }
 
+    /** Checks win or three-plays-used after a play that did not enter pending resolution. */
     void afterSuccessfulPlay(Player player) {
         if (engine.checkWin(player)) {
             markGameWon(player);
@@ -134,6 +152,7 @@ public class GameSession {
         appendLog(player.getName() + " used all 3 plays — end turn when ready");
     }
 
+    /** Pushes a seat-specific STATE message to every connected player. */
     public synchronized void broadcastState() {
         for (int i = 0; i < playerCount; i++) {
             ClientHandler handler = seats[i];
@@ -143,6 +162,7 @@ public class GameSession {
         }
     }
 
+    /** Builds STATE for one seat via {@link GameStateMapper} plus timer/rematch metadata. */
     public synchronized ServerMessage buildStateMessage(int seat) {
         ServerMessage msg = new ServerMessage();
         msg.type = MessageTypes.STATE;
@@ -203,6 +223,7 @@ public class GameSession {
         turnClock.start(TURN_TIME_SECONDS);
     }
 
+    /** Skips the current player when the turn timer fires (unless a prompt is pending). */
     private void handleTurnTimeout() {
         synchronized (this) {
             if (engine == null || engine.isGameOver()) {
@@ -242,6 +263,7 @@ public class GameSession {
         turnClock.shutdown();
     }
 
+    /** Appends a timestamped line to the session log included in every STATE. */
     void appendLog(String line) {
         logLines.add("[" + java.time.LocalTime.now().format(
                 java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")) + "] " + line);
@@ -251,18 +273,22 @@ public class GameSession {
         return actions.playToBank(this, player, card);
     }
 
+    /** Authoritative engine; only valid after {@link #startGame(int)}. */
     GameEngine engine() {
         return engine;
     }
 
+    /** Number of active human seats in this session. */
     int playerCount() {
         return playerCount;
     }
 
+    /** Mutable session log shared with {@link GameStateMapper}. */
     List<String> logLines() {
         return logLines;
     }
 
+    /** Non-null while waiting for a PROMPT response from a client. */
     PendingActionResolution pendingResolution() {
         return pendingResolution;
     }
@@ -271,6 +297,7 @@ public class GameSession {
         this.pendingResolution = pendingResolution;
     }
 
+    /** When true, {@link #onActionResolutionComplete} records two play actions (Double Rent). */
     boolean pendingUsesTwoPlays() {
         return pendingUsesTwoPlays;
     }

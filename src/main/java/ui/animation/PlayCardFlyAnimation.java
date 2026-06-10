@@ -20,8 +20,25 @@ import model.card.Card;
 import model.card.PropertyCard;
 import ui.CardView;
 
-/** Flies a card snapshot from the hand toward its play destination. */
+/**
+ * Animates a card flying from the hand dock toward its play destination.
+ * <p>
+ * Uses a snapshot ghost image that fades and scales while translating toward
+ * the bank, property board, or a fallback target node.
+ */
 public final class PlayCardFlyAnimation {
+    /**
+     * Animates a ghost image from {@code source} toward the appropriate target node.
+     *
+     * @param handDock          hand dock whose parent pane hosts the flying ghost image
+     * @param source            card view to snapshot and hide during the animation
+     * @param played            card being played; used to pick bank vs property target
+     * @param depositedToBank   when {@code true}, animates toward the bank target
+     * @param bankTarget        destination node for bank deposits
+     * @param propertyTarget    destination node for property plays
+     * @param fallbackTarget    fallback destination when a specific target is unavailable
+     * @param onFinished        callback run after the animation completes or is skipped
+     */
     public void play(VBox handDock,
                      CardView source,
                      Card played,

@@ -9,11 +9,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.OptionalInt;
 
-/** Moves a chosen bank card or property from payer to collector. */
+/**
+ * Moves a chosen bank card or property from payer to collector.
+ * Only assets outside complete property sets may be paid with.
+ */
 public final class PaymentTransfer {
     private PaymentTransfer() {
     }
 
+    /** Lists bank cards plus properties outside complete sets that may be paid. */
     public static List<Card> listPayableAssets(Player player) {
         List<Card> options = new ArrayList<>();
         if (player == null) {
@@ -24,11 +28,13 @@ public final class PaymentTransfer {
         return options;
     }
 
+    /** True when the player holds at least one bank card or payable property. */
     public static boolean hasPayableAsset(Player player) {
         return player != null
                 && (!player.getBank().isEmpty() || !PropertyRules.getPayableProperties(player).isEmpty());
     }
 
+    /** True when {@code card} is in the payer's bank or payable property list. */
     public static boolean isPayableAsset(Player player, Card card) {
         if (player == null || card == null) {
             return false;
@@ -39,6 +45,10 @@ public final class PaymentTransfer {
         return card instanceof PropertyCard property && PropertyRules.canPayWithProperty(player, property);
     }
 
+    /**
+     * Transfers one payable card identified by {@code cardId} from payer to collector.
+     * @return the payment value in millions, or empty if the transfer failed
+     */
     public static OptionalInt payWithCard(Player collector, Player payer, String cardId) {
         if (collector == null || payer == null || cardId == null || cardId.isBlank()) {
             return OptionalInt.empty();
@@ -52,6 +62,7 @@ public final class PaymentTransfer {
         return OptionalInt.of(value);
     }
 
+    /** Locates a payable bank or property card on the payer by instance id. */
     public static Card findPayableCard(Player payer, String cardId) {
         for (Card card : payer.getBank()) {
             if (cardId.equals(card.getInstanceId())) {
@@ -66,6 +77,7 @@ public final class PaymentTransfer {
         return null;
     }
 
+    /** Moves one bank card or payable property from payer to collector. */
     public static void movePaymentCard(Player collector, Player payer, Card card) {
         if (payer.getBank().contains(card)) {
             payer.removeFromBank(card);
@@ -80,6 +92,7 @@ public final class PaymentTransfer {
         }
     }
 
+    /** Face value in millions for a bank note or property used as payment. */
     public static int getPaymentValue(Card card) {
         if (card instanceof PayableAsset payableAsset) {
             return payableAsset.getPaymentValueM();

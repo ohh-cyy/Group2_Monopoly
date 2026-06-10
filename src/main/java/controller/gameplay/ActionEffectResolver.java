@@ -29,7 +29,10 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
- * Keeps action-card rules out of the UI controller.
+ * Resolves action-card effects for local play with interactive target and color prompts.
+ * <p>
+ * Delegates payments to {@link PaymentService} and Just Say No chains to
+ * {@link JustSayNoService} so {@link controller.GameController} stays thin.
  */
 public class ActionEffectResolver {
     private final GameDialogService dialogs;
@@ -39,11 +42,22 @@ public class ActionEffectResolver {
     private final Consumer<String> log;
     private final BiConsumer<String, Boolean> status;
 
+    /**
+     * Convenience constructor using a default {@link StandardCardPlayPrompts} instance.
+     */
     public ActionEffectResolver(GameDialogService dialogs, PaymentService payments, JustSayNoService justSayNo,
                                 Consumer<String> log, BiConsumer<String, Boolean> status) {
         this(dialogs, new StandardCardPlayPrompts(dialogs), payments, justSayNo, log, status);
     }
 
+    /**
+     * @param dialogs    themed dialog factory for target and color selection
+     * @param prompts    shared bank-vs-effect prompts
+     * @param payments   rent and debt collection helper
+     * @param justSayNo  Just Say No response chain handler
+     * @param log        game log sink
+     * @param status     status bar sink (message, isError)
+     */
     public ActionEffectResolver(GameDialogService dialogs,
                                 StandardCardPlayPrompts prompts,
                                 PaymentService payments,
@@ -58,10 +72,16 @@ public class ActionEffectResolver {
         this.status = status;
     }
 
+    /** Delegates to {@link StandardCardPlayPrompts}. */
     public Optional<ActionPlayChoice> promptActionCardChoice(ActionCard card) {
         return prompts.promptActionCardChoice(card);
     }
 
+    /**
+     * Runs the full effect for {@code actionCard} after the player chose "use effect".
+     * <p>
+     * Dispatches by card type; mutates engine state and may invoke payment/JSN flows.
+     */
     public ActionEffectResult resolve(GameEngine gameEngine, Player player, ActionCard actionCard) {
         if (actionCard instanceof JustSayNo) {
             status.accept("Just Say No can only be used in response to an action played against you.", true);

@@ -16,12 +16,22 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 
-/** Handles server-driven Just Say No and payment prompts for online play. */
+/**
+ * Handles server-driven interaction prompts during online play.
+ * <p>
+ * Responds to {@link network.protocol.InteractionPromptDto} messages for Just Say No
+ * chains and rent/payment asset selection, sending answers back via {@link NetworkClient}.
+ */
 public final class NetworkPromptResponder {
     private final GameDialogService dialogs;
     private final StatusMessageDisplay statusDisplay;
     private final BiConsumer<String, Boolean> statusFallback;
 
+    /**
+     * @param dialogs        themed dialog factory for prompt UI
+     * @param statusDisplay  primary status message presenter
+     * @param statusFallback used when {@code statusDisplay} is unavailable
+     */
     public NetworkPromptResponder(GameDialogService dialogs,
                                   StatusMessageDisplay statusDisplay,
                                   BiConsumer<String, Boolean> statusFallback) {
@@ -30,6 +40,12 @@ public final class NetworkPromptResponder {
         this.statusFallback = statusFallback;
     }
 
+    /**
+     * Dispatches a server prompt to the appropriate dialog and response handler.
+     *
+     * @param client connected client used to send the player's answer
+     * @param prompt prompt metadata and payable options from the server
+     */
     public void handle(NetworkClient client, InteractionPromptDto prompt) {
         if (client == null || prompt == null || prompt.promptId == null) {
             return;

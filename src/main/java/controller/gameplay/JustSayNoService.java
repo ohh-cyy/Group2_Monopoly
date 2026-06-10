@@ -14,13 +14,21 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
- * Handles the Just Say No response chain between two players.
+ * Local-mode Just Say No response chain between attacker and defender.
+ * <p>
+ * Alternates prompts while each side may play {@link model.card.actionCard.JustSayNo};
+ * each card played toggles whether the original action is blocked.
  */
 public class JustSayNoService {
     private final GameDialogService dialogs;
     private final Consumer<String> log;
     private final BiConsumer<String, Boolean> status;
 
+    /**
+     * @param dialogs themed dialog factory for block/allow prompts
+     * @param log     game log sink
+     * @param status  status bar sink (message, isError)
+     */
     public JustSayNoService(GameDialogService dialogs, Consumer<String> log, BiConsumer<String, Boolean> status) {
         this.dialogs = dialogs;
         this.log = log;

@@ -1,24 +1,49 @@
 package network.protocol;
 
+/**
+ * Outbound message from a game client to the server.
+ * Only fields relevant to {@link #type} need to be set.
+ */
 public class ClientMessage {
+    /** Command name; see {@link MessageTypes}. */
     public String type;
+
+    /** JOIN: display name entered in the lobby. */
     public String playerName;
+
+    /** JOIN: true when this client started the embedded host server. */
     public boolean host;
+
+    /** Card instance id for play, discard, or wild recolor commands. */
     public String cardId;
-    /** PLAY, BANK, EFFECT, PROPERTY */
+
+    /** PLAY_CARD mode: PLAY, BANK, EFFECT, PROPERTY, or DOUBLE_RENT. */
     public String mode;
+
+    /** Property or rent color name (enum {@code Color} as string). */
     public String color;
+
+    /** Target opponent seat for steal, debt, deal-breaker, etc. */
     public Integer targetSeat;
+
+    /** Target property card id for steal or forced-deal commands. */
     public String targetCardId;
+
+    /** Second card id, e.g. rent card paired with Double the Rent. */
     public String secondCardId;
-    /** RESPOND: id from InteractionPromptDto */
+
+    /** RESPOND: id copied from {@link InteractionPromptDto#promptId}. */
     public String promptId;
-    /** RESPOND for JUST_SAY_NO: true = play Just Say No */
+
+    /** RESPOND (JUST_SAY_NO): true to play a Just Say No card. */
     public Boolean useJustSayNo;
-    /** RESPOND for PAYMENT: card instance id to pay with */
+
+    /** RESPOND (PAYMENT): instance id of the bank card or property used to pay. */
     public String paymentCardId;
-    /** REMATCH_VOTE: true = play again, false = decline */
+
+    /** REMATCH_VOTE: true to play again, false to decline. */
     public Boolean acceptRematch;
-    /** SEND_EMOJI: emoji text sent by the player */
+
+    /** SEND_EMOJI: emoji text; must be in {@link EmojiCatalog}. */
     public String emoji;
 }

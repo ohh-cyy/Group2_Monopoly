@@ -4,7 +4,12 @@ import javafx.scene.Parent;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 
-/** Fixed equal vertical splits for each player's public property row. */
+/**
+ * Computes equal vertical row heights for each player's public property area.
+ * <p>
+ * Row height derives from the surrounding table area minus header and padding,
+ * then scales {@link CardView#PUBLIC} metrics to fit within each row.
+ */
 public final class PublicPropertyBoardLayout {
     private static final double ABSOLUTE_MIN_ROW_HEIGHT = 40;
     private static final double SCROLLABLE_MIN_ROW_HEIGHT = 126;
@@ -15,6 +20,7 @@ public final class PublicPropertyBoardLayout {
     private PublicPropertyBoardLayout() {
     }
 
+    /** Sizes each child row in {@code propertyPanel} equally for {@code playerCount} players. */
     public static void applyEqualRows(VBox propertyPanel, int playerCount) {
         if (propertyPanel == null || playerCount <= 0) {
             return;
@@ -39,14 +45,17 @@ public final class PublicPropertyBoardLayout {
         }
     }
 
+    /** Sizes rows using the player count stored on the panel or its child count. */
     public static void applyEqualRows(VBox propertyPanel) {
         applyEqualRows(propertyPanel, playerCountFor(propertyPanel));
     }
 
+    /** Returns the computed row height for the panel's current player count. */
     public static double rowHeightFor(VBox propertyPanel) {
         return rowHeightFor(propertyPanel, playerCountFor(propertyPanel));
     }
 
+    /** Returns the computed row height for the given player count. */
     public static double rowHeightFor(VBox propertyPanel, int playerCount) {
         if (propertyPanel == null || playerCount <= 0) {
             return ABSOLUTE_MIN_ROW_HEIGHT;
@@ -60,6 +69,7 @@ public final class PublicPropertyBoardLayout {
                 divideStackHeight(usable, propertyPanel.getSpacing(), playerCount));
     }
 
+    /** Estimates row height before layout has measured the table area. */
     public static double estimateRowHeight(VBox propertyPanel, int playerCount) {
         if (propertyPanel == null || playerCount <= 0) {
             return ABSOLUTE_MIN_ROW_HEIGHT;
@@ -73,6 +83,7 @@ public final class PublicPropertyBoardLayout {
                 divideStackHeight(usable, propertyPanel.getSpacing(), playerCount));
     }
 
+    /** Returns scaled card metrics that fit within a property row of {@code rowHeight}. */
     public static CardView.CardMetrics cardMetricsForRow(double rowHeight) {
         double cardAreaHeight = Math.max(36, rowHeight - TITLE_OVERHEAD);
         double factor = Math.min(1.0, Math.max(0.22, cardAreaHeight / CardView.PUBLIC.slotH()));

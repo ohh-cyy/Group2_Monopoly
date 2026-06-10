@@ -4,20 +4,25 @@ import model.card.Card;
 import java.util.ArrayList;
 import java.util.List;
 
-
+/**
+ * Face-up discard stack for played and discarded cards.
+ * Contents are returned to the {@link Deck} when the draw pile runs out.
+ */
 public class DiscardPile {
+    /** Cards in discard order; last element is the top of the pile. */
     private List<Card> cards;
 
+    /** Creates an empty discard pile. */
     public DiscardPile() {
         cards = new ArrayList<>();
     }
 
-    // Adds one card to the discard pile.
+    /** Adds one card to the top of the discard pile. */
     public void addCard(Card card) {
         cards.add(card);
     }
 
-    // Returns the top card without removing it.
+    /** Returns the top card without removing it, or {@code null} if empty. */
     public Card peekTop() {
 
         if (cards.isEmpty()) {
@@ -27,17 +32,17 @@ public class DiscardPile {
         return cards.get(cards.size() - 1);
     }
 
-    // Checks whether the discard pile is empty.
+    /** True when no cards have been discarded yet. */
     public boolean isEmpty() {
         return cards.isEmpty();
     }
 
-    // Returns the number of discarded cards.
+    /** Number of cards currently in the discard pile. */
     public int size() {
         return cards.size();
     }
 
-    // Prints the discard pile for simple debugging.
+    /** Prints discard contents to stdout for simple debugging. */
     public void showDiscardPile() {
 
         System.out.println("===== Discard Pile =====");
@@ -47,15 +52,17 @@ public class DiscardPile {
         }
     }
 
-    // Returns all discarded cards, usually before shuffling them into the deck.
+    /** Returns a copy of all discarded cards, usually before reshuffling into the deck. */
     public List<Card> getCards() {
         return new ArrayList<>(cards);
     }
 
+    /** Alias for {@link #getCards()}. */
     public List<Card> getAllCards() {
         return getCards();
     }
 
+    /** Removes every card from the pile after they are moved back to the deck. */
     public void clear() {
         cards.clear();
     }

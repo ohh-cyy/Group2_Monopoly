@@ -11,10 +11,18 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * TCP game server: accepts connections, manages the pre-game lobby,
+ * and routes in-game commands to a single authoritative {@link GameSession}.
+ */
 public class GameServer implements AutoCloseable {
     private final int port;
     private ServerSocket serverSocket;
+
+    /** All handlers, including clients still in the lobby. */
     private final List<ClientHandler> connections = new ArrayList<>();
+
+    /** Created when the host starts the match; null during lobby phase. */
     private GameSession session;
     private volatile boolean running;
 
@@ -38,6 +46,7 @@ public class GameServer implements AutoCloseable {
         System.out.println("Monopoly Deal server started on port " + getPort());
     }
 
+    /** Accepts sockets and spawns one {@link ClientHandler} thread per connection. */
     private void acceptLoop() {
         while (running) {
             try {
@@ -58,6 +67,10 @@ public class GameServer implements AutoCloseable {
         }
     }
 
+    /**
+     * Top-level message router.
+     * Lobby commands are handled here; gameplay commands are delegated to {@link GameSession}.
+     */
     public synchronized void handleClientMessage(ClientHandler handler, ClientMessage message) {
         if (message.type == null) {
             handler.send(error("Missing message type"));
@@ -80,6 +93,7 @@ public class GameServer implements AutoCloseable {
         }
     }
 
+    /** Registers a player in the lobby, assigns seat/host, and broadcasts LOBBY. */
     private void handleJoin(ClientHandler handler, ClientMessage message) {
         if (session != null) {
             handler.send(error("Game already started"));
@@ -98,6 +112,7 @@ public class GameServer implements AutoCloseable {
         }
 
         int seat = nextSeat();
+        // First joiner becomes host even if they did not click Host locally.
         boolean host = message.host || joinedCount == 0;
         handler.assignSeat(seat, name, host);
 
@@ -111,6 +126,7 @@ public class GameServer implements AutoCloseable {
         broadcastLobby();
     }
 
+    /** Host-only: creates {@link GameSession}, deals cards, and sends GAME_STARTED. */
     private void handleStartGame(ClientHandler requester) {
         if (session != null) {
             requester.send(error("Game already started"));
@@ -175,6 +191,7 @@ public class GameServer implements AutoCloseable {
         return list;
     }
 
+    /** Finds the lowest unused seat index in [0, MAX_PLAYERS). */
     private int nextSeat() {
         boolean[] used = new boolean[GameSession.MAX_PLAYERS];
         for (ClientHandler handler : connections) {
@@ -224,6 +241,7 @@ public class GameServer implements AutoCloseable {
         return msg;
     }
 
+    /** Stops accepting connections, shuts down the session, and disconnects all clients. */
     @Override
     public void close() {
         running = false;

@@ -6,18 +6,32 @@ import javafx.animation.Timeline;
 import javafx.util.Duration;
 import model.player.Player;
 
-/** Local hot-seat turn countdown and timeout handling. */
+/**
+ * Per-turn countdown for local hot-seat play.
+ * <p>
+ * Fires a warning at {@link #TURN_WARNING_SECONDS} and delegates timeout handling
+ * to the {@link Host} so the controller can skip the current player and advance.
+ */
 public final class LocalTurnTimer {
+    /** Total seconds allowed per turn before auto-skip. */
     public static final int TURN_TIME_SECONDS = 60;
+    /** Seconds remaining when a one-time warning is shown. */
     public static final int TURN_WARNING_SECONDS = 10;
 
+    /**
+     * Callbacks invoked by the timer; typically implemented by {@link controller.GameController}.
+     */
     public interface Host {
+        /** Engine used to detect game-over and identify the current player. */
         GameEngine engine();
 
+        /** Called every second so the UI can refresh the countdown label. */
         void onTimerTick(int secondsRemaining);
 
+        /** Called once when {@link #TURN_WARNING_SECONDS} is reached. */
         void onTurnWarning(Player currentPlayer);
 
+        /** Called when the countdown hits zero; host should skip the player. */
         void onTurnTimedOut(Player skipped);
     }
 
@@ -26,14 +40,19 @@ public final class LocalTurnTimer {
     private int secondsRemaining = TURN_TIME_SECONDS;
     private boolean warningShown;
 
+    /**
+     * @param host callbacks for ticks, warnings, and timeout handling
+     */
     public LocalTurnTimer(Host host) {
         this.host = host;
     }
 
+    /** Seconds left in the current turn (0 after timeout or game over). */
     public int getSecondsRemaining() {
         return secondsRemaining;
     }
 
+    /** Restarts the countdown for a new turn; stops if the game has ended. */
     public void reset() {
         stop();
         GameEngine engine = host.engine();
@@ -48,6 +67,7 @@ public final class LocalTurnTimer {
         timeline.play();
     }
 
+    /** Stops the JavaFX timeline without changing {@link #secondsRemaining}. */
     public void stop() {
         if (timeline != null) {
             timeline.stop();

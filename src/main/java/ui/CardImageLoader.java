@@ -13,6 +13,8 @@ import java.util.Set;
 
 /**
  * Maps card objects to PNG resources under {@code src/main/resources/image/Card/}.
+ * <p>
+ * Also resolves wild-property image rotation based on the chosen color.
  */
 public final class CardImageLoader {
     private static final String BASE = "/Card/";
@@ -20,6 +22,11 @@ public final class CardImageLoader {
     private CardImageLoader() {
     }
 
+    /**
+     * Returns the classpath resource path for the card image, or {@code null} if unknown.
+     *
+     * @param card the card to resolve; may be {@code null}
+     */
     public static String resolvePath(Card card) {
         if (card == null) {
             return null;
@@ -80,6 +87,10 @@ public final class CardImageLoader {
         return null;
     }
 
+    /**
+     * Returns rotation in degrees for wild property cards when the chosen color
+     * matches the bottom color on the card art.
+     */
     public static double resolveRotationDegrees(Card card) {
         if (!(card instanceof WildpropertyCard wild)) {
             return 0;

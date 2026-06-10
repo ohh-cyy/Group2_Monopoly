@@ -6,7 +6,12 @@ import javafx.scene.text.TextFlow;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** Converts verbose game events into short, styled log lines. */
+/**
+ * Converts verbose engine log lines into short, color-styled display text.
+ * <p>
+ * Used by {@link ui.GameLogPane} to simplify timestamps, player actions,
+ * and payment events before rendering a {@link TextFlow} entry.
+ */
 public final class GameLogFormatter {
     private static final double FONT_SIZE = 15;
     private static final Pattern TIMESTAMP = Pattern.compile("^\\[\\d{2}:\\d{2}:\\d{2}\\]\\s*");
@@ -14,6 +19,11 @@ public final class GameLogFormatter {
     private GameLogFormatter() {
     }
 
+    /**
+     * Removes a leading {@code [HH:MM:SS]} timestamp from a log line.
+     *
+     * @param line raw log text; returns empty string when {@code null}
+     */
     public static String stripTimestamp(String line) {
         if (line == null) {
             return "";
@@ -21,6 +31,12 @@ public final class GameLogFormatter {
         return TIMESTAMP.matcher(line.trim()).replaceFirst("");
     }
 
+    /**
+     * Converts a verbose engine log line into a short display form.
+     *
+     * @param raw original log text from the game engine
+     * @return simplified one-line summary, or empty string when filtered out
+     */
     public static String simplify(String raw) {
         String line = stripTimestamp(raw);
         if (line.isBlank()) {
@@ -101,6 +117,11 @@ public final class GameLogFormatter {
         return line.substring(0, 69) + "...";
     }
 
+    /**
+     * Builds a styled {@link TextFlow} node for a simplified log line.
+     *
+     * @param line simplified text from {@link #simplify(String)}
+     */
     public static TextFlow buildStyledLine(String line) {
         TextFlow flow = new TextFlow();
         flow.getStyleClass().add("game-log-entry");

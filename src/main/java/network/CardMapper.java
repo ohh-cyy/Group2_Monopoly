@@ -11,10 +11,15 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Converts between domain {@link Card} objects and wire {@link CardDto} records.
+ * Used when building game state snapshots and when clients rebuild hand UI.
+ */
 public final class CardMapper {
     private CardMapper() {
     }
 
+    /** Maps one domain card to its network DTO, including cardKind-specific fields. */
     public static CardDto toDto(Card card) {
         CardDto dto = new CardDto();
         dto.id = card.getInstanceId();
@@ -22,6 +27,7 @@ public final class CardMapper {
         dto.description = card.getDescription();
         dto.type = card.getType().name();
 
+        // Map each concrete card type to a stable cardKind string for fromDto().
         if (card instanceof MoneyCard money) {
             dto.cardKind = "MONEY";
             dto.money = money.getMoney();
@@ -82,6 +88,7 @@ public final class CardMapper {
         return dto;
     }
 
+    /** Maps a list of domain cards to DTOs, preserving order. */
     public static List<CardDto> toDtos(List<Card> cards) {
         List<CardDto> list = new ArrayList<>();
         for (Card card : cards) {
@@ -90,6 +97,10 @@ public final class CardMapper {
         return list;
     }
 
+    /**
+     * Reconstructs a domain card from a DTO.
+     * Returns null if the DTO is incomplete or describes an unknown card kind.
+     */
     public static Card fromDto(CardDto dto) {
         if (dto == null || dto.type == null || dto.cardKind == null) {
             return null;
@@ -142,6 +153,7 @@ public final class CardMapper {
         }
     }
 
+    /** Reconstructs cards from DTOs, skipping entries that fail to parse. */
     public static List<Card> fromDtos(List<CardDto> dtos) {
         List<Card> cards = new ArrayList<>();
         if (dtos == null) {
@@ -156,6 +168,7 @@ public final class CardMapper {
         return cards;
     }
 
+    /** Parses a {@link Color} enum name from protocol strings; null if invalid. */
     public static Color parseColor(String value) {
         if (value == null || value.isBlank()) {
             return null;

@@ -11,20 +11,32 @@ import ui.CardView;
 import java.util.List;
 import java.util.function.BiConsumer;
 
-/** Renders the current player's hand and wires selection / double-click play. */
+/**
+ * Renders the current player's hand and wires selection and double-click play.
+ * <p>
+ * Card slots scale down automatically when the scroll viewport is too narrow.
+ */
 public final class HandRenderer {
     private static final long DOUBLE_CLICK_WINDOW_MS = 450;
 
     private Card lastClickCard;
     private long lastClickAtMs;
 
+    /** Callback for hand card selection and play attempts. */
     public interface SelectionListener {
+        /** Fired when the player selects a card in the hand. */
         void onCardSelected(Card card, CardView cardView);
 
         /** Fired on double-click or when clicking an already-selected card. */
         void onCardPlayAttempt(Card card, CardView cardView);
     }
 
+    /**
+     * Rebuilds the hand row with scaled card slots and wires click handling.
+     *
+     * @param handInteractive when {@code false}, clicks are ignored
+     * @param handSelectable  when {@code false}, cards are not clickable
+     */
     public void render(HBox playerHand,
                        ScrollPane playerHandScroll,
                        List<Card> hand,
@@ -74,6 +86,7 @@ public final class HandRenderer {
         }
     }
 
+    /** Computes hand card metrics that shrink when the viewport is too narrow. */
     public CardView.CardMetrics computeHandMetrics(ScrollPane playerHandScroll, int cardCount) {
         if (cardCount <= 0) {
             return CardView.HAND;
@@ -91,6 +104,7 @@ public final class HandRenderer {
         return CardView.HAND.scaled(factor);
     }
 
+    /** Clears selection styling on every card in the hand row. */
     public void clearSelection(HBox playerHand) {
         if (playerHand == null) {
             return;
@@ -103,6 +117,13 @@ public final class HandRenderer {
         }
     }
 
+    /**
+     * Selects the matching card and optionally notifies {@code onFound}.
+     *
+     * @param playerHand    hand row containing card slots
+     * @param selectedCard  card to mark as selected
+     * @param onFound       callback invoked with the card and view when a match is found; may be {@code null}
+     */
     public void applySelection(HBox playerHand, Card selectedCard, BiConsumer<Card, CardView> onFound) {
         if (playerHand == null || selectedCard == null) {
             return;

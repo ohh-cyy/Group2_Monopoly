@@ -7,14 +7,25 @@ import network.protocol.PlayerViewDto;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Read-only snapshot for rendering a player's public board area. */
+/**
+ * Read-only snapshot of a player's public-board data for rendering.
+ * <p>
+ * Factory methods convert domain {@link Player} objects or network
+ * {@link PlayerViewDto} records into views used by board renderers.
+ */
 public final class PlayerBoardView {
+    /** Zero-based seat index of this player. */
     public int seat;
+    /** Display name, optionally annotated for the local player. */
     public String name;
+    /** Number of cards in hand (hidden detail). */
     public int handSize;
+    /** Total bank value in millions. */
     public int bankTotal;
+    /** All property cards owned by this player. */
     public final List<Card> properties = new ArrayList<>();
 
+    /** Converts a list of domain players into board views with sequential seats. */
     public static List<PlayerBoardView> fromPlayers(List<Player> players) {
         if (players == null) {
             return List.of();
@@ -26,6 +37,7 @@ public final class PlayerBoardView {
         return views;
     }
 
+    /** Converts a single domain player into a board view. */
     public static PlayerBoardView fromPlayer(Player player, int seat) {
         PlayerBoardView view = new PlayerBoardView();
         view.seat = seat;
@@ -36,6 +48,7 @@ public final class PlayerBoardView {
         return view;
     }
 
+    /** Converts network DTOs into board views, marking the local seat as {@code (You)}. */
     public static List<PlayerBoardView> fromDtos(List<PlayerViewDto> players, int localSeat) {
         if (players == null) {
             return List.of();
@@ -47,6 +60,7 @@ public final class PlayerBoardView {
         return views;
     }
 
+    /** Converts a single network DTO into a board view. */
     public static PlayerBoardView fromDto(PlayerViewDto dto, int localSeat) {
         PlayerBoardView view = new PlayerBoardView();
         view.seat = dto.seat;

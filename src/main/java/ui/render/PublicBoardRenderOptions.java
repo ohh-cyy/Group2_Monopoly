@@ -4,13 +4,21 @@ import engine.WildPropertyRules;
 import model.card.WildpropertyCard;
 import model.player.Player;
 
-/** Optional interactivity when rendering the public property board. */
+/**
+ * Optional interactivity when rendering the public property board.
+ *
+ * @param wildRecolorListener callback invoked when the local player clicks a wild card
+ * @param interactiveSeat     seat index allowed to trigger wild-recolor clicks
+ * @param allowWildRecolor    master switch for wild-recolor affordances
+ * @param recolorRulesPlayer  player used to validate recolor eligibility
+ */
 public record PublicBoardRenderOptions(
         WildPropertyRecolorListener wildRecolorListener,
         int interactiveSeat,
         boolean allowWildRecolor,
         Player recolorRulesPlayer
 ) {
+    /** Returns options with wild-recolor interaction disabled. */
     public static PublicBoardRenderOptions none() {
         return new PublicBoardRenderOptions(null, -1, false, null);
     }

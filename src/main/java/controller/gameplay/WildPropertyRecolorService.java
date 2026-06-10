@@ -11,12 +11,22 @@ import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
-/** Prompts and applies wild property recolor on the board. */
+/**
+ * Local-mode wild property recolor flow (click on board, uses one play).
+ * <p>
+ * Validates ownership and available colors via {@link engine.WildPropertyRules},
+ * then applies the chosen color after player confirmation.
+ */
 public final class WildPropertyRecolorService {
     private final GameDialogService dialogs;
     private final Consumer<String> log;
     private final BiConsumer<String, Boolean> status;
 
+    /**
+     * @param dialogs themed dialog factory for color selection
+     * @param log     game log sink
+     * @param status  status bar sink (message, isError)
+     */
     public WildPropertyRecolorService(GameDialogService dialogs,
                                       Consumer<String> log,
                                       BiConsumer<String, Boolean> status) {
@@ -25,6 +35,11 @@ public final class WildPropertyRecolorService {
         this.status = status;
     }
 
+    /**
+     * Prompts for a new color and applies recolor on the player's board.
+     *
+     * @return {@code true} if recolor succeeded and one play should be recorded
+     */
     public boolean attemptRecolor(Player player, WildpropertyCard wild) {
         WildpropertyCard owned = WildPropertyRules.findOwnedWild(player, wild);
         if (owned == null) {

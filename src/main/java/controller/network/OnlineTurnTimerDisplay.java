@@ -6,19 +6,33 @@ import javafx.util.Duration;
 import network.protocol.GameStateDto;
 import ui.render.TurnDeadlineClock;
 
-/** Keeps the online turn countdown label updating between server syncs. */
+/**
+ * Client-side ticker that keeps the online turn deadline label fresh between server syncs.
+ * <p>
+ * Uses {@link network.protocol.GameStateDto#turnDeadlineEpochMillis} and delegates
+ * label refresh to the {@link Host} (typically {@link controller.NetworkGameController}).
+ */
 public final class OnlineTurnTimerDisplay {
+    /** Seconds remaining when a one-time warning is shown to the local player. */
     public static final int TURN_WARNING_SECONDS = 10;
 
+    /**
+     * Callbacks for reading state and updating the UI each second.
+     */
     public interface Host {
+        /** Latest server snapshot containing the turn deadline. */
         GameStateDto state();
 
+        /** Whether the local seat is the active player. */
         boolean isMyTurn();
 
+        /** Display name of the player whose turn is active. */
         String currentPlayerName();
 
+        /** Repaints turn status labels (invoked every second while running). */
         void refreshTimerLabel();
 
+        /** Called once per turn when the warning threshold is reached on the local player's turn. */
         void onTurnWarning(String playerName);
     }
 
@@ -27,16 +41,21 @@ public final class OnlineTurnTimerDisplay {
     private boolean warningShown;
     private int lastTurnIndex = -1;
 
+    /**
+     * @param host callbacks for state reads and label refresh
+     */
     public OnlineTurnTimerDisplay(Host host) {
         this.host = host;
     }
 
+    /** Call after each state sync to reset warnings and ensure the ticker is running. */
     public void onStateUpdated() {
         resetWarningIfNewTurn();
         ensureRunning();
         host.refreshTimerLabel();
     }
 
+    /** Stops the one-second JavaFX timeline (e.g. on game over). */
     public void stop() {
         if (timeline != null) {
             timeline.stop();

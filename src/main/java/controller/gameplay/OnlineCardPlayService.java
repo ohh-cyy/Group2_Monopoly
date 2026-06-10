@@ -31,17 +31,28 @@ import java.util.Optional;
 import java.util.function.BiConsumer;
 
 /**
- * Builds {@link ClientMessage} payloads for online card play, including dialogs for targets and colors.
+ * Builds {@link ClientMessage} payloads for online card play.
+ * <p>
+ * Mirrors local play dialogs (targets, colors, bank vs effect) but sends choices to
+ * the server instead of mutating engine state on the client.
  */
 public final class OnlineCardPlayService {
     private final GameDialogService dialogs;
     private final StandardCardPlayPrompts prompts;
     private final BiConsumer<String, Boolean> status;
 
+    /** Snapshot used while building the current play message. */
     private GameStateDto state;
+    /** Local seat index used while building the current play message. */
     private int localSeat;
+    /** Mapped hand used while building the current play message. */
     private List<Card> myHand;
 
+    /**
+     * @param dialogs themed dialog factory
+     * @param prompts shared bank-vs-effect prompts
+     * @param status  status bar sink (message, isError)
+     */
     public OnlineCardPlayService(GameDialogService dialogs,
                                  StandardCardPlayPrompts prompts,
                                  BiConsumer<String, Boolean> status) {
@@ -50,10 +61,18 @@ public final class OnlineCardPlayService {
         this.status = status;
     }
 
+    /**
+     * Convenience constructor using a default {@link StandardCardPlayPrompts} instance.
+     */
     public OnlineCardPlayService(GameDialogService dialogs, BiConsumer<String, Boolean> status) {
         this(dialogs, new StandardCardPlayPrompts(dialogs), status);
     }
 
+    /**
+     * Prompts for any required targets/colors and assembles the play message for the server.
+     *
+     * @return complete message ready to send, or empty if the player cancelled or validation failed
+     */
     public Optional<ClientMessage> buildPlayMessage(GameStateDto state, int localSeat, List<Card> myHand, Card card) {
         this.state = state;
         this.localSeat = localSeat;

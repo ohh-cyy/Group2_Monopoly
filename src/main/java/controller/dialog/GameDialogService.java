@@ -16,15 +16,27 @@ import java.util.Optional;
 import java.util.function.Function;
 
 /**
- * Builds the styled dialogs used by the game screen.
+ * Factory for themed JavaFX dialogs shared by local and online controllers.
+ * <p>
+ * Applies {@code game-theme.css}, centers on the owning window, and provides
+ * reusable choice and color-picker layouts for card-play prompts.
  */
 public class GameDialogService {
+    /** Label whose scene window becomes the dialog owner for modality. */
     private final Label ownerLabel;
 
+    /**
+     * @param ownerLabel any on-screen label from the game view (used for dialog ownership)
+     */
     public GameDialogService(Label ownerLabel) {
         this.ownerLabel = ownerLabel;
     }
 
+    /**
+     * Shows a header/content dialog with custom button types.
+     *
+     * @return the button the user clicked, or empty if the dialog was dismissed
+     */
     public Optional<ButtonType> showButtonDialog(String title, String header, String content, ButtonType... buttons) {
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle(title);
@@ -46,6 +58,13 @@ public class GameDialogService {
         return dialog.showAndWait();
     }
 
+    /**
+     * Shows a vertical list of choice buttons; selecting one closes the dialog with that value.
+     *
+     * @param labeler           text for each option button
+     * @param colorStyleProvider optional inline CSS per option (may be {@code null})
+     * @return the chosen option, or empty if cancelled or no options
+     */
     public <T> Optional<T> showChoiceDialog(String title, String header, String prompt,
                                             List<T> options, Function<T, String> labeler,
                                             Function<T, String> colorStyleProvider) {
@@ -91,6 +110,9 @@ public class GameDialogService {
         return dialog.showAndWait();
     }
 
+    /**
+     * Property-set color picker with rent-completion hints and color swatch styling.
+     */
     public Optional<Color> showColorChoiceDialog(String title, String header, String prompt, List<Color> colors) {
         return showChoiceDialog(title, header, prompt, colors,
                 color -> color + "  -  " + color.getSetSize() + " cards to complete",
@@ -99,6 +121,9 @@ public class GameDialogService {
                         + "-fx-border-color: rgba(255,255,255,0.55);");
     }
 
+    /**
+     * Color picker tailored for playing a {@link WildpropertyCard} as property.
+     */
     public Optional<Color> showWildPropertyColorDialog(WildpropertyCard wild) {
         List<Color> colors = wild.getAvailableColors();
         if (colors.isEmpty()) {
@@ -119,6 +144,7 @@ public class GameDialogService {
                         + "-fx-border-color: rgba(255,255,255,0.55);");
     }
 
+    /** Hex background color for dialog buttons representing a property color. */
     public String cssColorFor(Color color) {
         return switch (color) {
             case BROWN -> "#8B5A2B";
@@ -134,6 +160,7 @@ public class GameDialogService {
         };
     }
 
+    /** Contrasting text color for buttons on light or dark property swatches. */
     public String textColorFor(Color color) {
         return switch (color) {
             case YELLOW, LIGHT_BLUE, LIGHT_GREEN, ORANGE -> "#1f2d2a";
@@ -141,6 +168,7 @@ public class GameDialogService {
         };
     }
 
+    /** Attaches game CSS, dialog style class, and window owner to a dialog pane. */
     public void styleDialog(Dialog<?> dialog) {
         DialogPane pane = dialog.getDialogPane();
         try {

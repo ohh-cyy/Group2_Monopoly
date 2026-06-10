@@ -6,15 +6,22 @@ import model.card.RentCard;
 import model.card.actionCard.ActionCard;
 import model.card.actionCard.DoubleTheRent;
 
-/** Builds user-facing hints when a hand card is selected. */
+/**
+ * Builds status-bar hints when the player selects a card in hand.
+ * <p>
+ * Copy differs slightly between local and online modes (e.g. Double the Rent wording).
+ */
 public final class CardSelectionFeedback {
+    /** Utility class; do not instantiate. */
     private CardSelectionFeedback() {
     }
 
+    /** Hint text for local hot-seat play. */
     public static String messageFor(Card card) {
         return messageFor(card, false);
     }
 
+    /** Hint text for online play (includes network-specific action notes). */
     public static String messageForOnline(Card card) {
         return messageFor(card, true);
     }

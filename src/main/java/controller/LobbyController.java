@@ -20,38 +20,63 @@ import ui.SettingsOverlay;
 
 import java.io.IOException;
 
+/**
+ * FXML controller for the main lobby ({@code lobby-view.fxml}).
+ * <p>
+ * Offers three entry paths: host an online game, join a remote server, or start a
+ * local hot-seat match. Manages embedded {@link GameServer} lifecycle when hosting.
+ */
 public class LobbyController {
+    /** Server address and port inputs for join/host. */
     @FXML
     private TextField hostField;
     @FXML
     private TextField portField;
+    /** Display name sent to the server on join. */
     @FXML
     private TextField nameField;
+    /** Status line for connection, lobby, and error messages. */
     @FXML
     private Label statusLabel;
+    /** Live list of connected lobby players (host sees start button). */
     @FXML
     private ListView<String> playerList;
     @FXML
     private Button hostBtn;
     @FXML
     private Button joinBtn;
+    /** Enabled only for the host when player count is valid. */
     @FXML
     private Button startBtn;
     @FXML
     private Label achievementProgressLabel;
+    /** Player count selector for local games (2–5). */
     @FXML
     private ComboBox<Integer> localPlayerCount;
 
+    /** Window used to open game overlays via {@link SettingsOverlay}. */
     private Stage stage;
+    /** Embedded server instance when this client is hosting. */
     private GameServer gameServer;
+    /** Lobby-phase network client (handed off when the game starts). */
     private NetworkClient client;
+    /** Seat assigned after a successful join (-1 until then). */
     private int localSeat = -1;
+    /** Whether this client created the room and may start the match. */
     private boolean isHost;
 
+    /**
+     * Supplies the primary stage so game views can be opened modally.
+     *
+     * @param stage owning window
+     */
     public void setStage(Stage stage) {
         this.stage = stage;
     }
 
+    /**
+     * FXML lifecycle hook: sets default connection fields and unlocks lobby achievements.
+     */
     @FXML
     public void initialize() {
         hostField.setText("127.0.0.1");

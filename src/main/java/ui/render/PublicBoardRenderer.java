@@ -24,18 +24,34 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 
-/** Renders all players' public property areas on the main board. */
+/**
+ * Renders all players' public property areas on the main board.
+ * <p>
+ * Each row shows avatar, hand/bank summary, win progress, and horizontally
+ * scrollable property sets scaled to the computed row height.
+ */
 public final class PublicBoardRenderer {
     private final Supplier<Image> avatarSupplier;
 
+    /**
+     * Creates a renderer that supplies avatar images for player rows.
+     *
+     * @param avatarSupplier supplier of the default avatar image; may be {@code null}
+     */
     public PublicBoardRenderer(Supplier<Image> avatarSupplier) {
         this.avatarSupplier = avatarSupplier;
     }
 
+    /** Renders all player property blocks without wild-recolor interactivity. */
     public double render(VBox panel, VBox propertiesPanel, List<PlayerBoardView> views, int currentSeat) {
         return render(panel, propertiesPanel, views, currentSeat, PublicBoardRenderOptions.none());
     }
 
+    /**
+     * Renders all player property blocks on the public board.
+     *
+     * @return computed row height, or {@code -1} when nothing was rendered
+     */
     public double render(VBox panel, VBox propertiesPanel, List<PlayerBoardView> views, int currentSeat,
                          PublicBoardRenderOptions options) {
         if (propertiesPanel == null) {

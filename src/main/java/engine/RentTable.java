@@ -10,6 +10,7 @@ import java.util.Map;
  * Index 0 means 1 card, index 1 means 2 cards, and so on.
  */
 public final class RentTable {
+    /** Rent tiers per color; array index is {@code propertyCount - 1}. */
     private static final Map<Color, int[]> RENT_BY_COUNT = new EnumMap<>(Color.class);
 
     static {
@@ -28,6 +29,10 @@ public final class RentTable {
     private RentTable() {
     }
 
+    /**
+     * Looks up rent for {@code color} given {@code propertyCount} billable cards.
+     * Caps at the highest tier when the set is full.
+     */
     public static int getRent(Color color, int propertyCount) {
         if (color == null || propertyCount <= 0) {
             return 0;

@@ -16,19 +16,32 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
- * Handles required payments and lets the payer choose each asset.
+ * Interactive rent and debt collection for local play.
+ * <p>
+ * Prompts the payer to choose bank cards or non-complete-set properties until
+ * the owed amount is satisfied or no payable assets remain.
  */
 public class PaymentService {
     private final GameDialogService dialogs;
     private final Consumer<String> log;
     private final BiConsumer<String, Boolean> status;
 
+    /**
+     * @param dialogs themed dialog factory for asset selection
+     * @param log     game log sink
+     * @param status  status bar sink (message, isError)
+     */
     public PaymentService(GameDialogService dialogs, Consumer<String> log, BiConsumer<String, Boolean> status) {
         this.dialogs = dialogs;
         this.log = log;
         this.status = status;
     }
 
+    /**
+     * Collects up to {@code amountM} from {@code payer} through repeated asset picks.
+     *
+     * @return total M value actually transferred
+     */
     public int collectPaymentByChoice(Player collector, Player payer, int amountM, String reason) {
         if (collector == null || payer == null || collector.equals(payer) || amountM <= 0) {
             return 0;

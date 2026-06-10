@@ -6,9 +6,17 @@ import javafx.stage.Stage;
 
 import java.net.URL;
 
+/**
+ * Global game preferences for background music, sound effects, and fullscreen mode.
+ * <p>
+ * Call {@link #initialize(Stage)} once at startup to bind the primary stage.
+ */
 public final class GameSettings {
+    /** Background music tracks used in the lobby and during gameplay. */
     public enum MusicScene {
+        /** Lobby menu background music. */
         LOBBY("/audio/music/background.wav", 0.32),
+        /** In-match background music. */
         GAME("/audio/music/gameplay.wav", 0.14);
 
         private final String resource;
@@ -30,6 +38,11 @@ public final class GameSettings {
     private GameSettings() {
     }
 
+    /**
+     * Binds the primary stage, installs button sounds, and starts background music.
+     *
+     * @param stage application primary stage; may be {@code null}
+     */
     public static void initialize(Stage stage) {
         primaryStage = stage;
         if (primaryStage != null) {
@@ -43,35 +56,43 @@ public final class GameSettings {
         applyMusicState();
     }
 
+    /** Returns whether background music is enabled. */
     public static boolean isMusicEnabled() {
         return musicEnabled;
     }
 
+    /** Enables or disables background music and applies the change immediately. */
     public static void setMusicEnabled(boolean enabled) {
         musicEnabled = enabled;
         applyMusicState();
     }
 
+    /** Switches to lobby background music. */
     public static void useLobbyMusic() {
         setMusicScene(MusicScene.LOBBY);
     }
 
+    /** Switches to in-game background music. */
     public static void useGameMusic() {
         setMusicScene(MusicScene.GAME);
     }
 
+    /** Returns whether sound effects are enabled. */
     public static boolean isSoundEffectsEnabled() {
         return soundEffectsEnabled;
     }
 
+    /** Enables or disables sound effects. */
     public static void setSoundEffectsEnabled(boolean enabled) {
         soundEffectsEnabled = enabled;
     }
 
+    /** Returns whether fullscreen mode is enabled. */
     public static boolean isFullscreenEnabled() {
         return fullscreenEnabled;
     }
 
+    /** Enables or disables fullscreen on the primary stage. */
     public static void setFullscreenEnabled(boolean enabled) {
         fullscreenEnabled = enabled;
         if (primaryStage != null) {
@@ -79,6 +100,7 @@ public final class GameSettings {
         }
     }
 
+    /** Stops and disposes the music player and clears cached audio clips. */
     public static void dispose() {
         if (musicPlayer != null) {
             musicPlayer.stop();

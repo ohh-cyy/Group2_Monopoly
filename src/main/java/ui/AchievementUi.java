@@ -19,16 +19,32 @@ import model.achievement.AchievementManager;
 import java.util.Objects;
 import java.util.Optional;
 
+/**
+ * Dialogs for unlocking achievements and browsing the achievement catalog.
+ */
 public final class AchievementUi {
     private AchievementUi() {
     }
 
+    /**
+     * Attempts to unlock an achievement and shows a dialog when newly unlocked.
+     *
+     * @param achievementId catalog id of the achievement to unlock
+     * @param owner           dialog owner node for window placement
+     * @return {@code true} if the achievement was unlocked by this call
+     */
     public static boolean unlockAndShow(String achievementId, Node owner) {
         Optional<Achievement> unlocked = AchievementManager.unlock(achievementId);
         unlocked.ifPresent(achievement -> showUnlockedDialog(achievement, owner));
         return unlocked.isPresent();
     }
 
+    /**
+     * Shows the unlock celebration dialog for a single achievement.
+     *
+     * @param achievement unlocked achievement to display
+     * @param owner       dialog owner node for window placement
+     */
     public static void showUnlockedDialog(Achievement achievement, Node owner) {
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Achievement Unlocked");
@@ -56,6 +72,11 @@ public final class AchievementUi {
         dialog.showAndWait();
     }
 
+    /**
+     * Opens the scrollable achievement library with progress summary.
+     *
+     * @param owner dialog owner node for window placement
+     */
     public static void showLibraryDialog(Node owner) {
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Achievement Library");

@@ -27,8 +27,14 @@ import java.util.function.Consumer;
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
-/** Refreshes all local-game board widgets from engine state. */
+/**
+ * {@link GameBoardRefreshService} implementation driven by {@link GameEngine}.
+ * <p>
+ * Reads live engine and player objects via suppliers so the UI stays in sync with
+ * local hot-seat state without network DTO mapping.
+ */
 public final class LocalBoardRefreshService implements GameBoardRefreshService {
+    /** Top status bar and turn-flow widgets bound from FXML. */
     private final Label currentPlayerLabel;
     private final Label gameStatusText;
     private final Label turnFlowLabel;
@@ -60,11 +66,21 @@ public final class LocalBoardRefreshService implements GameBoardRefreshService {
     private final Supplier<List<PlayerBoardView>> boardViewsSupplier;
     private final HandRenderer.SelectionListener handSelectionListener;
 
+    /** Hand card highlighted for discard or play; mirrored from the controller. */
     private Card selectedCard;
+    /** Captures the {@link CardView} when selection is reapplied after refresh. */
     private BiConsumer<Card, CardView> selectedViewCallback;
+    /** Wild-property recolor click options when the current player may act. */
     private Supplier<PublicBoardRenderOptions> boardOptionsSupplier = () -> PublicBoardRenderOptions.none();
+    /** Remaining local turn seconds for the status bar (-1 to hide). */
     private IntSupplier turnSecondsSupplier = () -> -1;
 
+    /**
+     * @param engineSupplier          live {@link GameEngine}
+     * @param currentTurnSeatSupplier index of the player whose turn it is
+     * @param boardViewsSupplier      prebuilt {@link ui.render.PlayerBoardView} list for the public board
+     * @param handSelectionListener   click/double-click handler for hand cards
+     */
     public LocalBoardRefreshService(Label currentPlayerLabel,
                                     Label gameStatusText,
                                     Label turnFlowLabel,
@@ -121,22 +137,26 @@ public final class LocalBoardRefreshService implements GameBoardRefreshService {
         this.handSelectionListener = handSelectionListener;
     }
 
+    /** {@inheritDoc} */
     @Override
     public void setSelectedCard(Card selectedCard) {
         this.selectedCard = selectedCard;
     }
 
+    /** {@inheritDoc} */
     @Override
     public void applySelectionCallback(BiConsumer<Card, CardView> callback) {
         this.selectedViewCallback = callback;
     }
 
+    /** Supplies wild-property recolor options when the current player may act. */
     public void setBoardOptionsSupplier(Supplier<PublicBoardRenderOptions> boardOptionsSupplier) {
         this.boardOptionsSupplier = boardOptionsSupplier != null
                 ? boardOptionsSupplier
                 : () -> PublicBoardRenderOptions.none();
     }
 
+    /** Supplies remaining turn seconds for the local countdown display (-1 to hide). */
     public void setTurnSecondsSupplier(IntSupplier turnSecondsSupplier) {
         this.turnSecondsSupplier = turnSecondsSupplier != null ? turnSecondsSupplier : () -> -1;
     }
@@ -146,6 +166,7 @@ public final class LocalBoardRefreshService implements GameBoardRefreshService {
         refreshTurnStatus(engineSupplier.get(), currentPlayerSupplier.get());
     }
 
+    /** {@inheritDoc} */
     @Override
     public void refreshAll(VBox playersList, Consumer<Double> rowHeightConsumer) {
         GameEngine engine = engineSupplier.get();
@@ -196,6 +217,7 @@ public final class LocalBoardRefreshService implements GameBoardRefreshService {
                 engine.isGameOver());
     }
 
+    /** {@inheritDoc} */
     @Override
     public void disableActionButtons() {
         if (drawCardBtn != null) {
@@ -236,6 +258,7 @@ public final class LocalBoardRefreshService implements GameBoardRefreshService {
                 currentPlayer.getBank());
     }
 
+    /** {@inheritDoc} */
     @Override
     public void refreshButtons() {
         refreshButtonStates(engineSupplier.get());

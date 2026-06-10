@@ -26,10 +26,17 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-/** Refreshes all online-game board widgets from server state. */
+/**
+ * {@link GameBoardRefreshService} implementation driven by {@link GameStateDto}.
+ * <p>
+ * Suppliers provide the latest server snapshot, mapped hand/bank, and local seat so
+ * the controller can refresh the board after each sync without duplicating render code.
+ */
 public final class NetworkBoardRefreshService implements GameBoardRefreshService {
+    /** Plays allowed per turn in online mode (matches server rules). */
     private static final int MAX_PLAYS_PER_TURN = 3;
 
+    /** Top status bar and turn-flow widgets bound from FXML. */
     private final Label currentPlayerLabel;
     private final Label gameStatusText;
     private final Label turnFlowLabel;
@@ -59,10 +66,20 @@ public final class NetworkBoardRefreshService implements GameBoardRefreshService
     private final Supplier<Integer> localSeatSupplier;
     private final HandRenderer.SelectionListener handSelectionListener;
 
+    /** Hand card highlighted for discard or play; mirrored from the controller. */
     private Card selectedCard;
+    /** Captures the {@link ui.CardView} when selection is reapplied after refresh. */
     private BiConsumer<Card, ui.CardView> selectedViewCallback;
+    /** Wild-property recolor click options when it is the local player's turn. */
     private Supplier<PublicBoardRenderOptions> boardOptionsSupplier = () -> PublicBoardRenderOptions.none();
 
+    /**
+     * @param stateSupplier       authoritative server snapshot
+     * @param handSupplier        mapped cards in the local player's hand
+     * @param bankSupplier        mapped cards in the local player's bank
+     * @param localSeatSupplier   this client's seat index
+     * @param handSelectionListener click/double-click handler for hand cards
+     */
     public NetworkBoardRefreshService(Label currentPlayerLabel,
                                         Label gameStatusText,
                                         Label turnFlowLabel,
@@ -115,16 +132,19 @@ public final class NetworkBoardRefreshService implements GameBoardRefreshService
         this.handSelectionListener = handSelectionListener;
     }
 
+    /** {@inheritDoc} */
     @Override
     public void setSelectedCard(Card selectedCard) {
         this.selectedCard = selectedCard;
     }
 
+    /** {@inheritDoc} */
     @Override
     public void applySelectionCallback(BiConsumer<Card, ui.CardView> callback) {
         this.selectedViewCallback = callback;
     }
 
+    /** Supplies wild-property recolor options when it is the local player's turn. */
     public void setBoardOptionsSupplier(Supplier<PublicBoardRenderOptions> boardOptionsSupplier) {
         this.boardOptionsSupplier = boardOptionsSupplier != null
                 ? boardOptionsSupplier
@@ -140,6 +160,7 @@ public final class NetworkBoardRefreshService implements GameBoardRefreshService
         refreshLabels(state);
     }
 
+    /** {@inheritDoc} */
     @Override
     public void refreshAll(VBox playersList, Consumer<Double> rowHeightConsumer) {
         GameStateDto state = stateSupplier.get();
@@ -216,6 +237,7 @@ public final class NetworkBoardRefreshService implements GameBoardRefreshService
                 state.gameOver);
     }
 
+    /** {@inheritDoc} */
     @Override
     public void refreshButtons() {
         GameStateDto state = stateSupplier.get();
@@ -242,6 +264,7 @@ public final class NetworkBoardRefreshService implements GameBoardRefreshService
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public void disableActionButtons() {
         if (drawCardBtn != null) {

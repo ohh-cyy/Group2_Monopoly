@@ -11,6 +11,7 @@ import java.util.List;
 
 /**
  * Collects payments from a player's bank or properties.
+ * Uses smallest-value cards first, matching official forced-payment order.
  */
 public final class RentPayment {
     private RentPayment() {
@@ -63,6 +64,7 @@ public final class RentPayment {
         return collectUpTo(collector, debtor, amountM);
     }
 
+    /** Smallest payable unit (bank or property) the player can offer; 0 if none. */
     public static int getMinimumPayableUnit(Player player) {
         int min = Integer.MAX_VALUE;
 

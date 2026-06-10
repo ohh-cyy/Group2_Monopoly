@@ -11,7 +11,12 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 
-/** Rich procedural firework bursts with glow, curved trails, and multi-color sparks. */
+/**
+ * Canvas-based procedural firework animation for the victory overlay.
+ * <p>
+ * Bursts loop on a timer with glow, curved particle trails, and multi-color sparks.
+ * The view is mouse-transparent so clicks pass through to the overlay dismiss handler.
+ */
 public final class VictoryFireworksView extends Pane {
     private static final Random RANDOM = new Random();
 
@@ -23,6 +28,12 @@ public final class VictoryFireworksView extends Pane {
     private double width;
     private double height;
 
+    /**
+     * Creates a fixed-size canvas that animates looping firework bursts.
+     *
+     * @param width  preferred canvas width in pixels
+     * @param height preferred canvas height in pixels
+     */
     public VictoryFireworksView(double width, double height) {
         this.width = width;
         this.height = height;

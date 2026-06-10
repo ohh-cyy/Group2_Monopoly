@@ -24,6 +24,11 @@ import network.protocol.GameStateDto;
 import java.io.IOException;
 import java.util.Objects;
 
+/**
+ * Wraps game and lobby scenes with overlay controls for settings, pause, and navigation.
+ * <p>
+ * Provides factory methods to create scenes, open local or online games, and return to the lobby.
+ */
 public final class SettingsOverlay {
     private static final double DEFAULT_WIDTH = 960;
     private static final double DEFAULT_HEIGHT = 640;
@@ -31,40 +36,51 @@ public final class SettingsOverlay {
     private SettingsOverlay() {
     }
 
+    /** Wraps {@code content} with a top-right settings button for non-game screens. */
     public static StackPane wrap(Parent content, Stage stage) {
         StackPane root = new StackPane(content);
         addSettingsButton(root, stage);
         return root;
     }
 
+    /** Wraps {@code content} with a pause button for in-game screens. */
     public static StackPane wrapGame(Parent content, Stage stage) {
         return wrapGame(content, stage, () -> {
         });
     }
 
+    /**
+     * Wraps {@code content} with a pause button and runs {@code beforeReturnToLobby}
+     * before navigating back to the lobby.
+     */
     public static StackPane wrapGame(Parent content, Stage stage, Runnable beforeReturnToLobby) {
         StackPane root = new StackPane(content);
         addPauseButton(root, stage, beforeReturnToLobby);
         return root;
     }
 
+    /** Creates a lobby-style scene with settings overlay and default dimensions. */
     public static Scene createScene(Parent content, Stage stage) {
         return createScene(content, stage, false);
     }
 
+    /** Creates an in-game scene with pause overlay and default dimensions. */
     public static Scene createGameScene(Parent content, Stage stage) {
         return createGameScene(content, stage, () -> {
         });
     }
 
+    /** Creates an in-game scene with pause overlay and a lobby-return hook. */
     public static Scene createGameScene(Parent content, Stage stage, Runnable beforeReturnToLobby) {
         return createScene(content, stage, true, beforeReturnToLobby);
     }
 
+    /** Adds a settings button to an existing {@link StackPane} root. */
     public static void addTo(StackPane root, Stage stage) {
         addSettingsButton(root, stage);
     }
 
+    /** Loads the lobby FXML view and switches the stage to it. */
     public static void showLobby(Stage stage) {
         try {
             FXMLLoader loader = new FXMLLoader(SettingsOverlay.class.getResource("/ui/lobby-view.fxml"));
@@ -79,10 +95,12 @@ public final class SettingsOverlay {
         }
     }
 
+    /** Opens a local four-player game and returns the loaded controller. */
     public static GameController openLocalGame(Stage stage) throws IOException {
         return openLocalGame(stage, 4);
     }
 
+    /** Opens a local game with the given player count and returns the loaded controller. */
     public static GameController openLocalGame(Stage stage, int playerCount) throws IOException {
         FXMLLoader loader = new FXMLLoader(SettingsOverlay.class.getResource("/ui/game-view.fxml"));
         loader.load();
@@ -94,6 +112,11 @@ public final class SettingsOverlay {
         return controller;
     }
 
+    /**
+     * Opens the online game view, wires the network client, and starts with {@code initialState}.
+     *
+     * @return the loaded {@link NetworkGameController}
+     */
     public static NetworkGameController openNetworkGame(Stage stage,
                                                           NetworkClient client,
                                                           int localSeat,

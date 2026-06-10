@@ -16,21 +16,30 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
 
+/**
+ * Styled modal dialogs for game errors and end-of-game prompts.
+ * <p>
+ * All public show methods marshal work onto the JavaFX application thread when needed.
+ */
 public final class GameAlertDialogs {
+    /** Message shown when the player has no remaining plays this turn. */
     public static final String NO_PLAYS_REMAINING_MESSAGE =
             "No plays remaining this turn. You cannot play any more cards.";
 
     private GameAlertDialogs() {
     }
 
+    /** Shows the standard "no plays remaining" error dialog. */
     public static void showNoPlaysRemaining(Node owner) {
         showError(owner, "Cannot Play Card", NO_PLAYS_REMAINING_MESSAGE);
     }
 
+    /** Shows an error dialog with title {@code Action Failed}. */
     public static void showError(Node owner, String message) {
         showError(owner, "Action Failed", message);
     }
 
+    /** Shows a styled error dialog with the given title and message. */
     public static void showError(Node owner, String title, String message) {
         Runnable show = () -> {
             GameAudio.play(GameAudio.Cue.ERROR);
@@ -43,15 +52,21 @@ public final class GameAlertDialogs {
         }
     }
 
-    /** @return true if the player wants another round */
+    /**
+     * Blocks and asks whether to play another round.
+     *
+     * @return {@code true} if the player chose to play again
+     */
     public static boolean askPlayAgain(Node owner) {
         return askPlayAgainBlocking(owner, "Play another round?");
     }
 
+    /** Asynchronously asks whether to play again and delivers the result to {@code onResult}. */
     public static void askPlayAgain(Node owner, Consumer<Boolean> onResult) {
         askPlayAgain(owner, "Play another round?", onResult);
     }
 
+    /** Asynchronously asks with a custom message and delivers the result to {@code onResult}. */
     public static void askPlayAgain(Node owner, String message, Consumer<Boolean> onResult) {
         Platform.runLater(() -> {
             boolean accept = showPlayAgainDialog(owner, message);

@@ -11,16 +11,31 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * Plays short sound cues for UI actions and inferred game-log events.
+ * <p>
+ * Respects the sound-effects toggle from {@link GameSettings}.
+ */
 public final class GameAudio {
+    /** Named sound clips loaded from classpath resources. */
     public enum Cue {
+        /** Generic UI button click. */
         BUTTON("/audio/sfx/button.wav", 0.55),
+        /** Drawing cards from the deck. */
         DRAW("/audio/sfx/draw.wav", 0.75),
+        /** Playing a card from hand. */
         PLAY("/audio/sfx/play.wav", 0.72),
+        /** Banking a card or collecting money into bank. */
         BANK("/audio/sfx/bank.wav", 0.72),
+        /** Charging or paying rent. */
         RENT("/audio/sfx/rent.wav", 0.78),
+        /** Turn change or turn timeout. */
         TURN("/audio/sfx/turn.wav", 0.62),
+        /** Invalid action or blocked play. */
         ERROR("/audio/sfx/error.wav", 0.68),
+        /** Game won. */
         VICTORY("/audio/sfx/victory.wav", 0.78),
+        /** Emoji reaction sent in online play. */
         EMOJI("/audio/sfx/emoji.wav", 0.68);
 
         private final String resource;
@@ -39,6 +54,11 @@ public final class GameAudio {
     private GameAudio() {
     }
 
+    /**
+     * Installs a scene-wide filter that plays a click sound for buttons.
+     *
+     * @param scene JavaFX scene to instrument; ignored when {@code null} or already installed
+     */
     public static void installButtonSounds(Scene scene) {
         if (scene == null || !INSTALLED_SCENES.add(scene)) {
             return;
@@ -51,6 +71,11 @@ public final class GameAudio {
         });
     }
 
+    /**
+     * Plays a sound cue when sound effects are enabled.
+     *
+     * @param cue cue to play; ignored when {@code null}
+     */
     public static void play(Cue cue) {
         if (cue == null || !GameSettings.isSoundEffectsEnabled()) {
             return;
@@ -65,6 +90,11 @@ public final class GameAudio {
         }
     }
 
+    /**
+     * Infers and plays a cue based on keywords in a game-log line.
+     *
+     * @param line raw or simplified game-log text
+     */
     public static void playForGameLog(String line) {
         if (line == null || line.isBlank()) {
             return;
@@ -96,6 +126,7 @@ public final class GameAudio {
         }
     }
 
+    /** Clears cached audio clips and installed scene listeners. */
     public static void clear() {
         CLIPS.clear();
         INSTALLED_SCENES.clear();

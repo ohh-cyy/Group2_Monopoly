@@ -16,6 +16,8 @@ import java.util.Objects;
 
 /**
  * Full-screen semi-transparent victory overlay with procedural fireworks.
+ * <p>
+ * Plays the victory sound, fades in over the current scene, and dismisses on click.
  */
 public final class GameVictoryScreen {
     private static final String OVERLAY_HOST_KEY = "victoryOverlayHost";
@@ -23,10 +25,23 @@ public final class GameVictoryScreen {
     private GameVictoryScreen() {
     }
 
+    /**
+     * Shows the victory overlay anchored to {@code anchor} with the winner name.
+     *
+     * @param anchor     node used to resolve the scene and overlay host
+     * @param winnerName display name of the winning player
+     */
     public static void show(Node anchor, String winnerName) {
         show(anchor, winnerName, null);
     }
 
+    /**
+     * Shows the victory overlay and runs {@code onDismissed} after the user closes it.
+     *
+     * @param anchor       node used to resolve the scene and overlay host
+     * @param winnerName   display name of the winning player
+     * @param onDismissed  callback run after the overlay fades out; may be {@code null}
+     */
     public static void show(Node anchor, String winnerName, Runnable onDismissed) {
         GameAudio.play(GameAudio.Cue.VICTORY);
         Platform.runLater(() -> showOverlay(anchor, winnerName, onDismissed));

@@ -11,8 +11,14 @@ import model.player.Player;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * Action card that charges rent on owned properties.
+ * Supports dual-color cards (1M bank value) and all-color cards (3M bank value).
+ */
 public class RentCard extends ActionCard {
+    /** Colors this card can charge rent on (ignored when {@link #allColors} is true). */
     private final Color[] applicableColors;
+    /** When true, rent may be charged on any color the player owns. */
     private final boolean allColors;
 
     /** All-color rent card with 3M bank value. */
@@ -26,6 +32,12 @@ public class RentCard extends ActionCard {
         );
     }
 
+    /**
+     * All-color rent card with an explicit instance id.
+     *
+     * @param instanceId unique card instance id
+     * @return all-color rent card
+     */
     public static RentCard allColors(String instanceId) {
         return new RentCard(
                 instanceId,
@@ -49,6 +61,14 @@ public class RentCard extends ActionCard {
         );
     }
 
+    /**
+     * Two-color rent card with an explicit instance id.
+     *
+     * @param instanceId unique card instance id
+     * @param c1         first applicable color
+     * @param c2         second applicable color
+     * @return dual-color rent card
+     */
     public static RentCard dual(String instanceId, Color c1, Color c2) {
         String label = c1.name() + " / " + c2.name();
         return new RentCard(
@@ -74,10 +94,12 @@ public class RentCard extends ActionCard {
         this.applicableColors = colors;
     }
 
+    /** @return defensive copy of applicable colors */
     public Color[] getApplicableColors() {
         return applicableColors.clone();
     }
 
+    /** @return {@code true} if this card can charge rent on any owned color */
     public boolean isAllColors() {
         return allColors;
     }
@@ -100,6 +122,13 @@ public class RentCard extends ActionCard {
         return PropertyRules.countBillableProperties(player, color);
     }
 
+    /**
+     * Calculates rent owed for the given color based on the player's property count.
+     *
+     * @param player      rent collector
+     * @param chargeColor color to charge rent on
+     * @return rent amount in millions (M)
+     */
     public int calculateRent(Player player, Color chargeColor) {
         return PropertyRules.calculateRent(player, chargeColor);
     }
@@ -107,6 +136,10 @@ public class RentCard extends ActionCard {
     /**
      * Collects rent from every player except the collector.
      *
+     * @param collector      player receiving rent
+     * @param game           game engine
+     * @param chargeColor    color used for rent calculation
+     * @param rentPerPlayer  base rent per opponent in millions (M)
      * @return total amount actually paid
      */
     public int collectFromAll(Player collector, GameEngine game, Color chargeColor, int rentPerPlayer) {
@@ -141,6 +174,10 @@ public class RentCard extends ActionCard {
                 .toList();
     }
 
+    /**
+     * Plays this rent card automatically, choosing the highest-rent color
+     * and collecting from all opponents.
+     */
     @Override
     public void use(Player player, GameEngine game) {
         Color chargeColor = pickBestColor(player);

@@ -20,11 +20,18 @@ import javafx.util.Duration;
 import ui.GameSettings;
 import ui.SettingsOverlay;
 
+/**
+ * JavaFX {@link Application} entry point for Monopoly Deal.
+ * Shows an animated title screen, then routes to the lobby on start.
+ */
 public class MonopolyDealApp extends Application {
+    /** Classpath URL for the shared game stylesheet. */
     private static final String THEME_CSS = "/ui/game-theme.css";
 
+    /** Loops floating-card motion on the cover screen; stopped when entering the lobby. */
     private Timeline coverAnimation;
 
+    /** Configures the stage, initializes settings, and displays the cover screen. */
     @Override
     public void start(Stage primaryStage) throws Exception {
         primaryStage.setMinWidth(900);
@@ -35,6 +42,7 @@ public class MonopolyDealApp extends Application {
         primaryStage.show();
     }
 
+    /** Builds and displays the animated title screen with floating cards. */
     private void showCover(Stage primaryStage) {
         GameSettings.useLobbyMusic();
         StackPane root = new StackPane();
@@ -73,6 +81,7 @@ public class MonopolyDealApp extends Application {
         startCoverAnimation(motionLayer);
     }
 
+    /** Decorative card shape for the cover-screen parallax layer. */
     private Rectangle createFloatingCard(double x, double y, double rotate, double opacity) {
         Rectangle card = new Rectangle(116, 162);
         card.getStyleClass().add("cover-floating-card");
@@ -85,6 +94,7 @@ public class MonopolyDealApp extends Application {
         return card;
     }
 
+    /** Decorative glow orb for the cover-screen background. */
     private Circle createLightOrb(double x, double y, double radius, double opacity) {
         Circle orb = new Circle(radius);
         orb.getStyleClass().add("cover-light-orb");
@@ -94,6 +104,7 @@ public class MonopolyDealApp extends Application {
         return orb;
     }
 
+    /** Starts an infinite bobbing animation on each cover-screen decorative node. */
     private void startCoverAnimation(Pane motionLayer) {
         if (coverAnimation != null) {
             coverAnimation.stop();
@@ -119,6 +130,7 @@ public class MonopolyDealApp extends Application {
         coverAnimation.play();
     }
 
+    /** Stops cover animation and switches the stage to the lobby view. */
     private void showLobby(Stage primaryStage) {
         if (coverAnimation != null) {
             coverAnimation.stop();
@@ -130,6 +142,7 @@ public class MonopolyDealApp extends Application {
         }
     }
 
+    /** Attaches the shared game stylesheet if not already present. */
     private void addTheme(Scene scene) {
         String css = getClass().getResource(THEME_CSS).toExternalForm();
         if (!scene.getStylesheets().contains(css)) {
@@ -137,10 +150,12 @@ public class MonopolyDealApp extends Application {
         }
     }
 
+    /** Launches the JavaFX application. */
     public static void main(String[] args) {
         launch(args);
     }
 
+    /** Stops cover animation and releases shared settings resources. */
     @Override
     public void stop() {
         if (coverAnimation != null) {

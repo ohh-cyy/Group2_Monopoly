@@ -20,7 +20,12 @@ import java.util.function.Consumer;
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
-/** Victory, rematch, hand-limit discard, and log merge for online matches. */
+/**
+ * Cross-cutting online match concerns extracted from {@link controller.NetworkGameController}.
+ * <p>
+ * Merges server log lines, shows victory/rematch UI, reconciles hand selection after sync,
+ * and prompts mandatory hand-limit discards before end-turn.
+ */
 public final class NetworkMatchCoordinator {
     private final Label statusAnchor;
     private final GameLogPane gameLog;
@@ -31,14 +36,31 @@ public final class NetworkMatchCoordinator {
     private final Supplier<NetworkClient> clientSupplier;
     private final Consumer<String> onNewLogLine;
 
+    /** Number of server log lines already merged into {@link #gameLog}. */
     private int mergedLogSize;
+    /** Prevents showing the victory overlay more than once per game end. */
     private boolean victoryScreenShown;
+    /** Prevents duplicate rematch vote dialogs after victory. */
     private boolean rematchPromptShown;
+    /** Ensures the "session ended" message is shown only once per rematch decline. */
     private boolean rematchDeclinedNotified;
+    /** Last displayed rematch yes-count to avoid repeating the waiting status. */
     private int lastRematchYesCount = -1;
+    /** Previous snapshot's game-over flag for rematch transition detection. */
     private boolean previousGameOver;
+    /** Set when End Turn was clicked but blocked until hand size is legal. */
     private boolean pendingEndTurnAfterDiscard;
 
+    /**
+     * @param statusAnchor         label used as owner for victory/rematch dialogs
+     * @param gameLog              scrollable log pane receiving merged server lines
+     * @param statusDisplay        primary transient status message presenter
+     * @param onBoardRefresh       invoked after log merge so the controller can repaint
+     * @param disableActionButtons invoked when victory screen is shown
+     * @param localSeatSupplier    this client's seat index for turn checks
+     * @param clientSupplier       connected client for end-turn and discard messages
+     * @param onNewLogLine         optional hook for audio/effects on each new log entry
+     */
     public NetworkMatchCoordinator(Label statusAnchor,
                                    GameLogPane gameLog,
                                    StatusMessageDisplay statusDisplay,
@@ -57,14 +79,21 @@ public final class NetworkMatchCoordinator {
         this.onNewLogLine = onNewLogLine;
     }
 
+    /** Whether end-turn was requested but blocked until hand size is legal. */
     public boolean isPendingEndTurnAfterDiscard() {
         return pendingEndTurnAfterDiscard;
     }
 
+    /**
+     * Records that end-turn should be sent automatically once hand size is legal.
+     *
+     * @param pending {@code true} when the player clicked End Turn while over the hand limit
+     */
     public void setPendingEndTurnAfterDiscard(boolean pending) {
         this.pendingEndTurnAfterDiscard = pending;
     }
 
+    /** Ensures nullable DTO collections are non-null before use. */
     public void normalize(GameStateDto state) {
         if (state.players == null) {
             state.players = new ArrayList<>();
@@ -80,6 +109,9 @@ public final class NetworkMatchCoordinator {
         }
     }
 
+    /**
+     * Runs after a new snapshot is stored: rematch transitions, log merge, UI refresh, victory.
+     */
     public void onStateApplied(GameStateDto state) {
         handleRematchTransitions(state);
         mergeLog(state.logLines);
@@ -87,6 +119,11 @@ public final class NetworkMatchCoordinator {
         maybeShowVictory(state);
     }
 
+    /**
+     * Re-binds selection to the mapped hand by instance id after a server sync.
+     *
+     * @return matching card from {@code mappedHand}, or {@code null} if gone
+     */
     public static Card reconcileSelection(List<Card> mappedHand, Card selectedCard) {
         if (selectedCard == null || mappedHand == null) {
             return null;
@@ -98,6 +135,9 @@ public final class NetworkMatchCoordinator {
                 .orElse(null);
     }
 
+    /**
+     * Prompts discard when over the hand limit on the local player's turn; may auto end-turn afterward.
+     */
     public void checkHandLimitAfterRefresh(GameStateDto state, List<Card> hand, GameDialogService dialogs) {
         if (!isMyTurn(state)) {
             pendingEndTurnAfterDiscard = false;
@@ -195,6 +235,7 @@ public final class NetworkMatchCoordinator {
                 });
     }
 
+    /** Shows the hand-limit discard dialog and sends the choice to the server. */
     public void promptDiscardForHandLimit(GameStateDto state,
                                           List<Card> hand,
                                           GameDialogService dialogs) {

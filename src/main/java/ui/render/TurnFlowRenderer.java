@@ -5,13 +5,23 @@ import javafx.geometry.Pos;
 import javafx.scene.control.Label;
 import javafx.scene.layout.HBox;
 
-/** Renders turn flow hint text and remaining play dots. */
+/**
+ * Renders turn-flow hint text and a remaining-play dot indicator.
+ * <p>
+ * Hint copy walks the player through draw, play, and end-turn phases;
+ * dots reflect how many of the three plays have been used.
+ */
 public final class TurnFlowRenderer {
     private static final int WIN_SETS = 3;
 
     private TurnFlowRenderer() {
     }
 
+    /**
+     * Updates turn-flow hint text and the remaining-play dot indicator.
+     *
+     * @param maxPlaysPerTurn maximum plays allowed after drawing
+     */
     public static void render(Label turnFlowLabel,
                               HBox playDotsBar,
                               boolean hasDrawnThisTurn,
@@ -75,6 +85,7 @@ public final class TurnFlowRenderer {
         playDotsBar.getChildren().add(winHint);
     }
 
+    /** Returns the default maximum plays per turn from the game engine. */
     public static int defaultMaxPlays() {
         return GameEngine.MAX_PLAYS_PER_TURN;
     }

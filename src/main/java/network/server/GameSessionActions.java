@@ -16,10 +16,14 @@ import network.protocol.ServerMessage;
 
 import java.util.List;
 
-/** Handles gameplay commands routed from {@link GameSession}. */
+/**
+ * Validates and executes in-game commands on the authoritative server engine.
+ * Mirrors local {@code ActionEffectResolver} logic without UI dialogs.
+ */
 final class GameSessionActions {
     private final ServerPlayHandler playHandler = new ServerPlayHandler();
 
+    /** Current player draws two cards once per turn. */
     ServerMessage handleDraw(GameSession session, int seat) {
         if (session.pendingResolution() != null) {
             return error("Waiting for player response");
@@ -39,6 +43,7 @@ final class GameSessionActions {
         return ok("Drew 2 cards");
     }
 
+    /** Ends the current turn after hand-size validation. */
     ServerMessage handleEndTurn(GameSession session, int seat) {
         if (session.pendingResolution() != null) {
             return error("Waiting for player response");
@@ -60,6 +65,7 @@ final class GameSessionActions {
         return ok("Turn ended");
     }
 
+    /** Discards one card from the current player's hand. */
     ServerMessage handleDiscardCard(GameSession session, int seat, ClientMessage message) {
         if (session.pendingResolution() != null) {
             return error("Waiting for player response");
@@ -90,6 +96,7 @@ final class GameSessionActions {
         return ok("Card discarded");
     }
 
+    /** Recolors a wild property on the board; consumes one play action. */
     ServerMessage handleRecolorWild(GameSession session, int seat, ClientMessage message) {
         if (session.pendingResolution() != null) {
             return error("Waiting for player response");
@@ -133,6 +140,10 @@ final class GameSessionActions {
         return ok("Wild property recolored");
     }
 
+    /**
+     * Plays a card according to {@link ClientMessage#mode}:
+     * BANK, PROPERTY, EFFECT, DOUBLE_RENT, or simple play.
+     */
     ServerMessage handlePlayCard(GameSession session, int seat, ClientMessage message) {
         if (session.pendingResolution() != null) {
             return error("Waiting for player response");
@@ -186,6 +197,7 @@ final class GameSessionActions {
         return ok("Card played");
     }
 
+    /** Validates and broadcasts an emoji reaction. */
     ServerMessage handleEmoji(GameSession session, int seat, ClientMessage message) {
         if (session.engine() == null) {
             return error("Game not started");
@@ -201,6 +213,7 @@ final class GameSessionActions {
         return ok("Emoji sent");
     }
 
+    /** Forwards a PROMPT answer to the active {@link PendingActionResolution}. */
     ServerMessage handleRespond(GameSession session, int seat, ClientMessage message) {
         PendingActionResolution pending = session.pendingResolution();
         if (pending == null) {
@@ -213,6 +226,7 @@ final class GameSessionActions {
         return ok("Response accepted");
     }
 
+    /** Deposits an action card or bankable wild property into the player's bank. */
     boolean playToBank(GameSession session, Player player, Card card) {
         if (!(card instanceof ActionCard action)) {
             if (card instanceof WildpropertyCard wild && wild.isBankable()) {
@@ -244,6 +258,10 @@ final class GameSessionActions {
         return true;
     }
 
+    /**
+     * Plays an action card: either starts {@link PendingActionResolution} for interactive cards
+     * or delegates immediately to {@link ServerPlayHandler}.
+     */
     private boolean playActionEffect(GameSession session, int seat, Player player, Card card, ClientMessage message) {
         if (!(card instanceof ActionCard action)) {
             return false;
@@ -268,6 +286,7 @@ final class GameSessionActions {
         return ok;
     }
 
+    /** Discards Double the Rent + Rent, then runs rent collection with forced doubling. */
     private boolean playDoubleRentCombo(GameSession session, int seat, Player player, ClientMessage message) {
         GameEngine engine = session.engine();
         if (message.secondCardId == null || message.secondCardId.isBlank()) {

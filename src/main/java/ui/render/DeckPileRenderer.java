@@ -7,11 +7,23 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.shape.Rectangle;
 
-/** Small draw/discard pile widgets for the public board header. */
+/**
+ * Renders stacked draw and discard pile widgets for the public board header.
+ * <p>
+ * Each pile shows a layered card silhouette, numeric count, and title label.
+ */
 public final class DeckPileRenderer {
     private DeckPileRenderer() {
     }
 
+    /**
+     * Renders draw and discard pile widgets with current counts.
+     *
+     * @param container     horizontal row that receives the pile widgets
+     * @param drawCount     number of cards remaining in the draw pile
+     * @param discardCount  number of cards in the discard pile
+     * @param gameOver      when {@code true}, pile titles are shown in a muted style
+     */
     public static void render(HBox container, int drawCount, int discardCount, boolean gameOver) {
         if (container == null) {
             return;

@@ -11,14 +11,25 @@ import model.player.Player;
 
 import java.util.function.Supplier;
 
-/** Renders the left sidebar player summary cards. */
+/**
+ * Renders left-sidebar player summary cards with avatar, hand size, and bank total.
+ * <p>
+ * Supports both domain {@link model.player.Player} objects and pre-built
+ * {@link PlayerBoardView} snapshots for online play.
+ */
 public final class PlayerListRenderer {
     private final Supplier<Image> avatarSupplier;
 
+    /**
+     * Creates a renderer that supplies avatar images for sidebar player cards.
+     *
+     * @param avatarSupplier supplier of the default avatar image; may be {@code null}
+     */
     public PlayerListRenderer(Supplier<Image> avatarSupplier) {
         this.avatarSupplier = avatarSupplier;
     }
 
+    /** Renders sidebar summary cards for domain players. */
     public void render(VBox container, Iterable<Player> players, Player currentPlayer) {
         if (container == null) {
             return;
@@ -37,6 +48,7 @@ public final class PlayerListRenderer {
         }
     }
 
+    /** Renders sidebar summary cards from pre-built board views. */
     public void renderBoardViews(VBox container, Iterable<PlayerBoardView> views, int currentSeat) {
         if (container == null) {
             return;

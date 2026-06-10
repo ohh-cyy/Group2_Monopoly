@@ -8,12 +8,16 @@ import model.enums.Color;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Creates the standard Monopoly Deal deck used by this project. */
+/**
+ * Factory for the standard Monopoly Deal deck used by this project.
+ * Card counts and values follow the official 110-card distribution.
+ */
 public final class DeckFactory {
 
     private DeckFactory() {
     }
 
+    /** Builds the full 110-card deck with properties, money, actions, wilds, and rent cards. */
     public static List<Card> createFullDeck() {
         List<Card> cards = new ArrayList<>();
 

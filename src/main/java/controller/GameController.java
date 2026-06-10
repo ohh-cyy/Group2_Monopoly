@@ -51,62 +51,101 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * FXML controller for the local hot-seat game view ({@code game-view.fxml}).
+ * <p>
+ * Wires UI widgets to {@link LocalGameSession}, card-play services, turn timer,
+ * and board refresh. All rules run on the client; there is no network layer.
+ */
 public class GameController {
+    /** Turn summary and deck pile labels in the top status bar. */
     @FXML private Label currentPlayerLabel;
     @FXML private Label gameStatusText;
     @FXML private Label turnFlowLabel;
     @FXML private HBox playDotsBar;
     @FXML private HBox deckPilesBar;
+    /** Transient hint shown below the board (errors use a distinct style). */
     @FXML private Label statusMessage;
+    /** Left sidebar listing all players and their bank totals. */
     @FXML private VBox playersList;
+    /** Collapsible side panels and their toggle controls. */
     @FXML private VBox leftSidebar;
     @FXML private VBox rightSidebar;
     @FXML private Button leftSidebarToggle;
     @FXML private Button rightSidebarToggle;
     @FXML private Button leftSidebarHandle;
     @FXML private Button rightSidebarHandle;
+    /** Bottom hand dock: scroll area, hint label, and collapse toggle. */
     @FXML private VBox handDock;
     @FXML private Label handDockHint;
     @FXML private Button handDockToggle;
+    /** Center board: all players' property rows and shared bank bar. */
     @FXML private VBox publicBoardPanel;
     @FXML private HBox publicBoardHeader;
     @FXML private VBox allPlayersPropertiesPanel;
     @FXML private HBox allPlayersBankBar;
+    /** Current player's hand and personal bank widgets. */
     @FXML private ScrollPane playerHandScroll;
     @FXML private HBox playerHand;
     @FXML private FlowPane playerBank;
     @FXML private Label bankTotalLabel;
+    /** Scrollable event log in the right sidebar. */
     @FXML private GameLogPane gameLog;
+    /** Emoji reaction picker and floating overlay target. */
     @FXML private FlowPane emojiBar;
     @FXML private Pane reactionOverlay;
+    /** Primary turn action buttons. */
     @FXML private Button drawCardBtn;
     @FXML private Button discardCardBtn;
     @FXML private Button endTurnBtn;
     @FXML private Button newGameBtn;
     @FXML private Button achievementBtn;
 
+    /** Owns engine lifecycle and delegates turn mutations. */
     private LocalGameSession localSession;
+    /** Themed dialogs for card play and hand-limit prompts. */
     private GameDialogService dialogs;
+    /** Local card-play orchestration and effect routing. */
     private LocalCardPlayService cardPlayService;
+    /** Wild property recolor flow when clicking board cards. */
     private WildPropertyRecolorService wildRecolorService;
+    /** Presents transient status and error messages. */
     private StatusMessageDisplay statusDisplay;
+    /** Collapsible sidebar and hand-dock chrome. */
     private GameBoardChrome boardChrome;
+    /** Tracks property row heights for responsive board layout. */
     private PropertyBoardLayoutTracker layoutTracker;
+    /** Mode-specific board refresh implementation. */
     private GameBoardRefreshService boardRefresh;
+    /** Per-turn countdown before auto-skipping the current player. */
     private LocalTurnTimer turnTimer;
+    /** Fly animation from hand to bank or property board. */
     private PlayCardFlyAnimation playFlyAnimation;
+    /** Floating emoji reactions over the public property board. */
     private EmojiReactionOverlay emojiReactionOverlay;
+    /** Renders and tracks hand card selection state. */
     private HandRenderer handRenderer;
+    /** Routes hand click and double-click to selection/play. */
     private HandRenderer.SelectionListener handSelectionListener;
 
+    /** Live engine reference; {@code null} until {@link #startLocalGame(int)} runs. */
     private GameEngine gameEngine;
+    /** Seat list created when a new local game starts. */
     private List<Player> players;
+    /** Hand card currently highlighted for discard or play. */
     private Card selectedCard;
     private CardView selectedCardView;
+    /** Card view kept during the play-fly animation before removal from hand. */
     private CardView pendingPlayedCardView;
+    /** Default avatar image for player list and board renderers. */
     private Image avatarImage;
+    /** Player count for the next {@link #initializeGame()} call (2–5). */
     private int localPlayerCount = 4;
 
+    /**
+     * FXML lifecycle hook: builds services, attaches layout listeners, and wires buttons.
+     * Does not start a game; call {@link #startLocalGame()} afterward.
+     */
     @FXML
     public void initialize() {
         avatarImage = AvatarResources.loadDefaultAvatar(getClass());
@@ -220,10 +259,18 @@ public class GameController {
         });
     }
 
+    /**
+     * Starts a local game using the player count from the lobby combo box (default 4).
+     */
     public void startLocalGame() {
         startLocalGame(localPlayerCount);
     }
 
+    /**
+     * Starts a new local hot-seat game with the given number of players (clamped to 2–5).
+     *
+     * @param playerCount desired seat count
+     */
     public void startLocalGame(int playerCount) {
         localPlayerCount = Math.max(2, Math.min(5, playerCount));
         initializeGame();

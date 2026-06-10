@@ -1,3 +1,9 @@
+/**
+ * JavaFX module for the Monopoly Deal desktop client.
+ * <p>
+ * Exports app, ui, controller, engine, model, and network packages;
+ * opens FXML and Gson-bound packages for reflection access.
+ */
 module com.example.zyzzs {
     requires javafx.controls;
     requires javafx.fxml;

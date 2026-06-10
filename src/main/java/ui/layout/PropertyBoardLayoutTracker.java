@@ -7,7 +7,12 @@ import ui.PublicPropertyBoardLayout;
 
 import java.util.function.IntSupplier;
 
-/** Keeps the public property board rows sized when the table area resizes. */
+/**
+ * Keeps public property board rows equally sized when the table area resizes.
+ * <p>
+ * Listens for width and height changes, then invokes a callback when row height
+ * shifts enough to require re-rendering card metrics.
+ */
 public final class PropertyBoardLayoutTracker {
     private final VBox allPlayersPropertiesPanel;
     private final IntSupplier playerCount;
@@ -15,6 +20,11 @@ public final class PropertyBoardLayoutTracker {
 
     private double lastPropertyRowHeight = -1;
 
+    /**
+     * Creates a tracker for the all-players property panel.
+     *
+     * @param onRescaleNeeded callback invoked when row height changes enough to re-render cards
+     */
     public PropertyBoardLayoutTracker(VBox allPlayersPropertiesPanel,
                                         IntSupplier playerCount,
                                         Runnable onRescaleNeeded) {
@@ -23,16 +33,19 @@ public final class PropertyBoardLayoutTracker {
         this.onRescaleNeeded = onRescaleNeeded;
     }
 
+    /** Returns the last measured property row height, or {@code -1} if unset. */
     public double lastRowHeight() {
         return lastPropertyRowHeight;
     }
 
+    /** Stores the latest measured row height when positive. */
     public void setLastRowHeight(double rowHeight) {
         if (rowHeight > 0) {
             lastPropertyRowHeight = rowHeight;
         }
     }
 
+    /** Attaches width and table-area height listeners to trigger rescaling. */
     public void attach() {
         if (allPlayersPropertiesPanel == null) {
             return;
@@ -61,6 +74,7 @@ public final class PropertyBoardLayoutTracker {
         });
     }
 
+    /** Recomputes equal row layout and triggers rescale when row height changes. */
     public void refreshLayout() {
         int count = playerCount.getAsInt();
         if (count <= 0) {

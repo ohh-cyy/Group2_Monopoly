@@ -5,8 +5,20 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import model.player.Player;
 
-/** Renders the bank total bar above the public property board. */
+/**
+ * Renders the bank-total summary bar above the public property board.
+ * <p>
+ * Each player receives a pill showing name and bank value; the active seat
+ * is highlighted for quick identification during play.
+ */
 public final class BankBarRenderer {
+    /**
+     * Renders bank total pills for each player in seat order.
+     *
+     * @param container    horizontal row that receives the pills
+     * @param players      players to display; iteration order defines seat order
+     * @param currentSeat  seat index of the active player, highlighted in the bar
+     */
     public void render(HBox container, Iterable<Player> players, int currentSeat) {
         if (container == null || players == null) {
             return;
@@ -19,6 +31,13 @@ public final class BankBarRenderer {
         }
     }
 
+    /**
+     * Renders bank total pills from pre-built board views.
+     *
+     * @param container    horizontal row that receives the pills
+     * @param views        read-only player snapshots with bank totals
+     * @param currentSeat  seat index of the active player, highlighted in the bar
+     */
     public void renderBoardViews(HBox container, Iterable<PlayerBoardView> views, int currentSeat) {
         if (container == null || views == null) {
             return;

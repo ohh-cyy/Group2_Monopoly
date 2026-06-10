@@ -29,9 +29,12 @@ import java.util.List;
 
 /**
  * Small JavaFX window for checking card UI rendering.
+ * <p>
+ * Displays sample property, wild, money, action, and rent cards using {@link CardView}.
  */
 public class CardViewTest extends Application {
 
+    /** Builds the preview layout and shows the test window. */
     @Override
     public void start(Stage primaryStage) {
         VBox root = new VBox(20);
@@ -149,6 +152,7 @@ public class CardViewTest extends Application {
         return section;
     }
 
+    /** Application entry point for standalone card preview. */
     public static void main(String[] args) {
         launch(args);
     }

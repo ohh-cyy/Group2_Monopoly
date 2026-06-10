@@ -8,11 +8,23 @@ import ui.CardView;
 
 import java.util.List;
 
-/** Renders the current player's bank row and total value label. */
+/**
+ * Renders the current player's personal bank row and total value label.
+ * <p>
+ * Bank cards use {@link CardView#COMPACT} metrics; an empty bank shows a hint label.
+ */
 public final class PersonalBankRenderer {
     private static final String EMPTY_HINT =
             "(Money cards / action cards played, or rent collected, go into bank)";
 
+    /**
+     * Renders the personal bank card row and updates the total label.
+     *
+     * @param playerBank      flow pane that receives compact bank card slots
+     * @param bankTotalLabel  label updated with the total bank value
+     * @param totalM          total bank value in millions
+     * @param bankCards       cards currently in the player's bank
+     */
     public void render(FlowPane playerBank, Label bankTotalLabel, int totalM, List<Card> bankCards) {
         if (playerBank == null) {
             return;

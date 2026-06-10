@@ -19,7 +19,10 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
- * Handles local card play flow: action effects, wild properties, and simple cards.
+ * Local card-play orchestration: dialogs, effect resolution, and engine mutations.
+ * <p>
+ * Routes each {@link model.card.Card} to action, wild-property, or simple handlers
+ * and returns a {@link CardPlayOutcome} for the UI layer.
  */
 public final class LocalCardPlayService {
     private final GameDialogService dialogs;
@@ -28,6 +31,13 @@ public final class LocalCardPlayService {
     private final Consumer<String> log;
     private final BiConsumer<String, Boolean> status;
 
+    /**
+     * @param dialogs        themed dialog factory
+     * @param actionResolver local action-card effect resolver
+     * @param prompts        shared bank-vs-effect prompts
+     * @param log            game log sink
+     * @param status         status bar sink (message, isError)
+     */
     public LocalCardPlayService(GameDialogService dialogs,
                                   ActionEffectResolver actionResolver,
                                   StandardCardPlayPrompts prompts,
@@ -40,6 +50,9 @@ public final class LocalCardPlayService {
         this.status = status;
     }
 
+    /**
+     * Convenience constructor using a default {@link StandardCardPlayPrompts} instance.
+     */
     public LocalCardPlayService(GameDialogService dialogs,
                                   ActionEffectResolver actionResolver,
                                   Consumer<String> log,
@@ -47,14 +60,19 @@ public final class LocalCardPlayService {
         this(dialogs, actionResolver, new StandardCardPlayPrompts(dialogs), log, status);
     }
 
+    /** Delegates to {@link StandardCardPlayPrompts}. */
     public Optional<ActionPlayChoice> promptActionCardChoice(ActionCard card) {
         return prompts.promptActionCardChoice(card);
     }
 
+    /** Delegates to {@link StandardCardPlayPrompts}. */
     public Optional<ActionPlayChoice> promptWildPropertyChoice(WildpropertyCard wild) {
         return prompts.promptWildPropertyChoice(wild);
     }
 
+    /**
+     * Full action-card flow: bank vs effect choice, then {@link ActionEffectResolver}.
+     */
     public CardPlayOutcome playActionCard(LocalGameSession session, Player player, ActionCard actionCard) {
         GameEngine engine = session.getEngine();
         Optional<ActionPlayChoice> choice = promptActionCardChoice(actionCard);
@@ -93,6 +111,7 @@ public final class LocalCardPlayService {
         return new CardPlayOutcome(result, false, extraPlay);
     }
 
+    /** Wild property: optional bank deposit, or play as property with color choice. */
     public CardPlayOutcome playWildPropertyCard(LocalGameSession session, Player player, WildpropertyCard wild) {
         GameEngine engine = session.getEngine();
         if (wild.isBankable()) {
@@ -145,7 +164,11 @@ public final class LocalCardPlayService {
         return new CardPlayOutcome(ActionEffectResult.SUCCESS, false, false);
     }
 
-    /** Routes a card to the correct play handler (Strategy-like dispatch, kept in one service). */
+    /**
+     * Routes a card to the correct play handler (action, wild, or simple).
+     *
+     * @return outcome describing success, banking, extra play consumption, or cancellation
+     */
     public CardPlayOutcome play(LocalGameSession session, Player player, Card card) {
         if (card instanceof ActionCard actionCard) {
             return playActionCard(session, player, actionCard);
@@ -156,6 +179,7 @@ public final class LocalCardPlayService {
         return playSimpleCard(session, player, card);
     }
 
+    /** Property, money, and other cards played directly via {@link model.card.Card#use}. */
     public CardPlayOutcome playSimpleCard(LocalGameSession session, Player player, Card played) {
         GameEngine engine = session.getEngine();
         if (played instanceof PropertyCard propertyCard

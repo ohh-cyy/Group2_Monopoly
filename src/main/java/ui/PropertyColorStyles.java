@@ -2,7 +2,12 @@ package ui;
 
 import model.enums.Color;
 
-/** CSS colors for property set boxes on the public board. */
+/**
+ * CSS color helpers for property set boxes on the public board.
+ * <p>
+ * Provides border, background, and title colors keyed by {@link model.enums.Color},
+ * with stronger background opacity when a set is complete.
+ */
 public final class PropertyColorStyles {
     private static final double COMPLETE_BG_ALPHA_MULTIPLIER = 3.1;
     private static final double COMPLETE_BG_ALPHA_MAX = 0.58;
@@ -10,6 +15,7 @@ public final class PropertyColorStyles {
     private PropertyColorStyles() {
     }
 
+    /** Returns the border hex color for a property set of the given color. */
     public static String borderHex(Color color) {
         if (color == null) {
             return "#95a5a6";
@@ -28,10 +34,12 @@ public final class PropertyColorStyles {
         };
     }
 
+    /** Returns the background rgba color for an incomplete property set. */
     public static String backgroundHex(Color color) {
         return backgroundHex(color, false);
     }
 
+    /** Returns the background rgba color, with stronger opacity when {@code complete}. */
     public static String backgroundHex(Color color, boolean complete) {
         if (color == null) {
             return complete ? "rgba(245,248,247,0.96)" : "rgba(245,248,247,0.92)";
@@ -58,6 +66,7 @@ public final class PropertyColorStyles {
         return String.format("rgba(%d,%d,%d,%.2f)", r, g, b, alpha);
     }
 
+    /** Returns the title text color for a property set header. */
     public static String titleTextHex(Color color) {
         if (color == null) {
             return "#25342d";
@@ -68,6 +77,7 @@ public final class PropertyColorStyles {
         };
     }
 
+    /** Returns a human-readable color name such as {@code Light Blue}. */
     public static String displayName(Color color) {
         if (color == null) {
             return "Unknown";
@@ -89,6 +99,7 @@ public final class PropertyColorStyles {
         return sb.toString();
     }
 
+    /** Returns title text in the form {@code Light Blue  2/3}. */
     public static String setTitleText(Color color, int ownedCount, int setSize) {
         return displayName(color) + "  " + ownedCount + "/" + setSize;
     }
