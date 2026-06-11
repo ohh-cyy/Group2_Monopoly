@@ -17,8 +17,10 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/** 测试牌堆工厂、抽牌、弃牌堆，以及 {@link PropertyRules} / {@link RentTable} 规则。 */
 class DeckAndRulesTest {
 
+    /** 完整牌堆应包含 100+ 张牌，且涵盖地产、金钱、租金、Pass Go、Deal Breaker 等类型。 */
     @Test
     void deckFactoryCreatesLargeDeckWithMainCardTypes() {
         List<Card> cards = DeckFactory.createFullDeck();
@@ -31,6 +33,7 @@ class DeckAndRulesTest {
         assertTrue(cards.stream().anyMatch(card -> card instanceof DealBreaker));
     }
 
+    /** 从牌堆抽牌后，牌堆数量应减 1。 */
     @Test
     void deckDrawRemovesOneCardFromDeck() {
         Deck deck = new Deck(List.of(
@@ -44,6 +47,7 @@ class DeckAndRulesTest {
         assertEquals(1, deck.size());
     }
 
+    /** 弃牌堆应能记录顶牌、统计数量，并在洗回牌堆后清空。 */
     @Test
     void discardPileStoresTopCardAndCanBeCleared() {
         DiscardPile discardPile = new DiscardPile();
@@ -59,6 +63,7 @@ class DeckAndRulesTest {
         assertTrue(discardPile.isEmpty());
     }
 
+    /** 地产数量达到该颜色套牌要求时应判定为完整套。 */
     @Test
     void propertyRulesDetectCompleteSet() {
         Player player = new Player("Player");
@@ -69,6 +74,7 @@ class DeckAndRulesTest {
         assertFalse(PropertyRules.isCompleteSet(player, Color.RED));
     }
 
+    /** 租金表应按颜色与地产数量返回正确租金。 */
     @Test
     void rentTableReturnsRentBasedOnPropertyCount() {
         assertEquals(1, RentTable.getRent(Color.BROWN, 1));
@@ -77,6 +83,7 @@ class DeckAndRulesTest {
         assertEquals(0, RentTable.getRent(null, 2));
     }
 
+    /** 完整套上加房屋 +3M、加酒店 +4M 租金加成。 */
     @Test
     void propertyRulesAddsHouseAndHotelRentBonuses() {
         Player player = new Player("Player");
@@ -94,6 +101,7 @@ class DeckAndRulesTest {
         assertEquals(9, PropertyRules.calculateRent(player, Color.BROWN));
     }
 
+    /** 完整套不能再加普通地产，但仍可加房屋。 */
     @Test
     void completeSetRejectsAdditionalBillablePropertiesButAllowsHouse() {
         Player player = new Player("Player");

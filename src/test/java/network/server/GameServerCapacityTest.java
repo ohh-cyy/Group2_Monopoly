@@ -16,8 +16,10 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+/** 测试联机服务器 {@link GameServer} 最大 5 人连接上限。 */
 class GameServerCapacityTest {
 
+    /** 前 5 人可加入，第 6 人应收到 Room is full 错误。 */
     @Test
     void acceptsFivePlayersAndRejectsTheSixth() throws Exception {
         List<Socket> sockets = new ArrayList<>();

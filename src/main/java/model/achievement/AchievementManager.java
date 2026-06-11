@@ -73,10 +73,7 @@ public final class AchievementManager {
         return unlockedCount() + "/" + totalCount();
     }
 
-    /**
-     * @param id achievement identifier
-     * @return {@code true} if the achievement has been unlocked
-     */
+    
     public static synchronized boolean isUnlocked(String id) {
         return unlocked.contains(id);
     }
@@ -87,9 +84,7 @@ public final class AchievementManager {
     }
 
     /**
-     * Unlocks an achievement by id if it exists and is not already unlocked.
-     * Persists the updated progress to disk.
-     *
+     * 解锁一个成就如果他本来没被解锁
      * @param id achievement identifier
      * @return the unlocked achievement, or empty if already unlocked or unknown
      */
@@ -104,7 +99,7 @@ public final class AchievementManager {
     }
 
     /**
-     * Looks up an achievement definition by id.
+     * 查找成就通过ID
      *
      * @param id achievement identifier
      * @return matching achievement, or empty if not found
@@ -114,6 +109,7 @@ public final class AchievementManager {
                 .filter(achievement -> achievement.id().equals(id))
                 .findFirst();
     }
+
 
     private static void load() {
         if (!Files.exists(SAVE_FILE)) {

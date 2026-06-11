@@ -16,6 +16,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/** 测试 Just Say No 响应流程 {@link JustSayNoService}。 */
 class JustSayNoServiceTest {
     private StubGameDialogService dialogs;
     private JustSayNoService justSayNoService;

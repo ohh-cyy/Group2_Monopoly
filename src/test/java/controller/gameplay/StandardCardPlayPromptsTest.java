@@ -14,6 +14,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/** 测试出牌对话框 {@link StandardCardPlayPrompts}（打出效果 vs 存银行）。 */
 class StandardCardPlayPromptsTest {
     private StubGameDialogService dialogs;
     private StandardCardPlayPrompts prompts;

@@ -16,8 +16,10 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/** 测试联机服务端出牌逻辑：万能地产入银行、租金卡颜色校验。 */
 class GameSessionNetworkPlayTest {
 
+    /** 可存银行的万能地产应能通过 playToBank 放入银行。 */
     @Test
     void playToBankAllowsBankableWildPropertyOnline() {
         GameSession session = new GameSession();
@@ -34,6 +36,7 @@ class GameSessionNetworkPlayTest {
         assertEquals(2, player.getBankTotalValue());
     }
 
+/** 不可存银行的万能地产不能 playToBank。 */
     @Test
     void playToBankRejectsNonBankableWildPropertyOnline() {
         GameSession session = new GameSession();
@@ -49,6 +52,7 @@ class GameSessionNetworkPlayTest {
         assertFalse(player.getBank().contains(wild));
     }
 
+    /** 租金卡不能向卡面不支持的颜色收租（即使玩家拥有该颜色地产）。 */
     @Test
     void serverRentRejectsColorOutsideRentCardEvenWhenPlayerOwnsThatColor() {
         Player collector = new Player("Collector");
@@ -68,6 +72,7 @@ class GameSessionNetworkPlayTest {
         assertEquals(2, opponent.getBankTotalValue());
     }
 
+    /** 合法颜色收租时，服务器应自动从对手银行扣款。 */
     @Test
     void serverRentAcceptsChargeableRentColor() {
         Player collector = new Player("Collector");

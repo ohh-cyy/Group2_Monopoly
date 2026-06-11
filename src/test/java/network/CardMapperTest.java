@@ -11,6 +11,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
+/** 测试 Card ↔ CardDto 网络序列化映射 {@link CardMapper}。 */
 class CardMapperTest {
 
     private static final Gson GSON = new Gson();

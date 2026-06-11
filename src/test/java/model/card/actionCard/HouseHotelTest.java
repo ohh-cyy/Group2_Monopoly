@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import static model.card.actionCard.ActionCardTestSupport.*;
 import static org.junit.jupiter.api.Assertions.*;
 
+/** 测试 House / Hotel 加到完整套上的逻辑。 */
 class HouseHotelTest {
 
     @Test

@@ -21,7 +21,7 @@ public class Deck {
         shuffleAndAdd(cardList);
     }
 
-    /** Removes and returns the top card; throws if the deck is empty. */
+    /** 抽牌 */
     public Card draw() {
         if (cards.isEmpty()) {
             throw new RuntimeException("Deck is empty! Need to reshuffle from discard pile.");
@@ -29,7 +29,7 @@ public class Deck {
         return cards.pop();
     }
 
-    /** Shuffles {@code cardsToShuffle} and appends them to the draw pile. */
+    /** 洗牌然后放到deck */
     public void reshuffle(List<Card> cardsToShuffle) {
         if (cardsToShuffle != null && !cardsToShuffle.isEmpty()) {
             shuffleAndAdd(cardsToShuffle);

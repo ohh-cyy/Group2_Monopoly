@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import static model.card.actionCard.ActionCardTestSupport.*;
 import static org.junit.jupiter.api.Assertions.*;
 
+/** 测试 Just Say No 只能被动响应、不能主动 use。 */
 class JustSayNoTest {
 
     @Test

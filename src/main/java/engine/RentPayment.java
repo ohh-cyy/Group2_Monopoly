@@ -10,18 +10,15 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
- * Collects payments from a player's bank or properties.
- * Uses smallest-value cards first, matching official forced-payment order.
+ * 强制扣款
  */
 public final class RentPayment {
     private RentPayment() {
     }
 
     /**
-     * Collects up to amountM from the debtor.
-     * Bank cards are paid first, then properties if needed.
-     *
-     * @return the actual amount collected
+     * 强制扣款，最多扣amountM
+     * 先扣银行卡，再扣property
      */
     public static int collectUpTo(Player collector, Player debtor, int amountM) {
         if (amountM <= 0 || debtor == null || collector == null || debtor.equals(collector)) {

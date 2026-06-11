@@ -19,6 +19,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/** 测试本地交互式支付 {@link PaymentService}：玩家自选银行卡/地产付款。 */
 class PaymentServiceTest {
     private StubGameDialogService dialogs;
     private PaymentService paymentService;
@@ -41,6 +42,7 @@ class PaymentServiceTest {
                 (message, error) -> statuses.add(message + "|" + error));
     }
 
+    /** 非法参数（null、自己付自己、金额为 0）应返回 0。 */
     @Test
     void collectPaymentByChoiceReturnsZeroForInvalidInput() {
         Player collector = new Player("Collector");
@@ -53,6 +55,7 @@ class PaymentServiceTest {
         assertEquals(0, paymentService.collectPaymentByChoice(collector, payer, 0, "Rent"));
     }
 
+    /** 玩家选择银行卡支付时，应转移到收款方银行。 */
     @Test
     void collectPaymentByChoiceMovesChosenBankCard() {
         Player collector = new Player("Collector");
@@ -69,6 +72,7 @@ class PaymentServiceTest {
         assertFalse(logs.isEmpty());
     }
 
+    /** 银行不够时，可继续选地产支付。 */
     @Test
     void collectPaymentByChoiceCanPayWithPropertyWhenBankIsInsufficient() {
         Player collector = new Player("Collector");
@@ -87,6 +91,7 @@ class PaymentServiceTest {
         assertTrue(collector.getAllProperties().contains(property));
     }
 
+    /** 完整套里的地产不能作为支付选项。 */
     @Test
     void collectPaymentByChoiceDoesNotOfferCompleteSetProperty() {
         Player collector = new Player("Collector");

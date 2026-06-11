@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import static model.card.actionCard.ActionCardTestSupport.player;
 import static org.junit.jupiter.api.Assertions.*;
 
+/** 测试行动卡存入银行及银行面值。 */
 class ActionCardBankTest {
 
     @Test

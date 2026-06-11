@@ -11,6 +11,7 @@ import java.util.List;
 import static model.card.actionCard.ActionCardTestSupport.*;
 import static org.junit.jupiter.api.Assertions.*;
 
+/** 测试 Forced Deal 交换地产的 swapProperties 逻辑。 */
 class ForcedDealTest {
 
     @Test

@@ -10,8 +10,7 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * Property-set rules: rent, improvements, win detection, and payment eligibility.
- * Complete sets are protected from theft and forced payment.
+判断胜利，判断是不是完整套
  */
 public final class PropertyRules {
     /** Complete property sets required to win the game. */

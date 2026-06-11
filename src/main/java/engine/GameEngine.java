@@ -45,7 +45,7 @@ public class GameEngine {
         startNewTurn();
     }
 
-    /** Deals the starting hand to every player and resets turn state. */
+    /** 每个人开始抽五张牌，如果deck没牌了就让弃牌堆洗牌然后放到deck */
     public void startGame() {
         for (Player p : players) {
             for (int i = 0; i < START_HAND_SIZE; i++) {
@@ -127,7 +127,7 @@ public class GameEngine {
     }
 
     /**
-     * Draws two cards for the current player once per turn.
+     * 每回合抽两张牌
      * @return true if the draw action was accepted
      */
     public boolean drawCardsForCurrentPlayer() {
@@ -150,12 +150,12 @@ public class GameEngine {
         return true;
     }
 
-    /** Records one played card and ends the turn after three plays. */
+    /** 记录一个玩家手里的牌，限制每回合最多出三张 */
     public void recordCardPlayed() {
         recordCardsPlayed(1);
     }
 
-    /** Increments the play counter by {@code count}, capped at {@link #MAX_PLAYS_PER_TURN}. */
+    /** 限制每回合只能出三张 */
     public void recordCardsPlayed(int count) {
         for (int i = 0; i < count; i++) {
             if (playsThisTurn < MAX_PLAYS_PER_TURN) {
@@ -164,6 +164,7 @@ public class GameEngine {
         }
     }
 
+    // 洗弃牌堆的牌
     private void reshuffleDiscardPile() {
         List<Card> discardedCards = discardPile.getAllCards();
         if (!discardedCards.isEmpty()) {
@@ -209,7 +210,7 @@ public class GameEngine {
         return deck;
     }
 
-    /** Removes one card from the player's hand and adds it to the discard pile. */
+    /** 把一张牌从玩家手里拿出来放到弃牌堆 */
     public boolean discardFromHand(Player player, Card card) {
         if (player == null || card == null) {
             return false;
@@ -222,14 +223,13 @@ public class GameEngine {
         return true;
     }
 
-    /** True when the player may end the turn (hand size at or below the limit). */
+    /** 能不能结束游戏，当玩家手里牌少于或等于7张时候可以 */
     public boolean canEndTurn(Player player) {
         return player != null && player.getHandSize() <= MAX_HAND_SIZE;
     }
 
     /**
-     * Auto-discards excess hand cards from the end of the hand until within {@link #MAX_HAND_SIZE}.
-     * @return the cards that were discarded
+     *删除玩家手牌直到小于7
      */
     public List<Card> enforceHandSizeLimit(Player player) {
         List<Card> discardedCards = new ArrayList<>();

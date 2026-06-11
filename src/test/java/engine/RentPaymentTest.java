@@ -8,8 +8,10 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/** 测试自动强制扣款 {@link RentPayment}：先扣最小银行卡，再扣地产（非交互路径用）。 */
 class RentPaymentTest {
 
+    /** 优先从银行扣款，按面值从小到大自动选取。 */
     @Test
     void collectUpToTakesMoneyFromBankFirst() {
         Player collector = new Player("Collector");

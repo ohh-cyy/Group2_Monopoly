@@ -8,6 +8,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+/** 测试卡牌图片加载与万能地产旋转显示 {@link ui.CardImageLoader}。 */
 class CardImageLoaderTest {
 
     @Test

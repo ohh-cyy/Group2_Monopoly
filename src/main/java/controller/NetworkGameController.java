@@ -258,11 +258,7 @@ public class NetworkGameController {
     }
 
     /**
-     * Binds this controller to an active network session and renders the first state snapshot.
-     *
-     * @param networkClient connected client whose listener is routed here
-     * @param seat          local player's seat index
-     * @param initialState  first {@link GameStateDto} from the server (may be refreshed via sync)
+     * 绑定网络游戏，接收gameStateDto，刷新ui，通过networkClient发送消息
      */
     public void startOnlineGame(NetworkClient networkClient, int seat, GameStateDto initialState) {
         this.client = networkClient;

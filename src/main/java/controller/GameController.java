@@ -143,8 +143,7 @@ public class GameController {
     private int localPlayerCount = 4;
 
     /**
-     * FXML lifecycle hook: builds services, attaches layout listeners, and wires buttons.
-     * Does not start a game; call {@link #startLocalGame()} afterward.
+     * 初始化游戏
      */
     @FXML
     public void initialize() {

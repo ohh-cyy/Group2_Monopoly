@@ -12,8 +12,10 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/** 测试各类卡牌 {@link Card} 的基础 use 行为与支付面值。 */
 class CardTest {
 
+    /** 金钱卡 use 后应进入玩家银行。 */
     @Test
     void moneyCardUseAddsCardToPlayerBank() {
         Player player = new Player("Player");

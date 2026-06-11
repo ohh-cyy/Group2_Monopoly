@@ -21,6 +21,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/** 测试本地行动卡效果解析 {@link ActionEffectResolver}。 */
 class ActionEffectResolverTest {
     private StubGameDialogService dialogs;
     private ActionEffectResolver resolver;
@@ -40,6 +41,7 @@ class ActionEffectResolverTest {
         resolver = new ActionEffectResolver(dialogs, payments, justSayNo, logs::add, (msg, err) -> { });
     }
 
+    /** Just Say No 不能主动打出，应返回 CANCELLED。 */
     @Test
     void resolveRejectsProactiveJustSayNo() {
         Player player = new Player("Player");
@@ -50,6 +52,7 @@ class ActionEffectResolverTest {
         assertEquals(ActionEffectResult.CANCELLED, result);
     }
 
+    /** Pass Go 应额外抽 2 张牌。 */
     @Test
     void resolvePassGoDrawsExtraCards() {
         Player player = new Player("Player");
@@ -62,6 +65,7 @@ class ActionEffectResolverTest {
         assertEquals(2, player.getHandSize());
     }
 
+    /** 无特殊逻辑的行动卡走默认 use() 路径。 */
     @Test
     void resolveSimpleActionCardUsesDefaultBehaviour() {
         Player player = new Player("Player");
@@ -73,6 +77,7 @@ class ActionEffectResolverTest {
         assertEquals(ActionEffectResult.SUCCESS, result);
     }
 
+    /** 房屋卡应加到玩家选定的完整套地产上。 */
     @Test
     void resolveHouseAddsImprovementToChosenCompleteSet() {
         Player player = new Player("Player");

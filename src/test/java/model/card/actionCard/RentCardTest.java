@@ -11,6 +11,7 @@ import java.util.List;
 import static model.card.actionCard.ActionCardTestSupport.*;
 import static org.junit.jupiter.api.Assertions.*;
 
+/** 测试租金卡 {@link RentCard} 的可打出条件、算租与收租逻辑。 */
 class RentCardTest {
 
     @Test

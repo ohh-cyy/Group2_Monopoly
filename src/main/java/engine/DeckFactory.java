@@ -9,8 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Factory for the standard Monopoly Deal deck used by this project.
- * Card counts and values follow the official 110-card distribution.
+ * 创建deck
  */
 public final class DeckFactory {
 

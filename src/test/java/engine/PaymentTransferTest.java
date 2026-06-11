@@ -8,8 +8,10 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/** 测试玩家自选支付时的资产转移 {@link PaymentTransfer}（联机 PROMPT 也用）。 */
 class PaymentTransferTest {
 
+    /** 可支付资产列表应包含银行里的卡和未成套的地产。 */
     @Test
     void listPayableAssetsIncludesBankCardsAndUnprotectedProperties() {
         Player player = new Player("Payer");

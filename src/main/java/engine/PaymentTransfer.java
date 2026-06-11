@@ -10,14 +10,13 @@ import java.util.List;
 import java.util.OptionalInt;
 
 /**
- * Moves a chosen bank card or property from payer to collector.
- * Only assets outside complete property sets may be paid with.
+ *玩家之间的财产转移，只有不在完整套的财产可以支付
  */
 public final class PaymentTransfer {
     private PaymentTransfer() {
     }
 
-    /** Lists bank cards plus properties outside complete sets that may be paid. */
+    /** 列出玩家手里的银行卡和不在完整套的property卡 */
     public static List<Card> listPayableAssets(Player player) {
         List<Card> options = new ArrayList<>();
         if (player == null) {
@@ -28,13 +27,13 @@ public final class PaymentTransfer {
         return options;
     }
 
-    /** True when the player holds at least one bank card or payable property. */
+    /** 玩家手里有没有银行卡或者不在完整套的property卡 */
     public static boolean hasPayableAsset(Player player) {
         return player != null
                 && (!player.getBank().isEmpty() || !PropertyRules.getPayableProperties(player).isEmpty());
     }
 
-    /** True when {@code card} is in the payer's bank or payable property list. */
+    /** 判断卡片是不是在玩家手里 */
     public static boolean isPayableAsset(Player player, Card card) {
         if (player == null || card == null) {
             return false;
@@ -46,7 +45,7 @@ public final class PaymentTransfer {
     }
 
     /**
-     * Transfers one payable card identified by {@code cardId} from payer to collector.
+     * 转移一张卡片，通过ID
      * @return the payment value in millions, or empty if the transfer failed
      */
     public static OptionalInt payWithCard(Player collector, Player payer, String cardId) {
@@ -62,7 +61,7 @@ public final class PaymentTransfer {
         return OptionalInt.of(value);
     }
 
-    /** Locates a payable bank or property card on the payer by instance id. */
+    /** 通过ID找到卡片 */
     public static Card findPayableCard(Player payer, String cardId) {
         for (Card card : payer.getBank()) {
             if (cardId.equals(card.getInstanceId())) {
@@ -77,7 +76,7 @@ public final class PaymentTransfer {
         return null;
     }
 
-    /** Moves one bank card or payable property from payer to collector. */
+    /** 转移一张卡片 */
     public static void movePaymentCard(Player collector, Player payer, Card card) {
         if (payer.getBank().contains(card)) {
             payer.removeFromBank(card);
@@ -92,7 +91,7 @@ public final class PaymentTransfer {
         }
     }
 
-    /** Face value in millions for a bank note or property used as payment. */
+    /** 获取卡片价值 */
     public static int getPaymentValue(Card card) {
         if (card instanceof PayableAsset payableAsset) {
             return payableAsset.getPaymentValueM();

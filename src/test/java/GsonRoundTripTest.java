@@ -15,7 +15,9 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/** 测试联机 JSON 消息序列化/反序列化 {@link network.JsonUtil}。 */
 class GsonRoundTripTest {
+    /** GAME_STARTED 消息往返后，手牌与玩家信息应完整保留。 */
     @Test
     void gameStartedRoundTrip() {
         List<Player> players = List.of(new Player("A"), new Player("B"));

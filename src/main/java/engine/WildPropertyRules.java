@@ -16,7 +16,7 @@ public final class WildPropertyRules {
     private WildPropertyRules() {
     }
 
-    /** True when the wild card can switch between at least two colors. */
+    /** 当wild卡有至少两种颜色时可以 */
     public static boolean isRecolorable(WildpropertyCard wild) {
         return wild != null && wild.getAvailableColors().size() > 1;
     }
@@ -65,8 +65,8 @@ public final class WildPropertyRules {
     }
 
     /**
-     * Moves the owned wild to {@code newColor} on the player's board.
-     * Rolls back if the new color group cannot accept the card.
+     * 把owned的wild卡移动到newColor
+     * 如果newColor组不能接受卡，则回滚
      */
     public static boolean recolor(Player player, WildpropertyCard wild, Color newColor) {
         WildpropertyCard owned = findOwnedWild(player, wild);

@@ -12,8 +12,10 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/** 测试本地热座会话 {@link LocalGameSession} 对 {@link GameEngine} 的封装。 */
 class LocalGameSessionTest {
 
+    /** 开局应创建玩家、发 5 张起手牌，并标记对局为进行中。 */
     @Test
     void startNewGameCreatesPlayersAndDealsHands() {
         LocalGameSession session = new LocalGameSession();
@@ -27,6 +29,7 @@ class LocalGameSessionTest {
         assertTrue(session.isActive());
     }
 
+    /** 当前玩家抽牌应增加 2 张手牌，且同回合不能重复抽。 */
     @Test
     void drawForCurrentPlayerAddsTwoCards() {
         LocalGameSession session = new LocalGameSession();
@@ -39,6 +42,7 @@ class LocalGameSessionTest {
         assertFalse(session.drawForCurrentPlayer());
     }
 
+    /** 弃牌后手牌减少，且卡牌进入弃牌堆。 */
     @Test
     void discardFromHandRemovesSelectedCard() {
         LocalGameSession session = new LocalGameSession();
@@ -51,6 +55,7 @@ class LocalGameSessionTest {
         assertTrue(session.getEngine().getDiscardPile().size() > 0);
     }
 
+    /** 记录 3 次出牌后，本回合不能再出牌。 */
     @Test
     void recordCardPlayedTracksTurnLimit() {
         LocalGameSession session = new LocalGameSession();
@@ -65,6 +70,7 @@ class LocalGameSessionTest {
         assertTrue(session.getEngine().isTurnOver());
     }
 
+    /** nextTurn 应切换到下一个玩家。 */
     @Test
     void nextTurnSwitchesCurrentPlayer() {
         LocalGameSession session = new LocalGameSession();
@@ -77,6 +83,7 @@ class LocalGameSessionTest {
         assertEquals("Bob", session.getCurrentPlayer().getName());
     }
 
+    /** 未满 3 套完整地产时不应判胜。 */
     @Test
     void checkWinIsFalseUntilThreeCompleteSets() {
         LocalGameSession session = new LocalGameSession();
@@ -89,6 +96,7 @@ class LocalGameSessionTest {
         assertFalse(session.checkWin(player));
     }
 
+    /** setGameOver 后 isActive 应为 false。 */
     @Test
     void setGameOverStopsActiveSession() {
         LocalGameSession session = new LocalGameSession();
@@ -100,6 +108,7 @@ class LocalGameSessionTest {
         assertTrue(session.getEngine().isGameOver());
     }
 
+    /** 手牌 ≤7 才能结束回合。 */
     @Test
     void canEndTurnRequiresHandSizeWithinLimit() {
         LocalGameSession session = new LocalGameSession();

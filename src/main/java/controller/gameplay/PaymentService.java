@@ -38,9 +38,7 @@ public class PaymentService {
     }
 
     /**
-     * Collects up to {@code amountM} from {@code payer} through repeated asset picks.
-     *
-     * @return total M value actually transferred
+     * 根据提示选择支付卡片
      */
     public int collectPaymentByChoice(Player collector, Player payer, int amountM, String reason) {
         if (collector == null || payer == null || collector.equals(payer) || amountM <= 0) {
@@ -73,6 +71,7 @@ public class PaymentService {
         return PaymentTransfer.hasPayableAsset(player);
     }
 
+    //（prompt是提示的意思），选择支付卡片
     private Optional<Card> promptSelectPaymentCard(Player payer, int remainingM, String reason) {
         List<Card> options = PaymentTransfer.listPayableAssets(payer);
         if (options.isEmpty()) {

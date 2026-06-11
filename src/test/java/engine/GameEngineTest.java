@@ -12,8 +12,10 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/** 测试 {@link GameEngine} 核心规则：发牌、回合、出牌次数、胜负、手牌上限、弃牌。 */
 class GameEngineTest {
 
+    /** 开局后每位玩家应拿到 5 张手牌，牌堆相应减少。 */
     @Test
     void startGameDealsFiveCardsToEachPlayer() {
         Player first = new Player("Player 1");
@@ -27,6 +29,7 @@ class GameEngineTest {
         assertEquals(10, game.getDeck().size());
     }
 
+    /** 每回合只能抽一次牌，第二次抽牌应被拒绝。 */
     @Test
     void currentPlayerCanOnlyDrawOnceEachTurn() {
         Player first = new Player("Player 1");
@@ -39,6 +42,7 @@ class GameEngineTest {
         assertEquals(2, first.getHandSize());
     }
 
+    /** 换回合后当前玩家切换，并重置「已抽牌/出牌次数」状态。 */
     @Test
     void nextTurnChangesCurrentPlayerAndResetsTurnState() {
         Player first = new Player("Player 1");
@@ -54,6 +58,7 @@ class GameEngineTest {
         assertEquals(0, game.getPlaysThisTurn());
     }
 
+    /** 必须先抽牌才能出牌。 */
     @Test
     void playerCannotPlayBeforeDrawing() {
         GameEngine game = new GameEngine(List.of(new Player("Player 1"), new Player("Player 2")), createDeck(10));
@@ -63,6 +68,7 @@ class GameEngineTest {
         assertTrue(game.canPlayCard());
     }
 
+    /** 每回合最多出 3 张牌，出满后不能再出。 */
     @Test
     void playerCannotPlayMoreThanThreeCardsInOneTurn() {
         GameEngine game = new GameEngine(List.of(new Player("Player 1"), new Player("Player 2")), createDeck(10));
@@ -78,6 +84,7 @@ class GameEngineTest {
         assertFalse(game.canPlayCard());
     }
 
+    /** 集齐 3 套完整地产应判定为胜利。 */
     @Test
     void checkWinReturnsTrueWhenPlayerHasThreeCompleteSets() {
         Player player = new Player("Winner");
@@ -95,6 +102,7 @@ class GameEngineTest {
         assertTrue(game.checkWin(player));
     }
 
+    /** 手牌超过 7 张时不能结束回合，弃到 7 张以内才可以。 */
     @Test
     void cannotEndTurnWithMoreThanSevenCards() {
         Player player = new Player("Player 1");
@@ -113,6 +121,7 @@ class GameEngineTest {
         assertTrue(game.canEndTurn(player));
     }
 
+    /** 从手牌弃牌应移入弃牌堆。 */
     @Test
     void discardFromHandMovesCardToDiscardPile() {
         Player player = new Player("Player 1");

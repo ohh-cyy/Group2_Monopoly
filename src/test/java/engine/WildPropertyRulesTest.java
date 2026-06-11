@@ -10,8 +10,10 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/** 测试万能地产换色规则 {@link WildPropertyRules}。 */
 class WildPropertyRulesTest {
 
+    /** 合法换色后，万能卡应从旧颜色组移到新颜色组。 */
     @Test
     void recolorMovesWildPropertyToAnotherAvailableColor() {
         Player player = new Player("P1");

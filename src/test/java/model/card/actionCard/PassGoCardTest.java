@@ -13,6 +13,7 @@ import java.util.List;
 import static model.card.actionCard.ActionCardTestSupport.player;
 import static org.junit.jupiter.api.Assertions.*;
 
+/** 测试 Pass Go 额外抽 2 张牌的逻辑。 */
 class PassGoCardTest {
 
     @Test

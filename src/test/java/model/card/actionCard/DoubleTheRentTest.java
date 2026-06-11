@@ -9,6 +9,7 @@ import static model.card.actionCard.ActionCardTestSupport.game;
 import static model.card.actionCard.ActionCardTestSupport.player;
 import static org.junit.jupiter.api.Assertions.*;
 
+/** 测试 Double The Rent 标记下一张租金翻倍。 */
 class DoubleTheRentTest {
 
     @Test

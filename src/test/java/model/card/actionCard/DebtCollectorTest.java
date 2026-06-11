@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import static model.card.actionCard.ActionCardTestSupport.*;
 import static org.junit.jupiter.api.Assertions.*;
 
+/** 测试 Debt Collector 向单人收 5M 的 collectFrom 逻辑。 */
 class DebtCollectorTest {
 
     @Test

@@ -9,8 +9,10 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/** 测试玩家 {@link Player} 的手牌、地产、银行与完整套判定。 */
 class PlayerTest {
 
+    /** draw / removeFromHand 应正确增减手牌。 */
     @Test
     void drawAddsCardToHandAndRemoveFromHandRemovesIt() {
         Player player = new Player("Player");

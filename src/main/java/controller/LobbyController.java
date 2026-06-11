@@ -75,7 +75,7 @@ public class LobbyController {
     }
 
     /**
-     * FXML lifecycle hook: sets default connection fields and unlocks lobby achievements.
+     * 初始化大厅，设置端口和玩家人数
      */
     @FXML
     public void initialize() {
@@ -87,6 +87,7 @@ public class LobbyController {
         Platform.runLater(() -> unlockAchievement(AchievementManager.WELCOME_LOBBY));
     }
 
+    // 创建新主机
     @FXML
     private void onHostClick() {
         String name = nameField.getText().trim();
@@ -112,6 +113,7 @@ public class LobbyController {
         }
     }
 
+//点击加入游戏按钮
     @FXML
     private void onJoinClick() {
         String name = nameField.getText().trim();
@@ -157,12 +159,14 @@ public class LobbyController {
         }
     }
 
+//连接客户端
     private void connectClient(String host, int port, String name, boolean hostFlag) throws IOException {
         client = new NetworkClient();
         client.connect(host, port, this::handleServerMessage);
         client.join(name, hostFlag);
     }
 
+    //处理服务器消息
     private void handleServerMessage(ServerMessage message) {
         Platform.runLater(() -> {
             if (message == null || message.type == null) {
@@ -186,29 +190,34 @@ public class LobbyController {
         });
     }
 
+    //点击成就按钮
     @FXML
     private void onAchievementsClick() {
         AchievementUi.showLibraryDialog(statusLabel);
         refreshAchievementProgress();
     }
 
+    //解锁名字成就
     private void unlockNameAchievementIfReady() {
         if (nameField != null && nameField.getText() != null && nameField.getText().trim().length() >= 2) {
             unlockAchievement(AchievementManager.SET_NAME);
         }
     }
 
+    //解锁成就
     private void unlockAchievement(String achievementId) {
         AchievementUi.unlockAndShow(achievementId, statusLabel);
         refreshAchievementProgress();
     }
 
+    //刷新成就进度
     private void refreshAchievementProgress() {
         if (achievementProgressLabel != null) {
             achievementProgressLabel.setText("Achievements " + AchievementManager.progressText());
         }
     }
 
+    //更新大厅
     private void updateLobby(ServerMessage message) {
         playerList.getItems().clear();
         int count = 0;
@@ -223,6 +232,7 @@ public class LobbyController {
         }
     }
 
+    //打开网络游戏
     private void openNetworkGame(ServerMessage message) {
         try {
             NetworkClient gameClient = client;
@@ -235,6 +245,7 @@ public class LobbyController {
         }
     }
 
+    //解析端口
     private int parsePort() {
         try {
             return Integer.parseInt(portField.getText().trim());
@@ -243,6 +254,7 @@ public class LobbyController {
         }
     }
 
+    //停止服务器
     private void stopServer() {
         if (gameServer != null) {
             gameServer.close();
@@ -250,6 +262,7 @@ public class LobbyController {
         }
     }
 
+    //关闭客户端
     private void closeClient() {
         if (client != null) {
             client.close();

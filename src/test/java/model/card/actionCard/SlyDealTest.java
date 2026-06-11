@@ -11,6 +11,7 @@ import java.util.List;
 import static model.card.actionCard.ActionCardTestSupport.*;
 import static org.junit.jupiter.api.Assertions.*;
 
+/** 测试 Sly Deal 偷单张地产的 stealProperty 逻辑。 */
 class SlyDealTest {
 
     @Test

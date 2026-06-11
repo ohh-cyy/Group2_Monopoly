@@ -111,7 +111,7 @@ public final class LocalCardPlayService {
         return new CardPlayOutcome(result, false, extraPlay);
     }
 
-    /** Wild property: optional bank deposit, or play as property with color choice. */
+    /** wild卡，可以选择存银行或者作为property */
     public CardPlayOutcome playWildPropertyCard(LocalGameSession session, Player player, WildpropertyCard wild) {
         GameEngine engine = session.getEngine();
         if (wild.isBankable()) {

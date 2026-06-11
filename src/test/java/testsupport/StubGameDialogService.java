@@ -12,6 +12,7 @@ import java.util.Optional;
 import java.util.function.Function;
 
 /** Scripted {@link GameDialogService} for service-layer unit tests. */
+/** 测试工具：为需要 JavaFX 对话框的单元测试提供 Stub 弹窗。 */
 public final class StubGameDialogService extends GameDialogService {
     private final Deque<Object> choiceQueue = new ArrayDeque<>();
     private final Deque<String> buttonTextQueue = new ArrayDeque<>();

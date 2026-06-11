@@ -20,9 +20,7 @@ public final class LocalGameSession {
     private List<Player> players = List.of();
 
     /**
-     * Builds players, shuffles a full deck, and starts a new match.
-     *
-     * @param playerNames display names (2–5 players expected by callers)
+     * 创建玩家，洗牌，开始游戏
      */
     public void startNewGame(List<String> playerNames) {
         players = new ArrayList<>();

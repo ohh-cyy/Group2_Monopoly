@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import static model.card.actionCard.ActionCardTestSupport.*;
 import static org.junit.jupiter.api.Assertions.*;
 
+/** 测试 My Birthday 向每人收 2M 的逻辑。 */
 class MyBirthdayTest {
 
     @Test

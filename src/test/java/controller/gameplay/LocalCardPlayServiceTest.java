@@ -18,6 +18,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/** 测试本地出牌服务 {@link LocalCardPlayService}。 */
 class LocalCardPlayServiceTest {
     private StubGameDialogService dialogs;
     private LocalCardPlayService cardPlayService;

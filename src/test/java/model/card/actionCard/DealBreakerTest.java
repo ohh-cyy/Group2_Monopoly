@@ -12,6 +12,7 @@ import java.util.List;
 import static model.card.actionCard.ActionCardTestSupport.*;
 import static org.junit.jupiter.api.Assertions.*;
 
+/** 测试 Deal Breaker 抢完整套地产的 useOnTarget 逻辑。 */
 class DealBreakerTest {
 
     @Test
