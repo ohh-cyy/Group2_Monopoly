@@ -48,12 +48,7 @@ public class Hotel extends ActionCard {
     }
 
     /**
-     * Adds a hotel to a complete property set. Requires a house on that set
-     * first; returns false if no house exists or a hotel is already present.
-     *
-     * @param player owner of the property set
-     * @param color  color of the complete set to improve
-     * @return {@code true} if the hotel was added
+     * 添加一个hotel到完整的property set，需要先有房子，并且只有一套hotel
      */
     public boolean addHotelToSet(Player player, Color color) {
         if (player == null || color == null || !player.hasCompleteSet(color)) {
@@ -77,11 +72,7 @@ public class Hotel extends ActionCard {
     }
 
     /**
-     * Checks whether the given color set already has a hotel improvement.
-     *
-     * @param player property owner
-     * @param color  color group to inspect
-     * @return {@code true} if a hotel is present on this set
+     * 检查是否已经有hotel
      */
     public boolean hasHotel(Player player, Color color) {
         if (player == null || color == null) {

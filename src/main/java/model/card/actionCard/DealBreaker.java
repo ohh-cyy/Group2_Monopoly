@@ -46,14 +46,7 @@ public class DealBreaker extends ActionCard {
     }
 
     /**
-     * Steals one complete property set of the selected color from another player.
-     * The target must own a full set of that color.
-     *
-     * @param player  player performing the steal
-     * @param target  opponent to steal from
-     * @param color   color of the complete set to take
-     * @param game    game engine whose discard pile receives overflow properties
-     * @return {@code true} if the full set was moved successfully
+     * 从一个人身上偷一张完整的property卡
      */
     public boolean useOnTarget(Player player, Player target, Color color, GameEngine game) {
         if (player == null || target == null || color == null || player.equals(target) || game == null) {

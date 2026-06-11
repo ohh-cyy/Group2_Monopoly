@@ -39,11 +39,8 @@ public class DoubleTheRent extends ActionCard {
     }
 
     /**
-     * Marks the next Rent card as doubled. The effect cannot be stacked —
-     * calling this twice before a Rent card is played will return false.
-     *
-     * @param game game engine holding the double-rent flag
-     * @return {@code true} if the double-rent effect was activated
+     * 标记下一张Rent卡为双倍，不能叠加，
+     * 如果两次调用之间没有Play Rent卡，则返回false
      */
     public boolean activateForNextRent(GameEngine game) {
         if (game == null || game.isRentDoubled()) {

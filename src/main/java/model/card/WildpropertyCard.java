@@ -8,8 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Wild property card that can be assigned to one of several colors before play.
- * May optionally be deposited in the bank instead of forming a property set.
+ * wildproperty卡，可以分配给一个或多个颜色，在play之前
  */
 public class WildpropertyCard extends PropertyCard {
     /** Color chosen by the player before this card is played or added to a set. */
@@ -23,12 +22,6 @@ public class WildpropertyCard extends PropertyCard {
 
     /**
      * Creates a wild property card with a randomly generated instance id.
-     *
-     * @param name             display name
-     * @param description      rules text
-     * @param bankValueM       bank deposit value in millions (M)
-     * @param availableColors  colors this card may be assigned to
-     * @param bankable         whether the card can be deposited in the bank
      */
     public WildpropertyCard(String name, String description, int bankValueM,
                             List<Color> availableColors, boolean bankable) {
@@ -41,13 +34,6 @@ public class WildpropertyCard extends PropertyCard {
 
     /**
      * Creates a wild property card with an explicit instance id.
-     *
-     * @param instanceId       unique card instance id
-     * @param name             display name
-     * @param description      rules text
-     * @param bankValueM       bank deposit value in millions (M)
-     * @param availableColors  colors this card may be assigned to
-     * @param bankable         whether the card can be deposited in the bank
      */
     public WildpropertyCard(String instanceId, String name, String description, int bankValueM,
                             List<Color> availableColors, boolean bankable) {
@@ -85,10 +71,8 @@ public class WildpropertyCard extends PropertyCard {
     }
 
     /**
-     * Assigns a color to this wild card.
-     * Only colors in {@link #availableColors} are accepted.
-     *
-     * @param color color to assign; ignored if not available
+     * 分配颜色到wildcard
+     * 只有availableColors中的颜色可以被分配
      */
     public void setChosenColor(Color color) {
         if (color != null && availableColors.contains(color)) {

@@ -11,10 +11,7 @@ import model.player.Player;
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * Action card that charges rent on owned properties.
- * Supports dual-color cards (1M bank value) and all-color cards (3M bank value).
- */
+
 public class RentCard extends ActionCard {
     /** Colors this card can charge rent on (ignored when {@link #allColors} is true). */
     private final Color[] applicableColors;
@@ -33,10 +30,7 @@ public class RentCard extends ActionCard {
     }
 
     /**
-     * All-color rent card with an explicit instance id.
-     *
-     * @param instanceId unique card instance id
-     * @return all-color rent card
+     所有颜色租金卡，通过实例ID
      */
     public static RentCard allColors(String instanceId) {
         return new RentCard(
@@ -49,7 +43,7 @@ public class RentCard extends ActionCard {
         );
     }
 
-    /** Two-color rent card with 1M bank value. */
+    /** 双颜色租金卡，1M银行价值 */
     public static RentCard dual(Color c1, Color c2) {
         String label = c1.name() + " / " + c2.name();
         return new RentCard(
@@ -62,12 +56,7 @@ public class RentCard extends ActionCard {
     }
 
     /**
-     * Two-color rent card with an explicit instance id.
-     *
-     * @param instanceId unique card instance id
-     * @param c1         first applicable color
-     * @param c2         second applicable color
-     * @return dual-color rent card
+     * 双颜色租金卡，通过实例ID
      */
     public static RentCard dual(String instanceId, Color c1, Color c2) {
         String label = c1.name() + " / " + c2.name();
@@ -123,24 +112,14 @@ public class RentCard extends ActionCard {
     }
 
     /**
-     * Calculates rent owed for the given color based on the player's property count.
-     *
-     * @param player      rent collector
-     * @param chargeColor color to charge rent on
-     * @return rent amount in millions (M)
+     * 计算租金，根据玩家property数量
      */
     public int calculateRent(Player player, Color chargeColor) {
         return PropertyRules.calculateRent(player, chargeColor);
     }
 
     /**
-     * Collects rent from every player except the collector.
-     *
-     * @param collector      player receiving rent
-     * @param game           game engine
-     * @param chargeColor    color used for rent calculation
-     * @param rentPerPlayer  base rent per opponent in millions (M)
-     * @return total amount actually paid
+     * 收集租金，除了收集者
      */
     public int collectFromAll(Player collector, GameEngine game, Color chargeColor, int rentPerPlayer) {
         if (rentPerPlayer <= 0) {

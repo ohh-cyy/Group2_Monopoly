@@ -73,10 +73,8 @@ public abstract class Card {
     }
 
     /**
-     * Executes this card's play effect for the given player.
+     * 执行卡片效果
      *
-     * @param player active player
-     * @param game   game engine providing deck, players, and state
      */
     public abstract void use(Player player, GameEngine game);
 }

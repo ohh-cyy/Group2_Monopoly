@@ -37,19 +37,14 @@ public class MyBirthday extends ActionCard {
         super(instanceId, name, description, type, 2);
     }
 
-    /** Collects 2M from every other player immediately. */
+    /** 每人收2m*/
     @Override
     public void use(Player player, GameEngine game) {
         collectFromEveryone(player, game);
     }
 
     /**
-     * Collects 2M from every other player. If a player cannot pay the full
-     * amount, bank cards are taken first, then properties.
-     *
-     * @param birthdayPlayer player celebrating their birthday (collector)
-     * @param game           game engine providing the player list
-     * @return the total amount collected across all opponents
+     * 每人收2m，如果玩家无法支付，则先支付银行卡片，然后支付property
      */
     public int collectFromEveryone(Player birthdayPlayer, GameEngine game) {
         if (birthdayPlayer == null || game == null) {

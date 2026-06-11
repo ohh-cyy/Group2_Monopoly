@@ -46,14 +46,7 @@ public class ForcedDeal extends ActionCard {
     }
 
     /**
-     * Swaps one property from the current player with one property from an
-     * opponent. Neither side may give up a property from a complete set.
-     *
-     * @param player      player initiating the swap
-     * @param playerGives property the initiator gives up
-     * @param target      opponent in the swap
-     * @param targetGives property the opponent gives up
-     * @return {@code true} if both properties were exchanged successfully
+     * 交换一张property卡
      */
     public boolean swapProperties(Player player, PropertyCard playerGives,
                                   Player target, PropertyCard targetGives) {

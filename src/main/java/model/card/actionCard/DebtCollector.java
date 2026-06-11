@@ -46,12 +46,7 @@ public class DebtCollector extends ActionCard {
     }
 
     /**
-     * Collects 5M from one chosen opponent. If the opponent cannot pay the full
-     * amount, bank cards are taken first, then properties.
-     *
-     * @param collector player receiving the payment
-     * @param target    opponent who owes the debt
-     * @return amount actually collected in millions (M)
+     * 向一个人收5m，如果玩家无法支付，则先支付银行卡片，然后支付property
      */
     public int collectFrom(Player collector, Player target) {
         if (collector == null || target == null || target.equals(collector)) {

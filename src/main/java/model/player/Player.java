@@ -52,9 +52,8 @@ public class Player {
     }
 
     /**
-     * Adds a card to this player's hand.
-     *
-     * @param card card to draw; ignored if {@code null}
+     * 添加手牌
+     * 如果卡片不为空，则添加到手牌中
      */
     public void draw(Card card) {
         if (card != null) {
@@ -87,8 +86,8 @@ public class Player {
     }
 
     /**
-     * Adds a property card to the appropriate color group.
-     * Fails if the color set is full and the card is not a set improvement.
+     * 添加property卡
+     * 如果颜色组已满，且卡片不是set improvement，则返回false
      *
      * @param card property to add
      * @return {@code true} if the property was added
@@ -113,9 +112,7 @@ public class Player {
     }
 
     /**
-     * Deposits a card into the bank.
-     *
-     * @param card card to add; ignored if {@code null}
+     * 添加到银行
      */
     public void addBank(Card card) {
         if (card != null) {
@@ -129,9 +126,7 @@ public class Player {
     }
 
     /**
-     * Computes total bank value from cash plus all {@link PayableAsset} cards in the bank.
-     *
-     * @return combined value in millions (M)
+     * 计算银行总价值
      */
     public int getBankTotalValue() {
         int total = money;
@@ -168,17 +163,13 @@ public class Player {
         }
     }
 
-    /** Checks whether this color has a complete property set. */
+    /** 检查是否拥有完整的property set */
     public boolean hasCompleteSet(Color color) {
         return PropertyRules.isCompleteSet(this, color);
     }
 
     /**
-     * Removes and returns an entire property set for the given color.
-     * Used by {@link model.card.actionCard.DealBreaker} to steal a complete set.
-     *
-     * @param color color of the set to remove
-     * @return the removed property cards (may be empty if none existed)
+     * 移除并返回完整的property set
      */
     public List<PropertyCard> removePropertySet(Color color) {
         List<PropertyCard> set =
@@ -219,10 +210,7 @@ public class Player {
     }
 
     /**
-     * Finds a hand card by its unique instance identifier.
-     *
-     * @param instanceId card instance id
-     * @return matching card, or {@code null} if not found
+     * 查找手牌，通过实例ID
      */
     public Card findInHandById(String instanceId) {
         if (instanceId == null) {
@@ -237,10 +225,7 @@ public class Player {
     }
 
     /**
-     * Removes a hand card by its unique instance identifier.
-     *
-     * @param instanceId card instance id
-     * @return {@code true} if a matching card was removed
+     * 移除手牌，通过实例ID
      */
     public boolean removeFromHandById(String instanceId) {
         Card card = findInHandById(instanceId);

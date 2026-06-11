@@ -32,12 +32,6 @@ public class PropertyCard extends Card implements PayableAsset {
 
     /**
      * Creates a property card with an explicit instance id.
-     *
-     * @param instanceId  unique card instance id
-     * @param name        display name
-     * @param description rules text
-     * @param color       property color group
-     * @param price       purchase price in millions (M)
      */
     public PropertyCard(String instanceId, String name, String description, Color color, int price) {
         super(instanceId, name, description, CardType.PROPERTY);
@@ -62,12 +56,12 @@ public class PropertyCard extends Card implements PayableAsset {
         return Math.max(1, price);
     }
 
-    /** Rent tiers shown on the card, such as "1M / 2M / 3M". */
+    /** 获取租金显示 */
     public String getRentDisplay() {
         return RentTable.formatRentTiers(color);
     }
 
-    /** Adds this property to the player's property table. */
+    /** 添加到玩家property表 */
     @Override
     public void use(Player player, GameEngine game) {
         player.addProperty(this);

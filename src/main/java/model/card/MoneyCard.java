@@ -48,10 +48,10 @@ public class MoneyCard extends Card implements PayableAsset {
         return money;
     }
 
-    /** Deposits this card into the player's bank. */
+    /** 添加到银行 */
     @Override
     public void use(Player player, GameEngine game) {
-        // Add to bank only. Bank value is calculated from bank cards.
+        // 添加到银行，银行价值从银行卡片计算
         player.addBank(this);
     }
 }

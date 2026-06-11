@@ -37,7 +37,7 @@ public class PassGoCard extends ActionCard {
         super(instanceId, name, description, type, 1);
     }
 
-    /** Draws 2 extra cards from the deck. Stops early if the deck runs out. */
+    /** 多抽两张卡 */
     @Override
     public void use(Player player, GameEngine game) {
         if (player == null || game == null) {

@@ -46,13 +46,7 @@ public class SlyDeal extends ActionCard {
     }
 
     /**
-     * Steals one property from another player. Properties that are part of a
-     * complete set are protected and cannot be stolen.
-     *
-     * @param thief    player performing the steal
-     * @param target   opponent to steal from
-     * @param property specific property card to take
-     * @return {@code true} if the property was moved successfully
+     * 从一个人身上偷一张property卡，完整的套不能偷，也不能偷自己的卡
      */
     public boolean stealProperty(Player thief, Player target, PropertyCard property) {
         if (thief == null || target == null || property == null || thief.equals(target)) {

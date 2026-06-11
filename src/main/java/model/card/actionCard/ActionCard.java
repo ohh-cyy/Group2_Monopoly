@@ -46,17 +46,14 @@ public abstract class ActionCard extends Card implements PayableAsset {
         return bankValueM;
     }
 
-    /** @return bank deposit value used when this card is taken as payment */
+    /** 返回银行价值 */
     @Override
     public int getPaymentValueM() {
         return bankValueM;
     }
 
     /**
-     * Places this action card in the player's bank as money instead of
-     * triggering its effect. The card's bank value is added to the bank total.
-     *
-     * @param player player receiving the bank deposit
+     * 添加到银行
      */
     public void depositToBank(Player player) {
         if (player != null) {
@@ -65,12 +62,7 @@ public abstract class ActionCard extends Card implements PayableAsset {
     }
 
     /**
-     * Executes the action card's effect. Subclasses whose effect requires
-     * target selection (e.g. SlyDeal, DealBreaker) leave this body empty;
-     * the controller calls their specialised methods directly.
-     *
-     * @param player active player
-     * @param game   game engine providing deck, players, and state
+     * 执行卡片效果
      */
     @Override
     public abstract void use(Player player, GameEngine game);

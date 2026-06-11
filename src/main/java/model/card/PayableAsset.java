@@ -1,12 +1,11 @@
 package model.card;
 
 /**
- * Contract for cards that can provide monetary value when used as payment
- * or placed in a player's bank.
+ * 支付资产接口
  */
 public interface PayableAsset {
     /**
-     * @return payment value in millions (M) when this asset is taken as rent or debt
+     * 获取支付价值
      */
     int getPaymentValueM();
 }

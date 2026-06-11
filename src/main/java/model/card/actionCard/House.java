@@ -48,12 +48,7 @@ public class House extends ActionCard {
     }
 
     /**
-     * Adds a house to a complete property set. Only one house per set is
-     * allowed; returns false if a house already exists on this set.
-     *
-     * @param player owner of the property set
-     * @param color  color of the complete set to improve
-     * @return {@code true} if the house was added
+     * 添加一个house到完整的property set，只有一套房子可以盖
      */
     public boolean addHouseToSet(Player player, Color color) {
         if (player == null || color == null || !player.hasCompleteSet(color)) {
@@ -67,11 +62,7 @@ public class House extends ActionCard {
     }
 
     /**
-     * Checks whether the given color set already has a house improvement.
-     *
-     * @param player property owner
-     * @param color  color group to inspect
-     * @return {@code true} if a house is present on this set
+     * 检查是否已经有房子
      */
     public boolean hasHouse(Player player, Color color) {
         if (player == null || color == null) {
