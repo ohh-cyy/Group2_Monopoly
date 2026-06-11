@@ -379,7 +379,7 @@ public class ActionEffectResolver {
         if (justSayNo.respond(opponent, player, "Deal Breaker (steal a complete set)", gameEngine)) {
             return ActionEffectResult.BLOCKED;
         }
-        if (!dealBreaker.useOnTarget(player, opponent, color.get())) {
+        if (!dealBreaker.useOnTarget(player, opponent, color.get(), gameEngine)) {
             status.accept("Steal failed.", true);
             return ActionEffectResult.FAILED;
         }

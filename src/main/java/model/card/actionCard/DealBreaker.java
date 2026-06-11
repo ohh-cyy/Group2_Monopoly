@@ -52,10 +52,11 @@ public class DealBreaker extends ActionCard {
      * @param player  player performing the steal
      * @param target  opponent to steal from
      * @param color   color of the complete set to take
+     * @param game    game engine whose discard pile receives overflow properties
      * @return {@code true} if the full set was moved successfully
      */
-    public boolean useOnTarget(Player player, Player target, Color color) {
-        if (player == null || target == null || color == null || player.equals(target)) {
+    public boolean useOnTarget(Player player, Player target, Color color, GameEngine game) {
+        if (player == null || target == null || color == null || player.equals(target) || game == null) {
             return false;
         }
         if (!target.hasCompleteSet(color)) {
@@ -68,7 +69,9 @@ public class DealBreaker extends ActionCard {
         }
 
         for (PropertyCard property : stolen) {
-            player.addProperty(property);
+            if (!player.addProperty(property)) {
+                game.getDiscardPile().addCard(property);
+            }
         }
         return true;
     }

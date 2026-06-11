@@ -9,6 +9,7 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.VBox;
 import model.card.WildpropertyCard;
 import model.enums.Color;
+import ui.DialogFrameStyle;
 
 import java.util.List;
 import java.util.Objects;
@@ -179,6 +180,7 @@ public class GameDialogService {
         } catch (Exception ignored) {
         }
         pane.getStyleClass().add("game-dialog");
+        DialogFrameStyle.hideSystemFrame(dialog);
         if (ownerLabel != null && ownerLabel.getScene() != null) {
             dialog.initOwner(ownerLabel.getScene().getWindow());
         }

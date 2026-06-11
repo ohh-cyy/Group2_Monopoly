@@ -158,7 +158,7 @@ public final class ServerPlayHandler {
         if (color == null) {
             return false;
         }
-        if (dealBreaker.useOnTarget(player, target, color)) {
+        if (dealBreaker.useOnTarget(player, target, color, engine)) {
             log.add(player.getName() + " stole complete " + color + " set from " + target.getName());
             return true;
         }

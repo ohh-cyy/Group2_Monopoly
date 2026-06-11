@@ -27,6 +27,24 @@ class WildPropertyRulesTest {
     }
 
     @Test
+    void recolorRejectsWildAlreadyInCompleteSet() {
+        Player player = new Player("P1");
+        WildpropertyCard wild = new WildpropertyCard(
+                "Orange/Pink", "Wild", 2, List.of(Color.ORANGE, Color.PINK), true);
+        wild.setChosenColor(Color.ORANGE);
+        player.addProperty(wild);
+        for (int i = 1; i < Color.ORANGE.getSetSize(); i++) {
+            player.addProperty(new PropertyCard("Orange " + i, "Test", Color.ORANGE, 1));
+        }
+
+        assertTrue(PropertyRules.isCompleteSet(player, Color.ORANGE));
+        assertTrue(WildPropertyRules.getRecolorOptions(player, wild).isEmpty());
+        assertFalse(WildPropertyRules.recolor(player, wild, Color.PINK));
+        assertEquals(Color.ORANGE, wild.getChosenColor());
+        assertTrue(player.getPropertiesByColor(Color.ORANGE).contains(wild));
+    }
+
+    @Test
     void recolorRejectsCompleteTargetSet() {
         Player player = new Player("P1");
         WildpropertyCard wild = new WildpropertyCard(

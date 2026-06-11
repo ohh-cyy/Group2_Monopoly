@@ -31,9 +31,6 @@ public record PublicBoardRenderOptions(
                 || ownerSeat != interactiveSeat) {
             return false;
         }
-        if (!WildPropertyRules.isRecolorable(wild)) {
-            return false;
-        }
-        return WildPropertyRules.findOwnedWild(recolorRulesPlayer, wild) != null;
+        return !WildPropertyRules.getRecolorOptions(recolorRulesPlayer, wild).isEmpty();
     }
 }

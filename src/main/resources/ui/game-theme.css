@@ -720,7 +720,13 @@
     -fx-border-width: 2;
     -fx-border-radius: 16;
     -fx-background-radius: 16;
+    -fx-background-insets: 0;
     -fx-padding: 12;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.38), 22, 0.22, 0, 8);
+}
+
+.game-dialog > .content.label {
+    -fx-background-color: transparent;
 }
 
 .game-dialog > *.button-bar > *.container {
