@@ -19,10 +19,10 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
- * Local card-play orchestration: dialogs, effect resolution, and engine mutations.
+ * 本地出牌编排：对话框、效果解析与引擎变更。
  * <p>
- * Routes each {@link model.card.Card} to action, wild-property, or simple handlers
- * and returns a {@link CardPlayOutcome} for the UI layer.
+ * 将每张 {@link model.card.Card} 路由到行动、万能地产或简单处理器，
+ * 并向 UI 层返回 {@link CardPlayOutcome}。
  */
 public final class LocalCardPlayService {
     private final GameDialogService dialogs;
@@ -32,11 +32,11 @@ public final class LocalCardPlayService {
     private final BiConsumer<String, Boolean> status;
 
     /**
-     * @param dialogs        themed dialog factory
-     * @param actionResolver local action-card effect resolver
-     * @param prompts        shared bank-vs-effect prompts
-     * @param log            game log sink
-     * @param status         status bar sink (message, isError)
+     * @param dialogs        主题对话框工厂
+     * @param actionResolver 本地行动卡效果解析器
+     * @param prompts        共享的存银行/使用效果提示
+     * @param log            游戏日志输出
+     * @param status         状态栏输出（消息, 是否错误）
      */
     public LocalCardPlayService(GameDialogService dialogs,
                                   ActionEffectResolver actionResolver,
@@ -51,7 +51,7 @@ public final class LocalCardPlayService {
     }
 
     /**
-     * Convenience constructor using a default {@link StandardCardPlayPrompts} instance.
+     * 使用默认 {@link StandardCardPlayPrompts} 实例的便捷构造器。
      */
     public LocalCardPlayService(GameDialogService dialogs,
                                   ActionEffectResolver actionResolver,
@@ -60,18 +60,18 @@ public final class LocalCardPlayService {
         this(dialogs, actionResolver, new StandardCardPlayPrompts(dialogs), log, status);
     }
 
-    /** Delegates to {@link StandardCardPlayPrompts}. */
+    /** 委托给 {@link StandardCardPlayPrompts}。 */
     public Optional<ActionPlayChoice> promptActionCardChoice(ActionCard card) {
         return prompts.promptActionCardChoice(card);
     }
 
-    /** Delegates to {@link StandardCardPlayPrompts}. */
+    /** 委托给 {@link StandardCardPlayPrompts}。 */
     public Optional<ActionPlayChoice> promptWildPropertyChoice(WildpropertyCard wild) {
         return prompts.promptWildPropertyChoice(wild);
     }
 
     /**
-     * Full action-card flow: bank vs effect choice, then {@link ActionEffectResolver}.
+     * 完整行动卡流程：存银行/使用效果选择，再经 {@link ActionEffectResolver} 解析。
      */
     public CardPlayOutcome playActionCard(LocalGameSession session, Player player, ActionCard actionCard) {
         GameEngine engine = session.getEngine();
@@ -111,7 +111,7 @@ public final class LocalCardPlayService {
         return new CardPlayOutcome(result, false, extraPlay);
     }
 
-    /** wild卡，可以选择存银行或者作为property */
+    /** 万能卡：可选择存入银行或作为地产打出。 */
     public CardPlayOutcome playWildPropertyCard(LocalGameSession session, Player player, WildpropertyCard wild) {
         GameEngine engine = session.getEngine();
         if (wild.isBankable()) {
@@ -165,9 +165,9 @@ public final class LocalCardPlayService {
     }
 
     /**
-     * Routes a card to the correct play handler (action, wild, or simple).
+     * 将卡牌路由到正确的出牌处理器（行动、万能或简单）。
      *
-     * @return outcome describing success, banking, extra play consumption, or cancellation
+     * @return 描述成功、存银行、额外出牌消耗或取消的结果
      */
     public CardPlayOutcome play(LocalGameSession session, Player player, Card card) {
         if (card instanceof ActionCard actionCard) {
@@ -179,7 +179,7 @@ public final class LocalCardPlayService {
         return playSimpleCard(session, player, card);
     }
 
-    /** Property, money, and other cards played directly via {@link model.card.Card#use}. */
+    /** 地产、金钱等卡牌，直接通过 {@link model.card.Card#use} 打出。 */
     public CardPlayOutcome playSimpleCard(LocalGameSession session, Player player, Card played) {
         GameEngine engine = session.getEngine();
         if (played instanceof PropertyCard propertyCard

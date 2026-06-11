@@ -6,8 +6,8 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Server-side per-turn timeout scheduling for online games.
- * Exposes {@link #deadlineEpochMillis()} so clients can render a synchronized countdown.
+ * 联机对局的服务端每回合计时调度。
+ * 暴露 {@link #deadlineEpochMillis()}，供客户端渲染同步倒计时。
  */
 final class SessionTurnClock {
     private final Runnable onTimeout;
@@ -26,12 +26,12 @@ final class SessionTurnClock {
         this.onTimeout = onTimeout;
     }
 
-    /** True while the turn timer is paused and not counting down. */
+    /** 回合计时器暂停且不计时为 true。 */
     boolean isPaused() {
         return paused;
     }
 
-    /** Whole seconds left when paused; {@code 0} when not paused or expired. */
+    /** 暂停时的剩余整秒数；未暂停或已过期时为 {@code 0}。 */
     int frozenSecondsRemaining() {
         if (!paused) {
             return 0;
@@ -39,19 +39,19 @@ final class SessionTurnClock {
         return (int) Math.ceil(frozenRemainingMillis / 1000.0);
     }
 
-    /** Epoch millis when the active turn ends; 0 when no timer is running. */
+    /** 当前回合结束的纪元毫秒时间戳；无计时器运行时为 0。 */
     long deadlineEpochMillis() {
         return deadlineEpochMillis;
     }
 
-    /** Schedules {@link #onTimeout} after {@code turnTimeSeconds} and records the deadline. */
+    /** 在 {@code turnTimeSeconds} 后调度 {@link #onTimeout} 并记录截止时间。 */
     void start(int turnTimeSeconds) {
         cancel();
         deadlineEpochMillis = System.currentTimeMillis() + turnTimeSeconds * 1000L;
         timeoutTask = executor.schedule(onTimeout, turnTimeSeconds, TimeUnit.SECONDS);
     }
 
-    /** Freezes the countdown until {@link #resume()} is called. */
+    /** 冻结倒计时，直至调用 {@link #resume()}。 */
     void pause() {
         if (paused || timeoutTask == null) {
             return;
@@ -62,7 +62,7 @@ final class SessionTurnClock {
         paused = true;
     }
 
-    /** Restarts the countdown from the remaining time saved by {@link #pause()}. */
+    /** 从 {@link #pause()} 保存的剩余时间重新启动倒计时。 */
     void resume() {
         if (!paused) {
             return;

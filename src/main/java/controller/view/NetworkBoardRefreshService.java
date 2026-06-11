@@ -27,16 +27,16 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
- * {@link GameBoardRefreshService} implementation driven by {@link GameStateDto}.
+ * 由 {@link GameStateDto} 驱动的 {@link GameBoardRefreshService} 实现。
  * <p>
- * Suppliers provide the latest server snapshot, mapped hand/bank, and local seat so
- * the controller can refresh the board after each sync without duplicating render code.
+ * 供应器提供最新服务器快照、映射手牌/银行与本地座位，
+ * 使控制器在每次同步后刷新棋盘而无需重复渲染代码。
  */
 public final class NetworkBoardRefreshService implements GameBoardRefreshService {
-    /** Plays allowed per turn in online mode (matches server rules). */
+    /** 联机模式每回合允许的出牌次数（与服务器规则一致）。 */
     private static final int MAX_PLAYS_PER_TURN = 3;
 
-    /** Top status bar and turn-flow widgets bound from FXML. */
+    /** 自 FXML 绑定的顶部状态栏与回合流程控件。 */
     private final Label currentPlayerLabel;
     private final Label gameStatusText;
     private final Label turnFlowLabel;
@@ -66,19 +66,19 @@ public final class NetworkBoardRefreshService implements GameBoardRefreshService
     private final Supplier<Integer> localSeatSupplier;
     private final HandRenderer.SelectionListener handSelectionListener;
 
-    /** Hand card highlighted for discard or play; mirrored from the controller. */
+    /** 高亮用于弃牌或出牌的手牌；与控制器同步。 */
     private Card selectedCard;
-    /** Captures the {@link ui.CardView} when selection is reapplied after refresh. */
+    /** 刷新后重新应用选中时捕获 {@link ui.CardView}。 */
     private BiConsumer<Card, ui.CardView> selectedViewCallback;
-    /** Wild-property recolor click options when it is the local player's turn. */
+    /** 轮到本地玩家时的万能地产改色点击选项。 */
     private Supplier<PublicBoardRenderOptions> boardOptionsSupplier = () -> PublicBoardRenderOptions.none();
 
     /**
-     * @param stateSupplier       authoritative server snapshot
-     * @param handSupplier        mapped cards in the local player's hand
-     * @param bankSupplier        mapped cards in the local player's bank
-     * @param localSeatSupplier   this client's seat index
-     * @param handSelectionListener click/double-click handler for hand cards
+     * @param stateSupplier         权威服务器快照
+     * @param handSupplier          本地玩家手牌的映射卡牌
+     * @param bankSupplier          本地玩家银行的映射卡牌
+     * @param localSeatSupplier     本客户端座位索引
+     * @param handSelectionListener 手牌单击/双击处理器
      */
     public NetworkBoardRefreshService(Label currentPlayerLabel,
                                         Label gameStatusText,
@@ -144,14 +144,14 @@ public final class NetworkBoardRefreshService implements GameBoardRefreshService
         this.selectedViewCallback = callback;
     }
 
-    /** Supplies wild-property recolor options when it is the local player's turn. */
+    /** 轮到本地玩家时提供万能地产改色选项。 */
     public void setBoardOptionsSupplier(Supplier<PublicBoardRenderOptions> boardOptionsSupplier) {
         this.boardOptionsSupplier = boardOptionsSupplier != null
                 ? boardOptionsSupplier
                 : () -> PublicBoardRenderOptions.none();
     }
 
-    /** Updates only the turn summary labels (used by the online countdown ticker). */
+    /** 仅更新回合摘要标签（供联机倒计时滴答使用）。 */
     public void refreshTurnStatus() {
         GameStateDto state = stateSupplier.get();
         if (state == null) {

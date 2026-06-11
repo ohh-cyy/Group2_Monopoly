@@ -4,22 +4,22 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Public view of one player in an online match.
- * Opponents see hand size but not individual hand cards.
+ * 联机对局中一名玩家的公开视图。
+ * 对手仅能看到手牌数量，看不到具体手牌。
  */
 public class PlayerViewDto {
-    /** Zero-based seat index. */
+    /** 从 0 开始的座位索引。 */
     public int seat;
 
-    /** Display name chosen in the lobby. */
+    /** 大厅中选择的显示名称。 */
     public String name;
 
-    /** Number of cards in hand (contents are hidden). */
+    /** 手牌数量（内容隐藏）。 */
     public int handSize;
 
-    /** Total value of cards in the player's bank. */
+    /** 玩家银行中卡牌的总价值。 */
     public int bankTotal;
 
-    /** Face-up property cards on the player's board. */
+    /** 玩家牌面上的明牌地产。 */
     public List<CardDto> properties = new ArrayList<>();
 }

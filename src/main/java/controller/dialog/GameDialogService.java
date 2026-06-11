@@ -17,26 +17,26 @@ import java.util.Optional;
 import java.util.function.Function;
 
 /**
- * Factory for themed JavaFX dialogs shared by local and online controllers.
+ * 本地与联机控制器共用的主题 JavaFX 对话框工厂。
  * <p>
- * Applies {@code game-theme.css}, centers on the owning window, and provides
- * reusable choice and color-picker layouts for card-play prompts.
+ * 应用 {@code game-theme.css}，相对于所属窗口居中，
+ * 并为出牌提示提供可复用的选择与颜色选择器布局。
  */
 public class GameDialogService {
-    /** Label whose scene window becomes the dialog owner for modality. */
+    /** 其场景窗口作为对话框模态所有者的标签。 */
     private final Label ownerLabel;
 
     /**
-     * @param ownerLabel any on-screen label from the game view (used for dialog ownership)
+     * @param ownerLabel 游戏视图中任意屏幕标签（用于对话框所有权）
      */
     public GameDialogService(Label ownerLabel) {
         this.ownerLabel = ownerLabel;
     }
 
     /**
-     * Shows a header/content dialog with custom button types.
+     * 显示带自定义按钮类型的标题/内容对话框。
      *
-     * @return the button the user clicked, or empty if the dialog was dismissed
+     * @return 用户点击的按钮；对话框被关闭时为空
      */
     public Optional<ButtonType> showButtonDialog(String title, String header, String content, ButtonType... buttons) {
         Dialog<ButtonType> dialog = new Dialog<>();
@@ -60,11 +60,11 @@ public class GameDialogService {
     }
 
     /**
-     * Shows a vertical list of choice buttons; selecting one closes the dialog with that value.
+     * 显示纵向选项按钮列表；选择一项即以该值关闭对话框。
      *
-     * @param labeler           text for each option button
-     * @param colorStyleProvider optional inline CSS per option (may be {@code null})
-     * @return the chosen option, or empty if cancelled or no options
+     * @param labeler           各选项按钮文本
+     * @param colorStyleProvider 各选项可选的内联 CSS（可为 {@code null}）
+     * @return 所选选项；取消或无选项时为空
      */
     public <T> Optional<T> showChoiceDialog(String title, String header, String prompt,
                                             List<T> options, Function<T, String> labeler,
@@ -112,7 +112,7 @@ public class GameDialogService {
     }
 
     /**
-     * Property-set color picker with rent-completion hints and color swatch styling.
+     * 地产套组颜色选择器，含租金/完成提示与色块样式。
      */
     public Optional<Color> showColorChoiceDialog(String title, String header, String prompt, List<Color> colors) {
         return showChoiceDialog(title, header, prompt, colors,
@@ -123,7 +123,7 @@ public class GameDialogService {
     }
 
     /**
-     * Color picker tailored for playing a {@link WildpropertyCard} as property.
+     * 专为将 {@link WildpropertyCard} 作为地产打出而定制的颜色选择器。
      */
     public Optional<Color> showWildPropertyColorDialog(WildpropertyCard wild) {
         List<Color> colors = wild.getAvailableColors();
@@ -145,7 +145,7 @@ public class GameDialogService {
                         + "-fx-border-color: rgba(255,255,255,0.55);");
     }
 
-    /** Hex background color for dialog buttons representing a property color. */
+    /** 对话框按钮表示地产颜色时使用的十六进制背景色。 */
     public String cssColorFor(Color color) {
         return switch (color) {
             case BROWN -> "#8B5A2B";
@@ -161,7 +161,7 @@ public class GameDialogService {
         };
     }
 
-    /** Contrasting text color for buttons on light or dark property swatches. */
+    /** 浅色或深色地产色块按钮上的对比文字颜色。 */
     public String textColorFor(Color color) {
         return switch (color) {
             case YELLOW, LIGHT_BLUE, LIGHT_GREEN, ORANGE -> "#1f2d2a";
@@ -169,7 +169,7 @@ public class GameDialogService {
         };
     }
 
-    /** Attaches game CSS, dialog style class, and window owner to a dialog pane. */
+    /** 为对话框面板附加游戏 CSS、对话框样式类与窗口所有者。 */
     public void styleDialog(Dialog<?> dialog) {
         DialogPane pane = dialog.getDialogPane();
         try {

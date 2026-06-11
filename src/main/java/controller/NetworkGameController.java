@@ -51,108 +51,108 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * FXML controller for the online multiplayer game view ({@code network-game-view.fxml}).
+ * 联机多人游戏视图的 FXML 控制器（{@code network-game-view.fxml}）。
  * <p>
- * Renders authoritative state from the server via {@link GameStateDto}, sends player
- * actions through {@link NetworkClient}, and handles server-driven interaction prompts.
+ * 通过 {@link GameStateDto} 渲染服务器权威状态，经 {@link NetworkClient} 发送玩家操作，
+ * 并处理服务器驱动的交互提示。
  */
 public class NetworkGameController {
-    /** Turn summary and deck pile labels in the top status bar. */
+    /** 顶部状态栏中的回合摘要与牌堆标签。 */
     @FXML private Label currentPlayerLabel;
     @FXML private Label gameStatusText;
     @FXML private Label turnFlowLabel;
     @FXML private HBox playDotsBar;
     @FXML private HBox deckPilesBar;
-    /** Transient hint shown below the board (errors use a distinct style). */
+    /** 棋盘下方显示的临时提示（错误使用独立样式）。 */
     @FXML private Label statusMessage;
-    /** Left sidebar listing all players and their bank totals. */
+    /** 左侧边栏，列出所有玩家及其银行总额。 */
     @FXML private VBox playersList;
-    /** Collapsible side panels and their toggle controls. */
+    /** 可折叠侧边栏及其切换控件。 */
     @FXML private VBox leftSidebar;
     @FXML private VBox rightSidebar;
     @FXML private Button leftSidebarToggle;
     @FXML private Button rightSidebarToggle;
     @FXML private Button leftSidebarHandle;
     @FXML private Button rightSidebarHandle;
-    /** Bottom hand dock: scroll area, hint label, and collapse toggle. */
+    /** 底部手牌区：滚动区域、提示标签与折叠切换。 */
     @FXML private VBox handDock;
     @FXML private Label handDockHint;
     @FXML private Button handDockToggle;
-    /** Center board: all players' property rows and shared bank bar. */
+    /** 中央棋盘：所有玩家的地产行与共享银行栏。 */
     @FXML private VBox publicBoardPanel;
     @FXML private HBox publicBoardHeader;
     @FXML private VBox allPlayersPropertiesPanel;
     @FXML private HBox allPlayersBankBar;
-    /** Current player's hand and personal bank widgets. */
+    /** 当前玩家的手牌与个人银行控件。 */
     @FXML private ScrollPane playerHandScroll;
     @FXML private HBox playerHand;
     @FXML private FlowPane playerBank;
     @FXML private Label bankTotalLabel;
-    /** Scrollable event log in the right sidebar. */
+    /** 右侧边栏中的可滚动事件日志。 */
     @FXML private GameLogPane gameLog;
-    /** Primary turn action buttons. */
+    /** 主要回合操作按钮。 */
     @FXML private Button drawCardBtn;
     @FXML private Button discardCardBtn;
     @FXML private Button endTurnBtn;
     @FXML private Button newGameBtn;
     @FXML private Button achievementBtn;
-    /** Emoji reaction picker and floating overlay target. */
+    /** 表情反应选择器与浮动叠加层目标。 */
     @FXML private FlowPane emojiBar;
     @FXML private Pane reactionOverlay;
-    /** Mouse-transparent full-board layer containing the local Your Turn notification. */
+    /** 鼠标穿透的全棋盘层，承载本地「轮到你了」通知。 */
     @FXML private StackPane yourTurnOverlay;
 
-    /** Renders and tracks hand card selection state. */
+    /** 渲染并跟踪手牌选中状态。 */
     private HandRenderer handRenderer;
-    /** Themed dialogs for play prompts and wild recolor. */
+    /** 出牌提示与万能改色的主题对话框。 */
     private GameDialogService dialogs;
-    /** Presents transient status and error messages. */
+    /** 展示临时状态与错误消息。 */
     private StatusMessageDisplay statusDisplay;
-    /** Collapsible sidebar and hand-dock chrome. */
+    /** 可折叠侧边栏与手牌区装饰。 */
     private GameBoardChrome boardChrome;
-    /** Tracks property row heights for responsive board layout. */
+    /** 跟踪地产行高度以实现响应式棋盘布局。 */
     private PropertyBoardLayoutTracker layoutTracker;
-    /** Mode-specific board refresh implementation. */
+    /** 按模式区分的棋盘刷新实现。 */
     private GameBoardRefreshService boardRefresh;
-    /** Log merge, victory/rematch, and hand-limit coordination. */
+    /** 日志合并、胜利/重赛与手牌上限协调。 */
     private NetworkMatchCoordinator matchCoordinator;
-    /** Handles server-driven Just Say No and payment prompts. */
+    /** 处理服务器驱动的 Just Say No 与支付提示。 */
     private NetworkPromptResponder promptResponder;
-    /** Builds play messages before sending to the server. */
+    /** 发送至服务器前构建出牌消息。 */
     private OnlineCardPlayService onlineCardPlay;
-    /** Client-side countdown display between server syncs. */
+    /** 服务器同步间隔内的客户端倒计时显示。 */
     private OnlineTurnTimerDisplay turnTimerDisplay;
-    /** Routes hand click and double-click to selection/play. */
+    /** 将手牌单击/双击路由到选中/出牌。 */
     private HandRenderer.SelectionListener handSelectionListener;
 
-    /** Active socket client; set by {@link #startOnlineGame}. */
+    /** 活跃的套接字客户端；由 {@link #startOnlineGame} 设置。 */
     private NetworkClient client;
-    /** This client's seat index assigned by the server (-1 until joined). */
+    /** 服务器分配的本客户端座位索引（加入前为 -1）。 */
     private int localSeat = -1;
-    /** Latest authoritative snapshot from the server. */
+    /** 服务器下发的最新权威快照。 */
     private GameStateDto state;
-    /** Mapped hand and bank cards for the local seat only. */
+    /** 仅映射本地座位的银行与手牌。 */
     private List<Card> myHand = new ArrayList<>();
-    /** Mapped bank cards for the local seat only. */
+    /** 仅映射本地座位的银行卡牌。 */
     private List<Card> myBank = new ArrayList<>();
-    /** Hand card currently highlighted for discard or play. */
+    /** 当前高亮用于弃牌或出牌的手牌。 */
     private Card selectedCard;
-    /** View widget for {@link #selectedCard}, used to restore highlight after sync. */
+    /** {@link #selectedCard} 的视图控件，同步后用于恢复高亮。 */
     private CardView selectedCardView;
-    /** Default avatar image for player list and board renderers. */
+    /** 玩家列表与棋盘渲染器使用的默认头像。 */
     private Image avatarImage;
-    /** Floating emoji reactions over the public property board. */
+    /** 公共地产棋盘上的浮动表情反应。 */
     private EmojiReactionOverlay emojiReactionOverlay;
-    /** Full-board notification shown when the authoritative turn reaches this seat. */
+    /** 权威回合轮到本座位时显示的全棋盘通知。 */
     private YourTurnOverlay yourTurnNotification;
-    /** Last authoritative turn seat, used to suppress duplicate notifications on sync. */
+    /** 上次观察到的权威回合座位，用于在同步时抑制重复通知。 */
     private int lastObservedTurnSeat = -1;
-    /** Allows a rematch starting on the same seat to trigger a fresh notification. */
+    /** 允许同座位重赛时触发新的通知。 */
     private boolean lastObservedGameOver;
 
     /**
-     * FXML lifecycle hook: builds services and board refresh without connecting to a server.
-     * Call {@link #startOnlineGame} to attach the client and apply initial state.
+     * FXML 生命周期钩子：构建服务与棋盘刷新，但不连接服务器。
+     * 调用 {@link #startOnlineGame} 以绑定客户端并应用初始状态。
      */
     @FXML
     public void initialize() {
@@ -277,7 +277,7 @@ public class NetworkGameController {
         });
     }
 
-    /** Pauses the turn countdown while the pause dialog is open. */
+    /** 暂停对话框打开期间暂停回合计时。 */
     public void pauseGame() {
         if (client != null) {
             client.pauseGame();
@@ -287,7 +287,7 @@ public class NetworkGameController {
         }
     }
 
-    /** Resumes the turn countdown after closing the pause dialog. */
+    /** 关闭暂停对话框后恢复回合计时。 */
     public void resumeGame() {
         if (client != null) {
             client.resumeGame();
@@ -362,9 +362,9 @@ public class NetworkGameController {
     }
 
     /**
-     * Displays the local turn notification only on a meaningful turn boundary.
-     * Normal STATE messages arrive after draws, plays, payments, and timer updates, so comparing
-     * seats prevents those routine synchronizations from replaying the overlay.
+     * 仅在有意义的回合边界显示本地回合通知。
+     * 普通 STATE 消息在摸牌、出牌、支付与计时器更新后到达，比较座位可避免
+     * 这些常规同步重复播放叠加层。
      */
     private void showYourTurnIfNeeded(GameStateDto newState) {
         boolean freshGame = lastObservedGameOver && !newState.gameOver;

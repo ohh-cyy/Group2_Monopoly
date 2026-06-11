@@ -21,10 +21,10 @@ import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
 /**
- * Cross-cutting online match concerns extracted from {@link controller.NetworkGameController}.
+ * 从 {@link controller.NetworkGameController} 抽离的联机对局横切关注点。
  * <p>
- * Merges server log lines, shows victory/rematch UI, reconciles hand selection after sync,
- * and prompts mandatory hand-limit discards before end-turn.
+ * 合并服务器日志行、显示胜利/重赛 UI、同步后协调手牌选中，
+ * 并在结束回合前提示强制手牌上限弃牌。
  */
 public final class NetworkMatchCoordinator {
     private final Label statusAnchor;
@@ -36,30 +36,30 @@ public final class NetworkMatchCoordinator {
     private final Supplier<NetworkClient> clientSupplier;
     private final Consumer<String> onNewLogLine;
 
-    /** Number of server log lines already merged into {@link #gameLog}. */
+    /** 已合并进 {@link #gameLog} 的服务器日志行数。 */
     private int mergedLogSize;
-    /** Prevents showing the victory overlay more than once per game end. */
+    /** 防止每次游戏结束时重复显示胜利叠加层。 */
     private boolean victoryScreenShown;
-    /** Prevents duplicate rematch vote dialogs after victory. */
+    /** 防止胜利后重复弹出重赛投票对话框。 */
     private boolean rematchPromptShown;
-    /** Ensures the "session ended" message is shown only once per rematch decline. */
+    /** 确保每次拒绝重赛时「会话已结束」消息只显示一次。 */
     private boolean rematchDeclinedNotified;
-    /** Last displayed rematch yes-count to avoid repeating the waiting status. */
+    /** 上次显示的重赛赞成人数，避免重复等待状态。 */
     private int lastRematchYesCount = -1;
-    /** Previous snapshot's game-over flag for rematch transition detection. */
+    /** 上一快照的游戏结束标志，用于检测重赛过渡。 */
     private boolean previousGameOver;
-    /** Set when End Turn was clicked but blocked until hand size is legal. */
+    /** 点击结束回合但因手牌未合法而被阻塞时置位。 */
     private boolean pendingEndTurnAfterDiscard;
 
     /**
-     * @param statusAnchor         label used as owner for victory/rematch dialogs
-     * @param gameLog              scrollable log pane receiving merged server lines
-     * @param statusDisplay        primary transient status message presenter
-     * @param onBoardRefresh       invoked after log merge so the controller can repaint
-     * @param disableActionButtons invoked when victory screen is shown
-     * @param localSeatSupplier    this client's seat index for turn checks
-     * @param clientSupplier       connected client for end-turn and discard messages
-     * @param onNewLogLine         optional hook for audio/effects on each new log entry
+     * @param statusAnchor         胜利/重赛对话框的所有者标签
+     * @param gameLog              接收合并服务器日志的可滚动日志面板
+     * @param statusDisplay        主要临时状态消息展示器
+     * @param onBoardRefresh       日志合并后调用，供控制器重绘
+     * @param disableActionButtons 显示胜利界面时调用
+     * @param localSeatSupplier    本客户端座位索引，用于回合判断
+     * @param clientSupplier       已连接客户端，用于结束回合与弃牌消息
+     * @param onNewLogLine         每条新日志的可选音效/效果钩子
      */
     public NetworkMatchCoordinator(Label statusAnchor,
                                    GameLogPane gameLog,
@@ -79,21 +79,21 @@ public final class NetworkMatchCoordinator {
         this.onNewLogLine = onNewLogLine;
     }
 
-    /** Whether end-turn was requested but blocked until hand size is legal. */
+    /** 是否已请求结束回合但因手牌未合法而被阻塞。 */
     public boolean isPendingEndTurnAfterDiscard() {
         return pendingEndTurnAfterDiscard;
     }
 
     /**
-     * Records that end-turn should be sent automatically once hand size is legal.
+     * 记录手牌合法后应自动发送结束回合。
      *
-     * @param pending {@code true} when the player clicked End Turn while over the hand limit
+     * @param pending 玩家在手牌超限时点击结束回合时为 {@code true}
      */
     public void setPendingEndTurnAfterDiscard(boolean pending) {
         this.pendingEndTurnAfterDiscard = pending;
     }
 
-    /** Ensures nullable DTO collections are non-null before use. */
+    /** 使用前确保可空的 DTO 集合非空。 */
     public void normalize(GameStateDto state) {
         if (state.players == null) {
             state.players = new ArrayList<>();
@@ -110,7 +110,7 @@ public final class NetworkMatchCoordinator {
     }
 
     /**
-     * Runs after a new snapshot is stored: rematch transitions, log merge, UI refresh, victory.
+     * 存储新快照后执行：重赛过渡、日志合并、UI 刷新、胜利界面。
      */
     public void onStateApplied(GameStateDto state) {
         handleRematchTransitions(state);
@@ -120,9 +120,9 @@ public final class NetworkMatchCoordinator {
     }
 
     /**
-     * Re-binds selection to the mapped hand by instance id after a server sync.
+     * 服务器同步后按实例 ID 将选中状态重新绑定到映射手牌。
      *
-     * @return matching card from {@code mappedHand}, or {@code null} if gone
+     * @return {@code mappedHand} 中的匹配卡牌；已不存在时为 {@code null}
      */
     public static Card reconcileSelection(List<Card> mappedHand, Card selectedCard) {
         if (selectedCard == null || mappedHand == null) {
@@ -136,7 +136,7 @@ public final class NetworkMatchCoordinator {
     }
 
     /**
-     * Prompts discard when over the hand limit on the local player's turn; may auto end-turn afterward.
+     * 本地玩家回合且手牌超限时提示弃牌；之后可能自动结束回合。
      */
     public void checkHandLimitAfterRefresh(GameStateDto state, List<Card> hand, GameDialogService dialogs) {
         if (!isMyTurn(state)) {
@@ -235,7 +235,7 @@ public final class NetworkMatchCoordinator {
                 });
     }
 
-    /** Shows the hand-limit discard dialog and sends the choice to the server. */
+    /** 显示手牌上限弃牌对话框并将选择发送给服务器。 */
     public void promptDiscardForHandLimit(GameStateDto state,
                                           List<Card> hand,
                                           GameDialogService dialogs) {

@@ -31,27 +31,27 @@ import java.util.Optional;
 import java.util.function.BiConsumer;
 
 /**
- * Builds {@link ClientMessage} payloads for online card play.
+ * 为联机出牌构建 {@link ClientMessage} 载荷。
  * <p>
- * Mirrors local play dialogs (targets, colors, bank vs effect) but sends choices to
- * the server instead of mutating engine state on the client.
+ * 复用本地出牌对话框（目标、颜色、存银行/使用效果），但将选择发送给服务器，
+ * 而非在客户端修改引擎状态。
  */
 public final class OnlineCardPlayService {
     private final GameDialogService dialogs;
     private final StandardCardPlayPrompts prompts;
     private final BiConsumer<String, Boolean> status;
 
-    /** Snapshot used while building the current play message. */
+    /** 构建当前出牌消息时使用的快照。 */
     private GameStateDto state;
-    /** Local seat index used while building the current play message. */
+    /** 构建当前出牌消息时使用的本地座位索引。 */
     private int localSeat;
-    /** Mapped hand used while building the current play message. */
+    /** 构建当前出牌消息时使用的映射手牌。 */
     private List<Card> myHand;
 
     /**
-     * @param dialogs themed dialog factory
-     * @param prompts shared bank-vs-effect prompts
-     * @param status  status bar sink (message, isError)
+     * @param dialogs 主题对话框工厂
+     * @param prompts 共享的存银行/使用效果提示
+     * @param status  状态栏输出（消息, 是否错误）
      */
     public OnlineCardPlayService(GameDialogService dialogs,
                                  StandardCardPlayPrompts prompts,
@@ -62,16 +62,16 @@ public final class OnlineCardPlayService {
     }
 
     /**
-     * Convenience constructor using a default {@link StandardCardPlayPrompts} instance.
+     * 使用默认 {@link StandardCardPlayPrompts} 实例的便捷构造器。
      */
     public OnlineCardPlayService(GameDialogService dialogs, BiConsumer<String, Boolean> status) {
         this(dialogs, new StandardCardPlayPrompts(dialogs), status);
     }
 
     /**
-     * Prompts for any required targets/colors and assembles the play message for the server.
+     * 提示所需目标/颜色，并组装发往服务器的出牌消息。
      *
-     * @return complete message ready to send, or empty if the player cancelled or validation failed
+     * @return 可发送的完整消息；玩家取消或校验失败时为空
      */
     public Optional<ClientMessage> buildPlayMessage(GameStateDto state, int localSeat, List<Card> myHand, Card card) {
         this.state = state;

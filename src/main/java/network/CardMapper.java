@@ -12,14 +12,14 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Converts between domain {@link Card} objects and wire {@link CardDto} records.
- * Used when building game state snapshots and when clients rebuild hand UI.
+ * 在领域 {@link Card} 对象与网络 {@link CardDto} 之间转换。
+ * 用于构建游戏状态快照及客户端重建手牌 UI。
  */
 public final class CardMapper {
     private CardMapper() {
     }
 
-    /** Maps one domain card to its network DTO, including cardKind-specific fields. */
+    /** 将一张领域卡牌映射为网络 DTO，包含 cardKind 相关字段。 */
     public static CardDto toDto(Card card) {
         CardDto dto = new CardDto();
         dto.id = card.getInstanceId();
@@ -27,7 +27,7 @@ public final class CardMapper {
         dto.description = card.getDescription();
         dto.type = card.getType().name();
 
-        // Map each concrete card type to a stable cardKind string for fromDto().
+        // 将各具体卡牌类型映射为稳定的 cardKind 字符串，供 fromDto() 使用。
         if (card instanceof MoneyCard money) {
             dto.cardKind = "MONEY";
             dto.money = money.getMoney();
@@ -88,7 +88,7 @@ public final class CardMapper {
         return dto;
     }
 
-    /** Maps a list of domain cards to DTOs, preserving order. */
+    /** 将领域卡牌列表映射为 DTO，保持顺序。 */
     public static List<CardDto> toDtos(List<Card> cards) {
         List<CardDto> list = new ArrayList<>();
         for (Card card : cards) {
@@ -98,8 +98,8 @@ public final class CardMapper {
     }
 
     /**
-     * Reconstructs a domain card from a DTO.
-     * Returns null if the DTO is incomplete or describes an unknown card kind.
+     * 从 DTO 重建领域卡牌。
+     * DTO 不完整或描述未知 cardKind 时返回 null。
      */
     public static Card fromDto(CardDto dto) {
         if (dto == null || dto.type == null || dto.cardKind == null) {
@@ -153,7 +153,7 @@ public final class CardMapper {
         }
     }
 
-    /** Reconstructs cards from DTOs, skipping entries that fail to parse. */
+    /** 从 DTO 列表重建卡牌，跳过解析失败的条目。 */
     public static List<Card> fromDtos(List<CardDto> dtos) {
         List<Card> cards = new ArrayList<>();
         if (dtos == null) {
@@ -168,7 +168,7 @@ public final class CardMapper {
         return cards;
     }
 
-    /** Parses a {@link Color} enum name from protocol strings; null if invalid. */
+    /** 从协议字符串解析 {@link Color} 枚举名；无效时返回 null。 */
     public static Color parseColor(String value) {
         if (value == null || value.isBlank()) {
             return null;

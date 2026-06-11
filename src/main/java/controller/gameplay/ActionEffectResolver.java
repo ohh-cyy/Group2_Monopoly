@@ -29,10 +29,10 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
- * Resolves action-card effects for local play with interactive target and color prompts.
+ * 在本地游戏中通过交互式目标与颜色提示解析行动卡效果。
  * <p>
- * Delegates payments to {@link PaymentService} and Just Say No chains to
- * {@link JustSayNoService} so {@link controller.GameController} stays thin.
+ * 将支付委托给 {@link PaymentService}，将 Just Say No 链委托给
+ * {@link JustSayNoService}，以保持 {@link controller.GameController} 精简。
  */
 public class ActionEffectResolver {
     private final GameDialogService dialogs;
@@ -43,7 +43,7 @@ public class ActionEffectResolver {
     private final BiConsumer<String, Boolean> status;
 
     /**
-     * Convenience constructor using a default {@link StandardCardPlayPrompts} instance.
+     * 使用默认 {@link StandardCardPlayPrompts} 实例的便捷构造器。
      */
     public ActionEffectResolver(GameDialogService dialogs, PaymentService payments, JustSayNoService justSayNo,
                                 Consumer<String> log, BiConsumer<String, Boolean> status) {
@@ -51,12 +51,12 @@ public class ActionEffectResolver {
     }
 
     /**
-     * @param dialogs    themed dialog factory for target and color selection
-     * @param prompts    shared bank-vs-effect prompts
-     * @param payments   rent and debt collection helper
-     * @param justSayNo  Just Say No response chain handler
-     * @param log        game log sink
-     * @param status     status bar sink (message, isError)
+     * @param dialogs    用于目标与颜色选择的主题对话框工厂
+     * @param prompts    共享的存银行/使用效果提示
+     * @param payments   租金与债务收取辅助类
+     * @param justSayNo  Just Say No 响应链处理器
+     * @param log        游戏日志输出
+     * @param status     状态栏输出（消息, 是否错误）
      */
     public ActionEffectResolver(GameDialogService dialogs,
                                 StandardCardPlayPrompts prompts,
@@ -72,15 +72,15 @@ public class ActionEffectResolver {
         this.status = status;
     }
 
-    /** Delegates to {@link StandardCardPlayPrompts}. */
+    /** 委托给 {@link StandardCardPlayPrompts}。 */
     public Optional<ActionPlayChoice> promptActionCardChoice(ActionCard card) {
         return prompts.promptActionCardChoice(card);
     }
 
     /**
-     * Runs the full effect for {@code actionCard} after the player chose "use effect".
+     * 玩家选择「使用效果」后，执行 {@code actionCard} 的完整效果。
      * <p>
-     * Dispatches by card type; mutates engine state and may invoke payment/JSN flows.
+     * 按卡牌类型分发；修改引擎状态并可能触发支付/JSN 流程。
      */
     public ActionEffectResult resolve(GameEngine gameEngine, Player player, ActionCard actionCard) {
         if (actionCard instanceof JustSayNo) {
@@ -185,7 +185,7 @@ public class ActionEffectResolver {
         return promptSelectRentColor(player, rentCard, options);
     }
 
-    // Rent is collected one payer at a time so each player can respond and choose assets.
+    // 租金逐人收取，以便每位玩家响应并选择资产。
     private int collectRentFromOpponents(GameEngine gameEngine, Player collector, RentCard rentCard,
                                          Color chargeColor, int rentPerPlayer) {
         int total = 0;

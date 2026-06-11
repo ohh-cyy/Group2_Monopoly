@@ -28,13 +28,13 @@ import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
 /**
- * {@link GameBoardRefreshService} implementation driven by {@link GameEngine}.
+ * 由 {@link GameEngine} 驱动的 {@link GameBoardRefreshService} 实现。
  * <p>
- * Reads live engine and player objects via suppliers so the UI stays in sync with
- * local hot-seat state without network DTO mapping.
+ * 通过供应器读取实时引擎与玩家对象，使 UI 与本地热座状态同步，
+ * 无需网络 DTO 映射。
  */
 public final class LocalBoardRefreshService implements GameBoardRefreshService {
-    /** Top status bar and turn-flow widgets bound from FXML. */
+    /** 自 FXML 绑定的顶部状态栏与回合流程控件。 */
     private final Label currentPlayerLabel;
     private final Label gameStatusText;
     private final Label turnFlowLabel;
@@ -66,20 +66,20 @@ public final class LocalBoardRefreshService implements GameBoardRefreshService {
     private final Supplier<List<PlayerBoardView>> boardViewsSupplier;
     private final HandRenderer.SelectionListener handSelectionListener;
 
-    /** Hand card highlighted for discard or play; mirrored from the controller. */
+    /** 高亮用于弃牌或出牌的手牌；与控制器同步。 */
     private Card selectedCard;
-    /** Captures the {@link CardView} when selection is reapplied after refresh. */
+    /** 刷新后重新应用选中时捕获 {@link CardView}。 */
     private BiConsumer<Card, CardView> selectedViewCallback;
-    /** Wild-property recolor click options when the current player may act. */
+    /** 当前玩家可操作时的万能地产改色点击选项。 */
     private Supplier<PublicBoardRenderOptions> boardOptionsSupplier = () -> PublicBoardRenderOptions.none();
-    /** Remaining local turn seconds for the status bar (-1 to hide). */
+    /** 状态栏显示的本地回合剩余秒数（-1 表示隐藏）。 */
     private IntSupplier turnSecondsSupplier = () -> -1;
 
     /**
-     * @param engineSupplier          live {@link GameEngine}
-     * @param currentTurnSeatSupplier index of the player whose turn it is
-     * @param boardViewsSupplier      prebuilt {@link ui.render.PlayerBoardView} list for the public board
-     * @param handSelectionListener   click/double-click handler for hand cards
+     * @param engineSupplier          实时 {@link GameEngine}
+     * @param currentTurnSeatSupplier 当前回合玩家索引
+     * @param boardViewsSupplier      公共棋盘预构建的 {@link ui.render.PlayerBoardView} 列表
+     * @param handSelectionListener   手牌单击/双击处理器
      */
     public LocalBoardRefreshService(Label currentPlayerLabel,
                                     Label gameStatusText,
@@ -149,19 +149,19 @@ public final class LocalBoardRefreshService implements GameBoardRefreshService {
         this.selectedViewCallback = callback;
     }
 
-    /** Supplies wild-property recolor options when the current player may act. */
+    /** 当前玩家可操作时提供万能地产改色选项。 */
     public void setBoardOptionsSupplier(Supplier<PublicBoardRenderOptions> boardOptionsSupplier) {
         this.boardOptionsSupplier = boardOptionsSupplier != null
                 ? boardOptionsSupplier
                 : () -> PublicBoardRenderOptions.none();
     }
 
-    /** Supplies remaining turn seconds for the local countdown display (-1 to hide). */
+    /** 提供本地倒计时显示的剩余回合秒数（-1 表示隐藏）。 */
     public void setTurnSecondsSupplier(IntSupplier turnSecondsSupplier) {
         this.turnSecondsSupplier = turnSecondsSupplier != null ? turnSecondsSupplier : () -> -1;
     }
 
-    /** Updates turn labels and play dots without rebuilding the hand (avoids breaking card animations). */
+    /** 仅更新回合标签与出牌点，不重建手牌（避免打断卡牌动画）。 */
     public void refreshTurnStatusOnly() {
         refreshTurnStatus(engineSupplier.get(), currentPlayerSupplier.get());
     }

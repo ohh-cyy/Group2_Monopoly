@@ -12,27 +12,27 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Builds per-client game snapshots from the authoritative server {@link GameEngine}.
+ * 从服务端权威 {@link GameEngine} 构建各客户端游戏快照。
  * <p>
- * Public fields are visible to every client; {@code myHand} and {@code myBank} are filled
- * only for the requested {@code seat} so opponents never receive full hand contents.
+ * 公开字段对所有客户端可见；{@code myHand} 与 {@code myBank} 仅填充请求的 {@code seat}，
+ * 对手不会收到完整手牌内容。
  */
 public final class GameStateMapper {
     private GameStateMapper() {
     }
 
     /**
-     * Creates a {@link GameStateDto} tailored to one connected client.
+     * 为一名已连接客户端创建 {@link GameStateDto}。
      *
-     * @param engine   authoritative game engine on the server
-     * @param seat     receiving client's seat index (0-based)
-     * @param logLines session log lines maintained by {@link network.server.GameSession}
-     * @return snapshot safe to send to the client at {@code seat}
+     * @param engine   服务端权威游戏引擎
+     * @param seat     接收客户端的座位索引（从 0 开始）
+     * @param logLines 由 {@link network.server.GameSession} 维护的会话日志行
+     * @return 可安全发送给 {@code seat} 客户端的快照
      */
     public static GameStateDto buildForSeat(GameEngine engine, int seat, List<String> logLines) {
         GameStateDto state = new GameStateDto();
 
-        // Global turn and pile info — identical for every client.
+        // 全局回合与牌堆信息——各客户端相同。
         state.currentPlayerIndex = engine.getCurrentPlayerIndex();
         state.hasDrawnThisTurn = engine.hasDrawnThisTurn();
         state.remainingPlays = engine.getRemainingPlays();
@@ -41,7 +41,7 @@ public final class GameStateMapper {
         state.discardPileSize = engine.getDiscardPile().size();
         state.logLines = List.copyOf(logLines);
 
-        // Public view of every player (hand count only, not card identities).
+        // 所有玩家的公开视图（仅手牌数量，不含卡牌身份）。
         for (int i = 0; i < engine.getPlayers().size(); i++) {
             Player player = engine.getPlayers().get(i);
             PlayerViewDto view = new PlayerViewDto();
@@ -59,7 +59,7 @@ public final class GameStateMapper {
             }
         }
 
-        // Private data visible only to the receiving seat.
+        // 仅接收座位可见的私有数据。
         if (seat >= 0 && seat < engine.getPlayers().size()) {
             Player me = engine.getPlayers().get(seat);
             state.myHand = CardMapper.toDtos(me.getHand());

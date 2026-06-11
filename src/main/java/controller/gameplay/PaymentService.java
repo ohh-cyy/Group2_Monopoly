@@ -16,10 +16,9 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
- * Interactive rent and debt collection for local play.
+ * 本地游戏中的交互式租金与债务收取。
  * <p>
- * Prompts the payer to choose bank cards or non-complete-set properties until
- * the owed amount is satisfied or no payable assets remain.
+ * 提示付款方选择银行卡或非完整套组地产，直至付清欠款或无可用资产。
  */
 public class PaymentService {
     private final GameDialogService dialogs;
@@ -27,9 +26,9 @@ public class PaymentService {
     private final BiConsumer<String, Boolean> status;
 
     /**
-     * @param dialogs themed dialog factory for asset selection
-     * @param log     game log sink
-     * @param status  status bar sink (message, isError)
+     * @param dialogs 用于资产选择的主题对话框工厂
+     * @param log     游戏日志输出
+     * @param status  状态栏输出（消息, 是否错误）
      */
     public PaymentService(GameDialogService dialogs, Consumer<String> log, BiConsumer<String, Boolean> status) {
         this.dialogs = dialogs;
@@ -71,7 +70,7 @@ public class PaymentService {
         return PaymentTransfer.hasPayableAsset(player);
     }
 
-    //（prompt是提示的意思），选择支付卡片
+    // 提示玩家选择支付卡牌
     private Optional<Card> promptSelectPaymentCard(Player payer, int remainingM, String reason) {
         List<Card> options = PaymentTransfer.listPayableAssets(payer);
         if (options.isEmpty()) {

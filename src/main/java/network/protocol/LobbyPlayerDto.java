@@ -1,15 +1,15 @@
 package network.protocol;
 
 /**
- * One entry in the pre-game lobby player list.
+ * 赛前大厅玩家列表中的一条记录。
  */
 public class LobbyPlayerDto {
     public int seat;
     public String name;
 
-    /** True if this player may start the match. */
+    /** 该玩家是否可以开始比赛。 */
     public boolean host;
 
-    /** True once JOIN has completed successfully. */
+    /** JOIN 成功完成后为 true。 */
     public boolean joined;
 }

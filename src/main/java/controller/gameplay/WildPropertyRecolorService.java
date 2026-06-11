@@ -12,10 +12,10 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
- * Local-mode wild property recolor flow (click on board, uses one play).
+ * 本地模式的万能地产改色流程（点击棋盘，消耗 1 次出牌）。
  * <p>
- * Validates ownership and available colors via {@link engine.WildPropertyRules},
- * then applies the chosen color after player confirmation.
+ * 通过 {@link engine.WildPropertyRules} 校验所有权与可用颜色，
+ * 玩家确认后应用所选颜色。
  */
 public final class WildPropertyRecolorService {
     private final GameDialogService dialogs;
@@ -23,9 +23,9 @@ public final class WildPropertyRecolorService {
     private final BiConsumer<String, Boolean> status;
 
     /**
-     * @param dialogs themed dialog factory for color selection
-     * @param log     game log sink
-     * @param status  status bar sink (message, isError)
+     * @param dialogs 用于颜色选择的主题对话框工厂
+     * @param log     游戏日志输出
+     * @param status  状态栏输出（消息, 是否错误）
      */
     public WildPropertyRecolorService(GameDialogService dialogs,
                                       Consumer<String> log,
@@ -36,9 +36,9 @@ public final class WildPropertyRecolorService {
     }
 
     /**
-     * Prompts for a new color and applies recolor on the player's board.
+     * 提示选择新颜色并在玩家棋盘上应用改色。
      *
-     * @return {@code true} if recolor succeeded and one play should be recorded
+     * @return 改色成功且应记录 1 次出牌时为 {@code true}
      */
     public boolean attemptRecolor(Player player, WildpropertyCard wild) {
         WildpropertyCard owned = WildPropertyRules.findOwnedWild(player, wild);

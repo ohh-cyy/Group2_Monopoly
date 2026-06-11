@@ -17,13 +17,13 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Resolves action/rent cards that need defender input (Just Say No, payment choice).
+ * 解析需要防守方输入的行动/租金卡（Just Say No、支付选择）。
  */
 public final class PendingActionResolution {
     public static final String PROMPT_JUST_SAY_NO = "JUST_SAY_NO";
     public static final String PROMPT_PAYMENT = "PAYMENT";
 
-    /** Current step when resolving multi-player action cards. */
+    /** 解析多玩家行动卡时的当前步骤。 */
     private enum Phase {
         JUST_SAY_NO,
         PAYMENT,
@@ -39,7 +39,7 @@ public final class PendingActionResolution {
     private final ServerPlayHandler playHandler = new ServerPlayHandler();
 
     private Phase phase = Phase.JUST_SAY_NO;
-    /** Opponents that still need JSN/payment processing for this action. */
+    /** 本行动仍需处理 JSN/支付的对手。 */
     private final List<Integer> opponentSeats = new ArrayList<>();
     private int opponentIndex;
     private int currentPayerSeat = -1;
@@ -47,13 +47,13 @@ public final class PendingActionResolution {
     private int paymentPaid;
     private int totalCollected;
 
-    // Just Say No chain state (players may counter each other's JSN cards).
+    // Just Say No 链状态（玩家可互相用 JSN 卡反制）。
     private int jsnResponderSeat = -1;
     private int jsnOtherSeat = -1;
     private int jsnDepth;
     private boolean jsnBlocked;
 
-    /** Id of the prompt awaiting a matching RESPOND. */
+    /** 等待匹配 RESPOND 的提示 id。 */
     private String currentPromptId;
     private Color chargeColor;
     private int rentPerPlayer;
@@ -69,7 +69,7 @@ public final class PendingActionResolution {
         this.logLines = logLines;
     }
 
-    /** Factory for a rent resolution where rent is already doubled (Double the Rent combo). */
+    /** 租金已加倍（Double the Rent 组合）时的工厂方法。 */
     public static PendingActionResolution rentWithDouble(GameSession session, GameEngine engine, int attackerSeat,
                                                         RentCard rentCard, ClientMessage playMessage,
                                                         List<String> logLines) {
@@ -79,7 +79,7 @@ public final class PendingActionResolution {
         return resolution;
     }
 
-    /** True when playing this card must pause for remote PROMPT/RESPOND interaction. */
+    /** 打出该卡须暂停等待远程 PROMPT/RESPOND 交互时为 true。 */
     public static boolean requiresInteraction(ActionCard card, ClientMessage message) {
         if (card instanceof RentCard || card instanceof MyBirthday) {
             return true;
@@ -91,7 +91,7 @@ public final class PendingActionResolution {
         return false;
     }
 
-    /** Starts the state machine and sends the first prompt to the appropriate seat. */
+    /** 启动状态机并向相应座位发送首个提示。 */
     public void begin() {
         Player attacker = engine.getPlayers().get(attackerSeat);
         if (card instanceof RentCard rentCard) {
@@ -155,7 +155,7 @@ public final class PendingActionResolution {
         }
     }
 
-    /** Processes a client RESPOND; returns false if prompt id or seat does not match. */
+    /** 处理客户端 RESPOND；prompt id 或座位不匹配时返回 false。 */
     public boolean handleResponse(int seat, ClientMessage response) {
         if (response == null || response.promptId == null || !response.promptId.equals(currentPromptId)) {
             return false;
@@ -172,7 +172,7 @@ public final class PendingActionResolution {
         return false;
     }
 
-    /** Toggles block state or extends the JSN counter-chain, then re-prompts or continues. */
+    /** 切换阻挡状态或延长 JSN 反制链，然后重新提示或继续。 */
     private boolean handleJustSayNoResponse(ClientMessage response) {
         if (response.useJustSayNo == null) {
             return false;
@@ -201,7 +201,7 @@ public final class PendingActionResolution {
         return true;
     }
 
-    /** Transfers one chosen asset; repeats until paid in full or payer has nothing left. */
+    /** 转移一项所选资产；付清前重复，或付款方无资产可付时结束。 */
     private boolean handlePaymentResponse(ClientMessage response) {
         if (response.paymentCardId == null || response.paymentCardId.isBlank()) {
             return false;
@@ -225,7 +225,7 @@ public final class PendingActionResolution {
         return true;
     }
 
-    /** Begins JSN/payment processing for the opponent at {@link #opponentIndex}. */
+    /** 为 {@link #opponentIndex} 处的对手开始 JSN/支付处理。 */
     private void startCurrentOpponent() {
         if (opponentIndex >= opponentSeats.size()) {
             completeActionEffect();
@@ -253,7 +253,7 @@ public final class PendingActionResolution {
         finishJustSayNoChain();
     }
 
-    /** After JSN resolves: skip opponent, collect payment, or apply steal/swap effect. */
+    /** JSN 解析后：跳过对手、收取支付或应用偷牌/交换效果。 */
     private void finishJustSayNoChain() {
         if (jsnBlocked) {
             appendLog(playerName(currentPayerSeat) + " blocked " + actionLabel() + " with Just Say No");
@@ -413,7 +413,7 @@ public final class PendingActionResolution {
                 java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")) + "] " + line);
     }
 
-    /** Ends the state machine and lets {@link GameSession} record plays and broadcast. */
+    /** 结束状态机，由 {@link GameSession} 记录出牌并广播。 */
     private void finish(boolean success) {
         phase = Phase.DONE;
         session.onActionResolutionComplete(success);

@@ -8,30 +8,30 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
- * Abstraction for synchronizing shared board widgets with game state.
+ * 将共享棋盘控件与游戏状态同步的抽象接口。
  * <p>
- * Implemented by {@link LocalBoardRefreshService} and {@link NetworkBoardRefreshService}
- * so controllers can refresh the UI without mode-specific branching.
+ * 由 {@link LocalBoardRefreshService} 与 {@link NetworkBoardRefreshService} 实现，
+ * 使控制器刷新 UI 时无需按模式分支。
  */
 public interface GameBoardRefreshService {
-    /** Remembers the highlighted hand card for renderers and button enablement. */
+    /** 记录高亮手牌，供渲染器与按钮启用逻辑使用。 */
     void setSelectedCard(Card selectedCard);
 
-    /** Registers a callback to capture the {@link CardView} when selection is reapplied. */
+    /** 注册回调，在重新应用选中时捕获 {@link CardView}。 */
     void applySelectionCallback(BiConsumer<Card, CardView> callback);
 
     /**
-     * Full board repaint: player list, properties, hand, bank, labels, and buttons.
+     * 完整棋盘重绘：玩家列表、地产、手牌、银行、标签与按钮。
      *
-     * @param rowHeightConsumer optional callback with the tallest property row height
+     * @param rowHeightConsumer 可选回调，传入最高地产行高度
      */
     void refreshAll(VBox playersList, Consumer<Double> rowHeightConsumer);
 
-    /** Recomputes draw/discard/end-turn button disabled state only. */
+    /** 仅重新计算摸牌/弃牌/结束回合按钮的禁用状态。 */
     void refreshButtons();
 
-    /** Disables all turn action buttons (e.g. after game over). */
+    /** 禁用所有回合操作按钮（如游戏结束后）。 */
     default void disableActionButtons() {
-        // Local games keep buttons managed by turn rules during refresh.
+        // 本地游戏在刷新时仍由回合规则管理按钮。
     }
 }

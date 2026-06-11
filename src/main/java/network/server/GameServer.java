@@ -12,17 +12,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * TCP game server: accepts connections, manages the pre-game lobby,
- * and routes in-game commands to a single authoritative {@link GameSession}.
+ * TCP 游戏服务器：接受连接、管理赛前大厅，
+ * 并将对局命令路由到唯一的权威 {@link GameSession}。
  */
 public class GameServer implements AutoCloseable {
     private final int port;
     private ServerSocket serverSocket;
 
-    /** All handlers, including clients still in the lobby. */
+    /** 所有处理器，包括仍在大厅中的客户端。 */
     private final List<ClientHandler> connections = new ArrayList<>();
 
-    /** Created when the host starts the match; null during lobby phase. */
+    /** 主机开始比赛时创建；大厅阶段为 null。 */
     private GameSession session;
     private volatile boolean running;
 
@@ -46,7 +46,7 @@ public class GameServer implements AutoCloseable {
         System.out.println("Monopoly Deal server started on port " + getPort());
     }
 
-    /** Accepts sockets and spawns one {@link ClientHandler} thread per connection. */
+    /** 接受套接字，并为每个连接启动一个 {@link ClientHandler} 线程。 */
     private void acceptLoop() {
         while (running) {
             try {
@@ -68,8 +68,8 @@ public class GameServer implements AutoCloseable {
     }
 
     /**
-     * Top-level message router.
-     * Lobby commands are handled here; gameplay commands are delegated to {@link GameSession}.
+     * 顶层消息路由器。
+     * 大厅命令在此处理；对局命令委托给 {@link GameSession}。
      */
     public synchronized void handleClientMessage(ClientHandler handler, ClientMessage message) {
         if (message.type == null) {
@@ -93,7 +93,7 @@ public class GameServer implements AutoCloseable {
         }
     }
 
-    /** Registers a player in the lobby, assigns seat/host, and broadcasts LOBBY. */
+    /** 在大厅注册玩家，分配座位/主机，并广播 LOBBY。 */
     private void handleJoin(ClientHandler handler, ClientMessage message) {
         if (session != null) {
             handler.send(error("Game already started"));
@@ -112,7 +112,7 @@ public class GameServer implements AutoCloseable {
         }
 
         int seat = nextSeat();
-        // First joiner becomes host even if they did not click Host locally.
+        // 首个加入者成为主机，即使本地未点击 Host。
         boolean host = message.host || joinedCount == 0;
         handler.assignSeat(seat, name, host);
 
@@ -126,7 +126,7 @@ public class GameServer implements AutoCloseable {
         broadcastLobby();
     }
 
-    /** Host-only: creates {@link GameSession}, deals cards, and sends GAME_STARTED. */
+    /** 仅主机：创建 {@link GameSession}、发牌并发送 GAME_STARTED。 */
     private void handleStartGame(ClientHandler requester) {
         if (session != null) {
             requester.send(error("Game already started"));
@@ -191,7 +191,7 @@ public class GameServer implements AutoCloseable {
         return list;
     }
 
-    /** Finds the lowest unused seat index in [0, MAX_PLAYERS). */
+    /** 在 [0, MAX_PLAYERS) 中查找最小的未占用座位索引。 */
     private int nextSeat() {
         boolean[] used = new boolean[GameSession.MAX_PLAYERS];
         for (ClientHandler handler : connections) {
@@ -241,7 +241,7 @@ public class GameServer implements AutoCloseable {
         return msg;
     }
 
-    /** Stops accepting connections, shuts down the session, and disconnects all clients. */
+    /** 停止接受连接、关闭会话并断开所有客户端。 */
     @Override
     public void close() {
         running = false;

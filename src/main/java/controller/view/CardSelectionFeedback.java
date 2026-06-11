@@ -7,21 +7,21 @@ import model.card.actionCard.ActionCard;
 import model.card.actionCard.DoubleTheRent;
 
 /**
- * Builds status-bar hints when the player selects a card in hand.
+ * 玩家选中手牌时构建状态栏提示。
  * <p>
- * Copy differs slightly between local and online modes (e.g. Double the Rent wording).
+ * 本地与联机模式的文案略有差异（如 Double the Rent 表述）。
  */
 public final class CardSelectionFeedback {
-    /** Utility class; do not instantiate. */
+    /** 工具类，禁止实例化。 */
     private CardSelectionFeedback() {
     }
 
-    /** Hint text for local hot-seat play. */
+    /** 本地热座模式的提示文本。 */
     public static String messageFor(Card card) {
         return messageFor(card, false);
     }
 
-    /** Hint text for online play (includes network-specific action notes). */
+    /** 联机模式的提示文本（含网络特有行动说明）。 */
     public static String messageForOnline(Card card) {
         return messageFor(card, true);
     }

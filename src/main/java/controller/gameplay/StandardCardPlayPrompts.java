@@ -9,23 +9,23 @@ import model.card.actionCard.ActionCard;
 import java.util.Optional;
 
 /**
- * Shared "use effect vs deposit to bank" dialogs for action and wild property cards.
+ * 行动卡与万能地产卡共用的「使用效果 vs 存银行」对话框。
  * <p>
- * Used by {@link LocalCardPlayService}, {@link ActionEffectResolver}, and
- * {@link OnlineCardPlayService} to keep prompt copy consistent across modes.
+ * 由 {@link LocalCardPlayService}、{@link ActionEffectResolver} 与
+ * {@link OnlineCardPlayService} 使用，以保持各模式提示文案一致。
  */
 public final class StandardCardPlayPrompts {
     private final GameDialogService dialogs;
 
     /**
-     * @param dialogs themed dialog factory used to render choice buttons
+     * @param dialogs 用于渲染选项按钮的主题对话框工厂
      */
     public StandardCardPlayPrompts(GameDialogService dialogs) {
         this.dialogs = dialogs;
     }
 
     /**
-     * Asks whether to use an action card's effect or bank it for its M value.
+     * 询问使用行动卡效果还是按 M 值存入银行。
      */
     public Optional<ActionPlayChoice> promptActionCardChoice(ActionCard card) {
         ButtonType useBtn = new ButtonType("Use Effect");
@@ -49,7 +49,7 @@ public final class StandardCardPlayPrompts {
     }
 
     /**
-     * Asks whether to play a wild property as property (choose color) or deposit to bank.
+     * 询问将万能地产作为地产打出（选颜色）还是存入银行。
      */
     public Optional<ActionPlayChoice> promptWildPropertyChoice(WildpropertyCard wild) {
         ButtonType useBtn = new ButtonType("Play as Property");

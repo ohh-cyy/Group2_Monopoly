@@ -15,13 +15,13 @@ import network.protocol.ClientMessage;
 import java.util.List;
 
 /**
- * Executes immediate action-card effects on the server (no UI).
- * Interactive flows (rent with payment choice, JSN chains) use {@link PendingActionResolution} instead.
+ * 在服务端执行即时行动卡效果（无 UI）。
+ * 需交互的流程（带支付选择的租金、JSN 链）改用 {@link PendingActionResolution}。
  */
 public final class ServerPlayHandler {
     /**
-     * Applies a single action card effect using targets/colors from the play message.
-     * Returns false when the card requires async interaction or inputs are invalid.
+     * 根据出牌消息中的目标/颜色应用单张行动卡效果。
+     * 卡牌需要异步交互或输入无效时返回 false。
      */
     public boolean applyEffect(GameEngine engine, Player player, ActionCard card, ClientMessage msg,
                                List<String> log) {
@@ -77,7 +77,7 @@ public final class ServerPlayHandler {
         return true;
     }
 
-    /** Auto-collects rent from every opponent (used only for non-interactive server paths). */
+    /** 自动向每位对手收取租金（仅用于服务端非交互路径）。 */
     private boolean applyRent(GameEngine engine, Player player, RentCard rentCard, ClientMessage msg,
                               List<String> log) {
         Color chargeColor = CardMapper.parseColor(msg.color);

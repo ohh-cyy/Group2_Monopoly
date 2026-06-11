@@ -17,10 +17,10 @@ import java.util.Optional;
 import java.util.function.BiConsumer;
 
 /**
- * Handles server-driven interaction prompts during online play.
+ * 处理联机游戏中服务器驱动的交互提示。
  * <p>
- * Responds to {@link network.protocol.InteractionPromptDto} messages for Just Say No
- * chains and rent/payment asset selection, sending answers back via {@link NetworkClient}.
+ * 响应 {@link network.protocol.InteractionPromptDto} 消息中的 Just Say No 链
+ * 与租金/支付资产选择，经 {@link NetworkClient} 回传答案。
  */
 public final class NetworkPromptResponder {
     private final GameDialogService dialogs;
@@ -28,9 +28,9 @@ public final class NetworkPromptResponder {
     private final BiConsumer<String, Boolean> statusFallback;
 
     /**
-     * @param dialogs        themed dialog factory for prompt UI
-     * @param statusDisplay  primary status message presenter
-     * @param statusFallback used when {@code statusDisplay} is unavailable
+     * @param dialogs        用于提示 UI 的主题对话框工厂
+     * @param statusDisplay  主要状态消息展示器
+     * @param statusFallback {@code statusDisplay} 不可用时的备用输出
      */
     public NetworkPromptResponder(GameDialogService dialogs,
                                   StatusMessageDisplay statusDisplay,
@@ -41,10 +41,10 @@ public final class NetworkPromptResponder {
     }
 
     /**
-     * Dispatches a server prompt to the appropriate dialog and response handler.
+     * 将服务器提示分发给对应对话框与响应处理器。
      *
-     * @param client connected client used to send the player's answer
-     * @param prompt prompt metadata and payable options from the server
+     * @param client 用于发送玩家答案的已连接客户端
+     * @param prompt 服务器下发的提示元数据与可支付选项
      */
     public void handle(NetworkClient client, InteractionPromptDto prompt) {
         if (client == null || prompt == null || prompt.promptId == null) {

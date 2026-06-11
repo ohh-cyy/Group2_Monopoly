@@ -1,13 +1,13 @@
 package controller.gameplay;
 
 /**
- * Player decision when playing an action or bankable wild property card.
+ * 打出行动卡或可存银行的万能地产卡时玩家的决策。
  * <p>
- * Presented by {@link StandardCardPlayPrompts} before effect resolution or banking.
+ * 在效果解析或存银行前由 {@link StandardCardPlayPrompts} 呈现。
  */
 public enum ActionPlayChoice {
-    /** Execute the card's game effect (rent, steal, etc.). */
+    /** 执行卡牌的游戏效果（收租、偷窃等）。 */
     USE_EFFECT,
-    /** Skip the effect and deposit the card into the player's bank for its M value. */
+    /** 跳过效果，按 M 值将卡牌存入玩家银行。 */
     DEPOSIT_BANK
 }

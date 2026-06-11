@@ -4,45 +4,45 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Wire representation of a {@link model.card.Card}.
- * {@link #cardKind} disambiguates concrete card types for {@link network.CardMapper}.
+ * {@link model.card.Card} 的网络表示。
+ * {@link #cardKind} 用于区分具体卡牌类型，供 {@link network.CardMapper} 使用。
  */
 public class CardDto {
-    /** Unique instance id used in play/discard/payment commands. */
+    /** 卡牌实例唯一 id，用于出牌/弃牌/支付命令。 */
     public String id;
 
-    /** Display name shown on the card face. */
+    /** 卡面显示名称。 */
     public String name;
-    /** Short rules or flavor text for the card. */
+    /** 卡牌简短规则或描述文本。 */
     public String description;
 
-    /** {@link model.enums.CardType} name: PROPERTY, MONEY, or ACTION. */
+    /** {@link model.enums.CardType} 名称：PROPERTY、MONEY 或 ACTION。 */
     public String type;
 
-    /** Fine-grained kind, e.g. MONEY, PROPERTY, RENT, SLY_DEAL. */
+    /** 细粒度种类，如 MONEY、PROPERTY、RENT、SLY_DEAL。 */
     public String cardKind;
 
-    /** Current or chosen property color name. */
+    /** 当前或已选定的地产颜色名称。 */
     public String color;
 
-    /** Face value for money cards. */
+    /** 金钱卡面值。 */
     public Integer money;
 
-    /** Property purchase price where applicable. */
+    /** 地产购买价格（如适用）。 */
     public Integer price;
 
-    /** Bank deposit value for action or wild cards. */
+    /** 行动卡或万能地产的银行存款价值。 */
     public Integer bankValue;
 
-    /** Wild property: legal color choices before placement. */
+    /** 万能地产：放置前可选的合法颜色。 */
     public List<String> wildColors = new ArrayList<>();
 
-    /** Wild property: whether it may be deposited to the bank. */
+    /** 万能地产：是否可存入银行。 */
     public Boolean bankable;
 
-    /** Rent card: true for the all-colors rent variant. */
+    /** 租金卡：是否为全色租金变体。 */
     public Boolean allColorsRent;
 
-    /** Rent card: applicable color names for dual-color rents. */
+    /** 租金卡：双色租金适用的颜色名称。 */
     public List<String> rentColors = new ArrayList<>();
 }

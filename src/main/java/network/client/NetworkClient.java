@@ -10,29 +10,29 @@ import java.net.Socket;
 import java.util.function.Consumer;
 
 /**
- * TCP client for online Monopoly Deal.
+ * 联机 Monopoly Deal 的 TCP 客户端。
  * <p>
- * Protocol: one JSON object per line ({@code println} / {@code readLine}).
- * Incoming messages are delivered on a background thread via {@link #setListener}.
+ * 协议：每行一个 JSON 对象（{@code println} / {@code readLine}）。
+ * 入站消息由后台线程通过 {@link #setListener} 投递。
  */
 public class NetworkClient implements AutoCloseable {
     private Socket socket;
     private BufferedReader reader;
     private PrintWriter writer;
-    /** Background thread that blocks on {@code readLine()} until disconnect. */
+    /** 后台线程，在断开前阻塞于 {@code readLine()}。 */
     private Thread readerThread;
-    /** Invoked on the reader thread for each inbound message. */
+    /** 在读取线程上为每条入站消息调用。 */
     private Consumer<ServerMessage> listener;
     private volatile boolean connected;
 
-    /** Registers the callback invoked for each parsed {@link ServerMessage}. */
+    /** 注册每条已解析 {@link ServerMessage} 的回调。 */
     public void setListener(Consumer<ServerMessage> listener) {
         this.listener = listener;
     }
 
     /**
-     * Opens a new connection and starts the background read loop.
-     * Closes any previous connection first.
+     * 建立新连接并启动后台读取循环。
+     * 会先关闭已有连接。
      */
     public void connect(String host, int port, Consumer<ServerMessage> listener) throws IOException {
         close();
@@ -46,7 +46,7 @@ public class NetworkClient implements AutoCloseable {
         readerThread.start();
     }
 
-    /** Reads lines until disconnect; parses JSON and forwards to the listener. */
+    /** 读取行直至断开；解析 JSON 并转发给监听器。 */
     private void readLoop() {
         try {
             String line;
@@ -62,14 +62,14 @@ public class NetworkClient implements AutoCloseable {
         }
     }
 
-    /** Sends a command if the socket is still connected. */
+    /** 套接字仍连接时发送命令。 */
     public void send(ClientMessage message) {
         if (writer != null && connected) {
             writer.println(JsonUtil.toJson(message));
         }
     }
 
-    /** JOIN: enter the lobby with a display name. */
+    /** JOIN：以显示名称进入大厅。 */
     public void join(String playerName, boolean host) {
         ClientMessage msg = new ClientMessage();
         msg.type = "JOIN";
@@ -78,21 +78,21 @@ public class NetworkClient implements AutoCloseable {
         send(msg);
     }
 
-    /** START_GAME: host-only request to begin the match. */
+    /** START_GAME：仅主机可请求开始比赛。 */
     public void startGame() {
         ClientMessage msg = new ClientMessage();
         msg.type = "START_GAME";
         send(msg);
     }
 
-    /** DRAW: current player draws two cards. */
+    /** DRAW：当前玩家抽两张牌。 */
     public void draw() {
         ClientMessage msg = new ClientMessage();
         msg.type = "DRAW";
         send(msg);
     }
 
-    /** DISCARD_CARD: discard one card from hand by instance id. */
+    /** DISCARD_CARD：按实例 id 从手牌弃掉一张卡。 */
     public void discardCard(String cardId) {
         ClientMessage msg = new ClientMessage();
         msg.type = MessageTypes.DISCARD_CARD;
@@ -100,7 +100,7 @@ public class NetworkClient implements AutoCloseable {
         send(msg);
     }
 
-    /** END_TURN: end the current player's turn. */
+    /** END_TURN：结束当前玩家回合。 */
     public void endTurn() {
         ClientMessage msg = new ClientMessage();
         msg.type = "END_TURN";
@@ -108,15 +108,15 @@ public class NetworkClient implements AutoCloseable {
     }
 
     /**
-     * PLAY_CARD: play or bank a card.
-     * Caller must populate mode, targets, colors, etc. before sending.
+     * PLAY_CARD：打出或存入银行。
+     * 发送前须填充 mode、目标、颜色等字段。
      */
     public void playCard(ClientMessage playMessage) {
         playMessage.type = "PLAY_CARD";
         send(playMessage);
     }
 
-    /** RECOLOR_WILD: change the color of a wild property on the board. */
+    /** RECOLOR_WILD：更改牌面上万能地产的颜色。 */
     public void recolorWildProperty(String cardId, String color) {
         ClientMessage msg = new ClientMessage();
         msg.type = MessageTypes.RECOLOR_WILD;
@@ -125,7 +125,7 @@ public class NetworkClient implements AutoCloseable {
         send(msg);
     }
 
-    /** SYNC: request a fresh STATE snapshot for this client. */
+    /** SYNC：请求本客户端的最新 STATE 快照。 */
     public void requestSync() {
         ClientMessage msg = new ClientMessage();
         msg.type = "SYNC";
@@ -133,10 +133,10 @@ public class NetworkClient implements AutoCloseable {
     }
 
     /**
-     * RESPOND: answer a server PROMPT.
+     * RESPOND：应答服务端 PROMPT。
      *
-     * @param useJustSayNo  for JUST_SAY_NO prompts; null for payment prompts
-     * @param paymentCardId for PAYMENT prompts; null for JSN prompts
+     * @param useJustSayNo  用于 JUST_SAY_NO 提示；支付提示时为 null
+     * @param paymentCardId 用于 PAYMENT 提示；JSN 提示时为 null
      */
     public void respond(String promptId, Boolean useJustSayNo, String paymentCardId) {
         ClientMessage msg = new ClientMessage();
@@ -147,7 +147,7 @@ public class NetworkClient implements AutoCloseable {
         send(msg);
     }
 
-    /** REMATCH_VOTE: accept or decline playing another round after a win. */
+    /** REMATCH_VOTE：获胜后投票是否再来一局。 */
     public void voteRematch(boolean accept) {
         ClientMessage msg = new ClientMessage();
         msg.type = MessageTypes.REMATCH_VOTE;
@@ -155,7 +155,7 @@ public class NetworkClient implements AutoCloseable {
         send(msg);
     }
 
-    /** SEND_EMOJI: broadcast a reaction emoji to all players. */
+    /** SEND_EMOJI：向所有玩家广播表情反应。 */
     public void sendEmoji(String emoji) {
         ClientMessage msg = new ClientMessage();
         msg.type = MessageTypes.SEND_EMOJI;
@@ -163,21 +163,21 @@ public class NetworkClient implements AutoCloseable {
         send(msg);
     }
 
-    /** PAUSE_GAME: freeze the shared turn timer for all players. */
+    /** PAUSE_GAME：冻结所有玩家共享的回合计时器。 */
     public void pauseGame() {
         ClientMessage msg = new ClientMessage();
         msg.type = MessageTypes.PAUSE_GAME;
         send(msg);
     }
 
-    /** RESUME_GAME: resume the shared turn timer after a pause. */
+    /** RESUME_GAME：暂停后恢复共享回合计时器。 */
     public void resumeGame() {
         ClientMessage msg = new ClientMessage();
         msg.type = MessageTypes.RESUME_GAME;
         send(msg);
     }
 
-    /** Stops the reader thread and closes the underlying socket. */
+    /** 停止读取线程并关闭底层套接字。 */
     @Override
     public void close() {
         connected = false;

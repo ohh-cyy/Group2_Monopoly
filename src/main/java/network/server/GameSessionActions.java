@@ -17,13 +17,13 @@ import network.protocol.ServerMessage;
 import java.util.List;
 
 /**
- * Validates and executes in-game commands on the authoritative server engine.
- * Mirrors local {@code ActionEffectResolver} logic without UI dialogs.
+ * 在权威服务端引擎上校验并执行对局内命令。
+ * 镜像本地 {@code ActionEffectResolver} 逻辑，无 UI 对话框。
  */
 final class GameSessionActions {
     private final ServerPlayHandler playHandler = new ServerPlayHandler();
 
-    /** Current player draws two cards once per turn. */
+    /** 当前玩家每回合抽牌一次。 */
     ServerMessage handleDraw(GameSession session, int seat) {
         if (session.pendingResolution() != null) {
             return error("Waiting for player response");
@@ -43,7 +43,7 @@ final class GameSessionActions {
         return ok("Drew 2 cards");
     }
 
-    /** Ends the current turn after hand-size validation. */
+    /** 在手牌数量校验后结束当前回合。 */
     ServerMessage handleEndTurn(GameSession session, int seat) {
         if (session.pendingResolution() != null) {
             return error("Waiting for player response");
@@ -65,7 +65,7 @@ final class GameSessionActions {
         return ok("Turn ended");
     }
 
-    /** Discards one card from the current player's hand. */
+    /** 从当前玩家手牌弃掉一张卡。 */
     ServerMessage handleDiscardCard(GameSession session, int seat, ClientMessage message) {
         if (session.pendingResolution() != null) {
             return error("Waiting for player response");
@@ -96,7 +96,7 @@ final class GameSessionActions {
         return ok("Card discarded");
     }
 
-    /** Recolors a wild property on the board; consumes one play action. */
+    /** 更改牌面上万能地产颜色；消耗一次出牌。 */
     ServerMessage handleRecolorWild(GameSession session, int seat, ClientMessage message) {
         if (session.pendingResolution() != null) {
             return error("Waiting for player response");
@@ -141,8 +141,8 @@ final class GameSessionActions {
     }
 
     /**
-     * Plays a card according to {@link ClientMessage#mode}:
-     * BANK, PROPERTY, EFFECT, DOUBLE_RENT, or simple play.
+     * 按 {@link ClientMessage#mode} 出牌：
+     * BANK、PROPERTY、EFFECT、DOUBLE_RENT 或普通出牌。
      */
     ServerMessage handlePlayCard(GameSession session, int seat, ClientMessage message) {
         if (session.pendingResolution() != null) {
@@ -197,7 +197,7 @@ final class GameSessionActions {
         return ok("Card played");
     }
 
-    /** Validates and broadcasts an emoji reaction. */
+    /** 校验并广播表情反应。 */
     ServerMessage handleEmoji(GameSession session, int seat, ClientMessage message) {
         if (session.engine() == null) {
             return error("Game not started");
@@ -213,7 +213,7 @@ final class GameSessionActions {
         return ok("Emoji sent");
     }
 
-    /** Forwards a PROMPT answer to the active {@link PendingActionResolution}. */
+    /** 将 PROMPT 应答转发给当前 {@link PendingActionResolution}。 */
     ServerMessage handleRespond(GameSession session, int seat, ClientMessage message) {
         PendingActionResolution pending = session.pendingResolution();
         if (pending == null) {
@@ -226,7 +226,7 @@ final class GameSessionActions {
         return ok("Response accepted");
     }
 
-    /** Deposits an action card or bankable wild property into the player's bank. */
+    /** 将行动卡或可存银行的万能地产存入玩家银行。 */
     boolean playToBank(GameSession session, Player player, Card card) {
         if (!(card instanceof ActionCard action)) {
             if (card instanceof WildpropertyCard wild && wild.isBankable()) {
@@ -259,8 +259,8 @@ final class GameSessionActions {
     }
 
     /**
-     * Plays an action card: either starts {@link PendingActionResolution} for interactive cards
-     * or delegates immediately to {@link ServerPlayHandler}.
+     * 打出行动卡：交互类卡牌启动 {@link PendingActionResolution}，
+     * 否则立即委托给 {@link ServerPlayHandler}。
      */
     private boolean playActionEffect(GameSession session, int seat, Player player, Card card, ClientMessage message) {
         if (!(card instanceof ActionCard action)) {
@@ -286,7 +286,7 @@ final class GameSessionActions {
         return ok;
     }
 
-    /** Discards Double the Rent + Rent, then runs rent collection with forced doubling. */
+    /** 弃掉 Double the Rent + 租金卡，并以强制加倍运行收租。 */
     private boolean playDoubleRentCombo(GameSession session, int seat, Player player, ClientMessage message) {
         GameEngine engine = session.engine();
         if (message.secondCardId == null || message.secondCardId.isBlank()) {

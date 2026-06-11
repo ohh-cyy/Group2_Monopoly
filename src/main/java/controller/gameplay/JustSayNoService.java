@@ -14,10 +14,10 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
- * Local-mode Just Say No response chain between attacker and defender.
+ * 本地模式中攻击方与防守方之间的 Just Say No 响应链。
  * <p>
- * Alternates prompts while each side may play {@link model.card.actionCard.JustSayNo};
- * each card played toggles whether the original action is blocked.
+ * 双方可交替打出 {@link model.card.actionCard.JustSayNo} 时轮流提示；
+ * 每打出一张即切换原行动是否被阻挡。
  */
 public class JustSayNoService {
     private final GameDialogService dialogs;
@@ -25,9 +25,9 @@ public class JustSayNoService {
     private final BiConsumer<String, Boolean> status;
 
     /**
-     * @param dialogs themed dialog factory for block/allow prompts
-     * @param log     game log sink
-     * @param status  status bar sink (message, isError)
+     * @param dialogs 用于阻挡/允许提示的主题对话框工厂
+     * @param log     游戏日志输出
+     * @param status  状态栏输出（消息, 是否错误）
      */
     public JustSayNoService(GameDialogService dialogs, Consumer<String> log, BiConsumer<String, Boolean> status) {
         this.dialogs = dialogs;
@@ -36,8 +36,8 @@ public class JustSayNoService {
     }
 
     /**
-     * Lets both sides answer with Just Say No. Each extra Just Say No cancels
-     * the previous one, so the final blocked state flips every time one is played.
+     * 允许双方以 Just Say No 回应。每多打出一张会抵消上一张，
+     * 因此最终阻挡状态每打出一张即翻转。
      */
     public boolean respond(Player defender, Player attacker, String actionName, GameEngine gameEngine) {
         Player responder = defender;

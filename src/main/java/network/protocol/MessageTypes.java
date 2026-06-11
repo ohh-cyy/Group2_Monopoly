@@ -1,60 +1,60 @@
 package network.protocol;
 
 /**
- * String constants for the {@code type} field on client and server messages.
- * The wire protocol is plain JSON objects, one per line.
+ * 客户端与服务端消息 {@code type} 字段的字符串常量。
+ * 线上协议为纯 JSON 对象，每行一条。
  */
 public final class MessageTypes {
     private MessageTypes() {
     }
 
-    // --- Client -> server commands ---
+    // --- 客户端 -> 服务端命令 ---
 
-    /** Enter the lobby with a display name. */
+    /** 携带显示名称进入大厅。 */
     public static final String JOIN = "JOIN";
-    /** Host requests the match to begin (lobby phase only). */
+    /** 主机请求开始比赛（仅大厅阶段）。 */
     public static final String START_GAME = "START_GAME";
-    /** Current player draws two cards at turn start. */
+    /** 当前玩家在回合开始时抽两张牌。 */
     public static final String DRAW = "DRAW";
-    /** Play, bank, or apply an action/property card. */
+    /** 打出、存入银行或应用行动/地产卡。 */
     public static final String PLAY_CARD = "PLAY_CARD";
-    /** Change the color of a wild property already on the board. */
+    /** 更改牌面上已有万能地产的颜色。 */
     public static final String RECOLOR_WILD = "RECOLOR_WILD";
-    /** Discard one card from hand (e.g. hand-size limit). */
+    /** 从手牌弃掉一张卡（如手牌上限）。 */
     public static final String DISCARD_CARD = "DISCARD_CARD";
-    /** End the current player's turn. */
+    /** 结束当前玩家的回合。 */
     public static final String END_TURN = "END_TURN";
-    /** Request a fresh per-seat STATE snapshot. */
+    /** 请求刷新本客户端的按座位 STATE 快照。 */
     public static final String SYNC = "SYNC";
-    /** Disconnect from the server. */
+    /** 断开与服务端的连接。 */
     public static final String LEAVE = "LEAVE";
-    /** Answer a server PROMPT (Just Say No or payment). */
+    /** 应答服务端 PROMPT（Just Say No 或支付）。 */
     public static final String RESPOND = "RESPOND";
-    /** Vote yes/no on playing another round after a win. */
+    /** 获胜后投票是否再来一局。 */
     public static final String REMATCH_VOTE = "REMATCH_VOTE";
-    /** Broadcast an emoji reaction to all players. */
+    /** 向所有玩家广播表情反应。 */
     public static final String SEND_EMOJI = "SEND_EMOJI";
-    /** Pause the shared turn timer for all players. */
+    /** 暂停所有玩家共享的回合计时器。 */
     public static final String PAUSE_GAME = "PAUSE_GAME";
-    /** Resume the shared turn timer after a pause. */
+    /** 暂停后恢复共享回合计时器。 */
     public static final String RESUME_GAME = "RESUME_GAME";
 
-    // --- Server -> client responses and events ---
+    // --- 服务端 -> 客户端响应与事件 ---
 
-    /** Command succeeded (often paired with a STATE broadcast). */
+    /** 命令成功（常与 STATE 广播一起发送）。 */
     public static final String OK = "OK";
-    /** Command rejected; {@link ServerMessage#text} explains why. */
+    /** 命令被拒绝；{@link ServerMessage#text} 说明原因。 */
     public static final String ERROR = "ERROR";
-    /** Lobby join succeeded; includes assigned seat. */
+    /** 大厅加入成功；包含分配的座位。 */
     public static final String JOINED = "JOINED";
-    /** Updated lobby player list broadcast. */
+    /** 更新后的大厅玩家列表广播。 */
     public static final String LOBBY = "LOBBY";
-    /** Match started; includes initial {@link GameStateDto}. */
+    /** 比赛开始；包含初始 {@link GameStateDto}。 */
     public static final String GAME_STARTED = "GAME_STARTED";
-    /** Authoritative game snapshot for this client's seat. */
+    /** 本客户端座位的权威游戏快照。 */
     public static final String STATE = "STATE";
-    /** Server needs input from one client (JSN or payment). */
+    /** 服务端需要一名客户端输入（JSN 或支付）。 */
     public static final String PROMPT = "PROMPT";
-    /** Emoji reaction from another player. */
+    /** 其他玩家的表情反应。 */
     public static final String EMOJI = "EMOJI";
 }

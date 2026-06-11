@@ -21,54 +21,54 @@ import ui.SettingsOverlay;
 import java.io.IOException;
 
 /**
- * FXML controller for the main lobby ({@code lobby-view.fxml}).
+ * 主大厅的 FXML 控制器（{@code lobby-view.fxml}）。
  * <p>
- * Offers three entry paths: host an online game, join a remote server, or start a
- * local hot-seat match. Manages embedded {@link GameServer} lifecycle when hosting.
+ * 提供三种入口：主持联机、加入远程服务器或开始本地热座对局。
+ * 主持时管理内嵌 {@link GameServer} 的生命周期。
  */
 public class LobbyController {
-    /** Server address and port inputs for join/host. */
+    /** 加入/主持时的服务器地址与端口输入框。 */
     @FXML
     private TextField hostField;
     @FXML
     private TextField portField;
-    /** Display name sent to the server on join. */
+    /** 加入时发送给服务器的显示名称。 */
     @FXML
     private TextField nameField;
-    /** Status line for connection, lobby, and error messages. */
+    /** 连接、大厅与错误消息的状态行。 */
     @FXML
     private Label statusLabel;
-    /** Live list of connected lobby players (host sees start button). */
+    /** 已连接大厅玩家的实时列表（主持方可见开始按钮）。 */
     @FXML
     private ListView<String> playerList;
     @FXML
     private Button hostBtn;
     @FXML
     private Button joinBtn;
-    /** Enabled only for the host when player count is valid. */
+    /** 仅当玩家数量合法时对主持方启用。 */
     @FXML
     private Button startBtn;
     @FXML
     private Label achievementProgressLabel;
-    /** Player count selector for local games (2–5). */
+    /** 本地游戏的玩家数量选择器（2–5）。 */
     @FXML
     private ComboBox<Integer> localPlayerCount;
 
-    /** Window used to open game overlays via {@link SettingsOverlay}. */
+    /** 通过 {@link SettingsOverlay} 打开游戏叠加层所用的窗口。 */
     private Stage stage;
-    /** Embedded server instance when this client is hosting. */
+    /** 本客户端主持时的内嵌服务器实例。 */
     private GameServer gameServer;
-    /** Lobby-phase network client (handed off when the game starts). */
+    /** 大厅阶段的网络客户端（游戏开始时移交）。 */
     private NetworkClient client;
-    /** Seat assigned after a successful join (-1 until then). */
+    /** 成功加入后分配的座位（此前为 -1）。 */
     private int localSeat = -1;
-    /** Whether this client created the room and may start the match. */
+    /** 本客户端是否创建了房间并可开始对局。 */
     private boolean isHost;
 
     /**
-     * Supplies the primary stage so game views can be opened modally.
+     * 提供主舞台，以便以模态方式打开游戏视图。
      *
-     * @param stage owning window
+     * @param stage 所属窗口
      */
     public void setStage(Stage stage) {
         this.stage = stage;
@@ -113,7 +113,7 @@ public class LobbyController {
         }
     }
 
-//点击加入游戏按钮
+    // 点击加入游戏按钮
     @FXML
     private void onJoinClick() {
         String name = nameField.getText().trim();
@@ -159,7 +159,7 @@ public class LobbyController {
         }
     }
 
-//连接客户端
+    // 连接客户端
     private void connectClient(String host, int port, String name, boolean hostFlag) throws IOException {
         client = new NetworkClient();
         client.connect(host, port, this::handleServerMessage);

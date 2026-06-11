@@ -52,94 +52,94 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * FXML controller for the local hot-seat game view ({@code game-view.fxml}).
+ * 本地热座游戏视图的 FXML 控制器（{@code game-view.fxml}）。
  * <p>
- * Wires UI widgets to {@link LocalGameSession}, card-play services, turn timer,
- * and board refresh. All rules run on the client; there is no network layer.
+ * 将 UI 控件与 {@link LocalGameSession}、出牌服务、回合计时器和棋盘刷新串联。
+ * 所有规则在客户端执行，无网络层。
  */
 public class GameController {
-    /** Turn summary and deck pile labels in the top status bar. */
+    /** 顶部状态栏中的回合摘要与牌堆标签。 */
     @FXML private Label currentPlayerLabel;
     @FXML private Label gameStatusText;
     @FXML private Label turnFlowLabel;
     @FXML private HBox playDotsBar;
     @FXML private HBox deckPilesBar;
-    /** Transient hint shown below the board (errors use a distinct style). */
+    /** 棋盘下方显示的临时提示（错误使用独立样式）。 */
     @FXML private Label statusMessage;
-    /** Left sidebar listing all players and their bank totals. */
+    /** 左侧边栏，列出所有玩家及其银行总额。 */
     @FXML private VBox playersList;
-    /** Collapsible side panels and their toggle controls. */
+    /** 可折叠侧边栏及其切换控件。 */
     @FXML private VBox leftSidebar;
     @FXML private VBox rightSidebar;
     @FXML private Button leftSidebarToggle;
     @FXML private Button rightSidebarToggle;
     @FXML private Button leftSidebarHandle;
     @FXML private Button rightSidebarHandle;
-    /** Bottom hand dock: scroll area, hint label, and collapse toggle. */
+    /** 底部手牌区：滚动区域、提示标签与折叠切换。 */
     @FXML private VBox handDock;
     @FXML private Label handDockHint;
     @FXML private Button handDockToggle;
-    /** Center board: all players' property rows and shared bank bar. */
+    /** 中央棋盘：所有玩家的地产行与共享银行栏。 */
     @FXML private VBox publicBoardPanel;
     @FXML private HBox publicBoardHeader;
     @FXML private VBox allPlayersPropertiesPanel;
     @FXML private HBox allPlayersBankBar;
-    /** Current player's hand and personal bank widgets. */
+    /** 当前玩家的手牌与个人银行控件。 */
     @FXML private ScrollPane playerHandScroll;
     @FXML private HBox playerHand;
     @FXML private FlowPane playerBank;
     @FXML private Label bankTotalLabel;
-    /** Scrollable event log in the right sidebar. */
+    /** 右侧边栏中的可滚动事件日志。 */
     @FXML private GameLogPane gameLog;
-    /** Emoji reaction picker and floating overlay target. */
+    /** 表情反应选择器与浮动叠加层目标。 */
     @FXML private FlowPane emojiBar;
     @FXML private Pane reactionOverlay;
-    /** Primary turn action buttons. */
+    /** 主要回合操作按钮。 */
     @FXML private Button drawCardBtn;
     @FXML private Button discardCardBtn;
     @FXML private Button endTurnBtn;
     @FXML private Button newGameBtn;
     @FXML private Button achievementBtn;
 
-    /** Owns engine lifecycle and delegates turn mutations. */
+    /** 管理引擎生命周期并委托回合变更。 */
     private LocalGameSession localSession;
-    /** Themed dialogs for card play and hand-limit prompts. */
+    /** 出牌与手牌上限提示的主题对话框。 */
     private GameDialogService dialogs;
-    /** Local card-play orchestration and effect routing. */
+    /** 本地出牌编排与效果路由。 */
     private LocalCardPlayService cardPlayService;
-    /** Wild property recolor flow when clicking board cards. */
+    /** 点击棋盘卡牌时的万能地产改色流程。 */
     private WildPropertyRecolorService wildRecolorService;
-    /** Presents transient status and error messages. */
+    /** 展示临时状态与错误消息。 */
     private StatusMessageDisplay statusDisplay;
-    /** Collapsible sidebar and hand-dock chrome. */
+    /** 可折叠侧边栏与手牌区装饰。 */
     private GameBoardChrome boardChrome;
-    /** Tracks property row heights for responsive board layout. */
+    /** 跟踪地产行高度以实现响应式棋盘布局。 */
     private PropertyBoardLayoutTracker layoutTracker;
-    /** Mode-specific board refresh implementation. */
+    /** 按模式区分的棋盘刷新实现。 */
     private GameBoardRefreshService boardRefresh;
-    /** Per-turn countdown before auto-skipping the current player. */
+    /** 每回合倒计时，超时后自动跳过当前玩家。 */
     private LocalTurnTimer turnTimer;
-    /** Fly animation from hand to bank or property board. */
+    /** 手牌飞向银行或地产棋盘的动画。 */
     private PlayCardFlyAnimation playFlyAnimation;
-    /** Floating emoji reactions over the public property board. */
+    /** 公共地产棋盘上的浮动表情反应。 */
     private EmojiReactionOverlay emojiReactionOverlay;
-    /** Renders and tracks hand card selection state. */
+    /** 渲染并跟踪手牌选中状态。 */
     private HandRenderer handRenderer;
-    /** Routes hand click and double-click to selection/play. */
+    /** 将手牌单击/双击路由到选中/出牌。 */
     private HandRenderer.SelectionListener handSelectionListener;
 
-    /** Live engine reference; {@code null} until {@link #startLocalGame(int)} runs. */
+    /** 实时引擎引用；在 {@link #startLocalGame(int)} 执行前为 {@code null}。 */
     private GameEngine gameEngine;
-    /** Seat list created when a new local game starts. */
+    /** 新本地游戏开始时创建的玩家座位列表。 */
     private List<Player> players;
-    /** Hand card currently highlighted for discard or play. */
+    /** 当前高亮用于弃牌或出牌的手牌。 */
     private Card selectedCard;
     private CardView selectedCardView;
-    /** Card view kept during the play-fly animation before removal from hand. */
+    /** 出牌飞行动画期间保留的卡牌视图，随后从手牌移除。 */
     private CardView pendingPlayedCardView;
-    /** Default avatar image for player list and board renderers. */
+    /** 玩家列表与棋盘渲染器使用的默认头像。 */
     private Image avatarImage;
-    /** Player count for the next {@link #initializeGame()} call (2–5). */
+    /** 下次调用 {@link #initializeGame()} 时的玩家数量（2–5）。 */
     private int localPlayerCount = 4;
 
     /**
@@ -259,30 +259,30 @@ public class GameController {
     }
 
     /**
-     * Starts a local game using the player count from the lobby combo box (default 4).
+     * 使用大厅下拉框中的玩家数量启动本地游戏（默认 4 人）。
      */
     public void startLocalGame() {
         startLocalGame(localPlayerCount);
     }
 
     /**
-     * Starts a new local hot-seat game with the given number of players (clamped to 2–5).
+     * 以指定玩家数量启动新的本地热座游戏（限制在 2–5 人）。
      *
-     * @param playerCount desired seat count
+     * @param playerCount 期望的座位数
      */
     public void startLocalGame(int playerCount) {
         localPlayerCount = Math.max(2, Math.min(5, playerCount));
         initializeGame();
     }
 
-    /** Pauses the turn countdown while the pause dialog is open. */
+    /** 暂停对话框打开期间暂停回合计时。 */
     public void pauseGame() {
         if (turnTimer != null) {
             turnTimer.pause();
         }
     }
 
-    /** Resumes the turn countdown after closing the pause dialog. */
+    /** 关闭暂停对话框后恢复回合计时。 */
     public void resumeGame() {
         if (turnTimer != null) {
             turnTimer.resume();

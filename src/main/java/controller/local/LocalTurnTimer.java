@@ -7,31 +7,31 @@ import javafx.util.Duration;
 import model.player.Player;
 
 /**
- * Per-turn countdown for local hot-seat play.
+ * 本地热座游戏的每回合倒计时。
  * <p>
- * Fires a warning at {@link #TURN_WARNING_SECONDS} and delegates timeout handling
- * to the {@link Host} so the controller can skip the current player and advance.
+ * 在 {@link #TURN_WARNING_SECONDS} 时触发警告，并将超时处理委托给
+ * {@link Host}，以便控制器跳过当前玩家并推进回合。
  */
 public final class LocalTurnTimer {
-    /** Total seconds allowed per turn before auto-skip. */
+    /** 自动跳过前每回合允许的总秒数。 */
     public static final int TURN_TIME_SECONDS = 60;
-    /** Seconds remaining when a one-time warning is shown. */
+    /** 显示一次性警告时的剩余秒数。 */
     public static final int TURN_WARNING_SECONDS = 10;
 
     /**
-     * Callbacks invoked by the timer; typically implemented by {@link controller.GameController}.
+     * 计时器调用的回调；通常由 {@link controller.GameController} 实现。
      */
     public interface Host {
-        /** Engine used to detect game-over and identify the current player. */
+        /** 用于检测游戏结束并识别当前玩家的引擎。 */
         GameEngine engine();
 
-        /** Called every second so the UI can refresh the countdown label. */
+        /** 每秒调用，供 UI 刷新倒计时标签。 */
         void onTimerTick(int secondsRemaining);
 
-        /** Called once when {@link #TURN_WARNING_SECONDS} is reached. */
+        /** 到达 {@link #TURN_WARNING_SECONDS} 时调用一次。 */
         void onTurnWarning(Player currentPlayer);
 
-        /** Called when the countdown hits zero; host should skip the player. */
+        /** 倒计时归零时调用；宿主应跳过该玩家。 */
         void onTurnTimedOut(Player skipped);
     }
 
@@ -41,18 +41,18 @@ public final class LocalTurnTimer {
     private boolean warningShown;
 
     /**
-     * @param host callbacks for ticks, warnings, and timeout handling
+     * @param host 滴答、警告与超时处理的回调
      */
     public LocalTurnTimer(Host host) {
         this.host = host;
     }
 
-    /** Seconds left in the current turn (0 after timeout or game over). */
+    /** 当前回合剩余秒数（超时或游戏结束后为 0）。 */
     public int getSecondsRemaining() {
         return secondsRemaining;
     }
 
-    /** Restarts the countdown for a new turn; stops if the game has ended. */
+    /** 为新回合重启倒计时；游戏已结束则停止。 */
     public void reset() {
         stop();
         GameEngine engine = host.engine();
@@ -67,7 +67,7 @@ public final class LocalTurnTimer {
         timeline.play();
     }
 
-    /** Stops the JavaFX timeline without changing {@link #secondsRemaining}. */
+    /** 停止 JavaFX 时间线，不改变 {@link #secondsRemaining}。 */
     public void stop() {
         if (timeline != null) {
             timeline.stop();
@@ -75,14 +75,14 @@ public final class LocalTurnTimer {
         }
     }
 
-    /** Pauses the countdown while the game is paused; no-op if not running. */
+    /** 游戏暂停时暂停倒计时；未运行则无操作。 */
     public void pause() {
         if (timeline != null) {
             timeline.pause();
         }
     }
 
-    /** Resumes a paused countdown; no-op if not running. */
+    /** 恢复已暂停的倒计时；未运行则无操作。 */
     public void resume() {
         if (timeline != null) {
             timeline.play();

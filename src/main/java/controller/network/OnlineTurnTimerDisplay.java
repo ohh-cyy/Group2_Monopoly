@@ -7,32 +7,32 @@ import network.protocol.GameStateDto;
 import ui.render.TurnDeadlineClock;
 
 /**
- * Client-side ticker that keeps the online turn deadline label fresh between server syncs.
+ * 在服务器同步间隔内保持联机回合截止标签刷新的客户端滴答器。
  * <p>
- * Uses {@link network.protocol.GameStateDto#turnDeadlineEpochMillis} and delegates
- * label refresh to the {@link Host} (typically {@link controller.NetworkGameController}).
+ * 使用 {@link network.protocol.GameStateDto#turnDeadlineEpochMillis}，
+ * 并将标签刷新委托给 {@link Host}（通常为 {@link controller.NetworkGameController}）。
  */
 public final class OnlineTurnTimerDisplay {
-    /** Seconds remaining when a one-time warning is shown to the local player. */
+    /** 向本地玩家显示一次性警告时的剩余秒数。 */
     public static final int TURN_WARNING_SECONDS = 10;
 
     /**
-     * Callbacks for reading state and updating the UI each second.
+     * 每秒读取状态并更新 UI 的回调。
      */
     public interface Host {
-        /** Latest server snapshot containing the turn deadline. */
+        /** 包含回合截止时间的最新服务器快照。 */
         GameStateDto state();
 
-        /** Whether the local seat is the active player. */
+        /** 本地座位是否为当前行动玩家。 */
         boolean isMyTurn();
 
-        /** Display name of the player whose turn is active. */
+        /** 当前回合玩家的显示名称。 */
         String currentPlayerName();
 
-        /** Repaints turn status labels (invoked every second while running). */
+        /** 重绘回合状态标签（运行期间每秒调用）。 */
         void refreshTimerLabel();
 
-        /** Called once per turn when the warning threshold is reached on the local player's turn. */
+        /** 本地玩家回合达到警告阈值时每回合调用一次。 */
         void onTurnWarning(String playerName);
     }
 
@@ -42,20 +42,20 @@ public final class OnlineTurnTimerDisplay {
     private int lastTurnIndex = -1;
 
     /**
-     * @param host callbacks for state reads and label refresh
+     * @param host 状态读取与标签刷新的回调
      */
     public OnlineTurnTimerDisplay(Host host) {
         this.host = host;
     }
 
-    /** Call after each state sync to reset warnings and ensure the ticker is running. */
+    /** 每次状态同步后调用，重置警告并确保滴答器运行。 */
     public void onStateUpdated() {
         resetWarningIfNewTurn();
         ensureRunning();
         host.refreshTimerLabel();
     }
 
-    /** Stops the one-second JavaFX timeline (e.g. on game over). */
+    /** 停止每秒一次的 JavaFX 时间线（如游戏结束时）。 */
     public void stop() {
         if (timeline != null) {
             timeline.stop();
@@ -63,14 +63,14 @@ public final class OnlineTurnTimerDisplay {
         }
     }
 
-    /** Pauses the display ticker while the game is paused. */
+    /** 游戏暂停时暂停显示滴答器。 */
     public void pause() {
         if (timeline != null) {
             timeline.pause();
         }
     }
 
-    /** Resumes a paused display ticker. */
+    /** 恢复已暂停的显示滴答器。 */
     public void resume() {
         if (timeline != null) {
             timeline.play();
