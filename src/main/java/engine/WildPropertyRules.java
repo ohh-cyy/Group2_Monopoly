@@ -38,6 +38,7 @@ public final class WildPropertyRules {
     /**
      * Returns colors the wild may switch to without completing an already-full set.
      * Excludes the current color and colors where no billable slot remains.
+     * Wilds already sitting in a complete set cannot be recolored.
      */
     public static List<Color> getRecolorOptions(Player player, WildpropertyCard wild) {
         WildpropertyCard owned = findOwnedWild(player, wild);
@@ -45,7 +46,7 @@ public final class WildPropertyRules {
             return List.of();
         }
         Color current = owned.getChosenColor();
-        if (current == null) {
+        if (current == null || PropertyRules.isCompleteSet(player, current)) {
             return List.of();
         }
 

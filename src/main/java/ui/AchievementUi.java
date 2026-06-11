@@ -148,6 +148,7 @@ public final class AchievementUi {
         } catch (Exception ignored) {
         }
         pane.getStyleClass().add("game-dialog");
+        DialogFrameStyle.hideSystemFrame(dialog);
         if (owner != null && owner.getScene() != null) {
             dialog.initOwner(owner.getScene().getWindow());
         }

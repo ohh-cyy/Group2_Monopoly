@@ -173,6 +173,7 @@ public final class GameAlertDialogs {
         if (error) {
             pane.getStyleClass().add("game-dialog-error");
         }
+        DialogFrameStyle.hideSystemFrame(dialog);
         Window window = resolveWindow(owner);
         if (window != null) {
             dialog.initOwner(window);

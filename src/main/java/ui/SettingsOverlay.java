@@ -298,5 +298,6 @@ public final class SettingsOverlay {
         }
         pane.getStyleClass().add("game-dialog");
         pane.getStyleClass().add("settings-dialog");
+        DialogFrameStyle.hideSystemFrame(dialog);
     }
 }
